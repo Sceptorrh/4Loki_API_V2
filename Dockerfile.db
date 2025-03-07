@@ -1,6 +1,6 @@
 FROM mariadb:10.11
 
-COPY init/01-init.sql /docker-entrypoint-initdb.d/
+COPY 01-init.sql /docker-entrypoint-initdb.d/
 
 # Make sure the script is executable and has correct line endings
 RUN chmod 644 /docker-entrypoint-initdb.d/01-init.sql 
