@@ -1,5 +1,6 @@
 FROM mariadb:10.11
 
+# Copy initialization script
 COPY 01-init.sql /docker-entrypoint-initdb.d/
 
 # Make sure the script is executable and has correct line endings
