@@ -3,9 +3,6 @@
 # Pull the latest changes from git
 git pull
 
-# Login to GitHub Container Registry
-echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USERNAME --password-stdin
-
 # Pull the latest images
 docker-compose pull
 
