@@ -16,18 +16,14 @@ A RESTful API for the 4Loki dog grooming business management system.
 
 ## API Documentation
 
-The API is documented using OpenAPI (Swagger) specification. You can access the interactive API documentation at:
+The API documentation is available in two formats:
 
-```
-http://localhost:3000/api-docs
-```
-
-The documentation includes:
-- Detailed descriptions of all endpoints
-- Request/response schemas
-- Authentication requirements
-- Example requests and responses
-- Try-it-out functionality for testing endpoints directly from the browser
+1. **Interactive Swagger UI**: Visit `http://localhost:3000/api-docs` to explore the API documentation interactively.
+2. **Downloadable OpenAPI Specification**: Access `http://localhost:3000/api-spec.json` to download the complete OpenAPI specification in JSON format. This is particularly useful for:
+   - Frontend development (generate TypeScript types and API clients)
+   - API testing tools (Postman, Insomnia)
+   - Code generation in various languages
+   - API documentation tools
 
 To use the Swagger UI:
 1. Start the server (using Docker or local development)

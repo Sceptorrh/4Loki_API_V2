@@ -4,10 +4,18 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+import path from 'path';
 import { logStartupStatus } from './utils/startupLogger';
 import { setupRoutes } from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { swaggerSpec } from './config/swagger';
+import { notFoundHandler } from './middleware/notFoundHandler';
+import { logger } from './utils/logger';
+import appointmentRoutes from './routes/appointmentRoutes';
+import customerRoutes from './routes/customerRoutes';
+import dogRoutes from './routes/dogRoutes';
+import serviceRoutes from './routes/serviceRoutes';
 
 const app = express();
 
@@ -24,18 +32,25 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve Swagger UI static files
-app.use('/api-docs', express.static('node_modules/swagger-ui-dist/', { index: false }));
+// Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "4Loki API Documentation"
-}));
+// Add endpoint to download OpenAPI spec
+app.get('/api-spec.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename=openapi-spec.json');
+  res.send(JSON.stringify(swaggerSpec, null, 2));
+});
+
+// Serve Swagger UI static files
+app.use('/swagger-ui', express.static(path.join(__dirname, '../node_modules/swagger-ui-dist')));
 
 // Routes
 setupRoutes(app);
+app.use('/api/v1/appointments', appointmentRoutes);
+app.use('/api/v1/customers', customerRoutes);
+app.use('/api/v1/dogs', dogRoutes);
+app.use('/api/v1/services', serviceRoutes);
 
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {
@@ -43,6 +58,7 @@ app.get('/api/v1/health', (req, res) => {
 });
 
 // Error handling
+app.use(notFoundHandler);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
@@ -62,6 +78,7 @@ const startServer = async () => {
       console.log(`✨ Server is running on port ${PORT}`);
       console.log('🎉 API is ready to accept requests');
       console.log(`📚 API Documentation available at http://localhost:${PORT}/api-docs`);
+      console.log(`OpenAPI Specification available at http://localhost:${PORT}/api-spec.json`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
