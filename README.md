@@ -12,6 +12,28 @@ A RESTful API for the 4Loki dog grooming business management system.
 - Winston for logging
 - Error handling middleware
 - Environment-based configuration
+- OpenAPI (Swagger) documentation for all endpoints
+
+## API Documentation
+
+The API is documented using OpenAPI (Swagger) specification. You can access the interactive API documentation at:
+
+```
+http://localhost:3000/api-docs
+```
+
+The documentation includes:
+- Detailed descriptions of all endpoints
+- Request/response schemas
+- Authentication requirements
+- Example requests and responses
+- Try-it-out functionality for testing endpoints directly from the browser
+
+To use the Swagger UI:
+1. Start the server (using Docker or local development)
+2. Navigate to `http://localhost:3000/api-docs` in your browser
+3. Explore the available endpoints and their documentation
+4. Test endpoints directly through the interactive interface
 
 ## Prerequisites
 

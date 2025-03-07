@@ -6,31 +6,233 @@ import { validate } from '../middleware/validate';
 const router = Router();
 const handler = new RouteHandler('Appointment', appointmentSchema);
 
-// Get all appointments
+/**
+ * @swagger
+ * /appointments:
+ *   get:
+ *     summary: Get all appointments
+ *     tags: [Appointments]
+ *     responses:
+ *       200:
+ *         description: List of appointments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
 router.get('/', handler.getAll.bind(handler));
 
-// Get appointment by ID
+/**
+ * @swagger
+ * /appointments/{id}:
+ *   get:
+ *     summary: Get appointment by ID
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment ID
+ *     responses:
+ *       200:
+ *         description: Appointment details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       404:
+ *         description: Appointment not found
+ */
 router.get('/:id', handler.getById.bind(handler));
 
-// Create new appointment
+/**
+ * @swagger
+ * /appointments:
+ *   post:
+ *     summary: Create a new appointment
+ *     tags: [Appointments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Appointment'
+ *     responses:
+ *       201:
+ *         description: Created appointment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Invalid input
+ */
 router.post('/', validate(appointmentSchema), handler.create.bind(handler));
 
-// Update appointment
+/**
+ * @swagger
+ * /appointments/{id}:
+ *   put:
+ *     summary: Update an appointment
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Appointment'
+ *     responses:
+ *       200:
+ *         description: Updated appointment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       404:
+ *         description: Appointment not found
+ *       400:
+ *         description: Invalid input
+ */
 router.put('/:id', validate(appointmentSchema), handler.update.bind(handler));
 
-// Delete appointment
+/**
+ * @swagger
+ * /appointments/{id}:
+ *   delete:
+ *     summary: Delete an appointment
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment ID
+ *     responses:
+ *       204:
+ *         description: Appointment deleted
+ *       404:
+ *         description: Appointment not found
+ */
 router.delete('/:id', handler.delete.bind(handler));
 
-// Get appointments by date range
+/**
+ * @swagger
+ * /appointments/date-range:
+ *   get:
+ *     summary: Get appointments by date range
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: List of appointments within the date range
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
 router.get('/date-range', handler.getByDateRange.bind(handler));
 
-// Get appointments by customer
+/**
+ * @swagger
+ * /appointments/customer/{customerId}:
+ *   get:
+ *     summary: Get appointments by customer
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: customerId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Customer ID
+ *     responses:
+ *       200:
+ *         description: List of customer's appointments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
 router.get('/customer/:customerId', handler.getByCustomerId.bind(handler));
 
-// Get appointments by status
+/**
+ * @swagger
+ * /appointments/status/{statusId}:
+ *   get:
+ *     summary: Get appointments by status
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: statusId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Appointment status ID
+ *     responses:
+ *       200:
+ *         description: List of appointments with the specified status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
 router.get('/status/:statusId', handler.getByAppointmentId.bind(handler));
 
-// Get appointments by type
+/**
+ * @swagger
+ * /appointments/type/{typeId}:
+ *   get:
+ *     summary: Get appointments by type
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: typeId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment type ID
+ *     responses:
+ *       200:
+ *         description: List of appointments of the specified type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
 router.get('/type/:typeId', handler.getByAppointmentId.bind(handler));
 
 export default router; 
