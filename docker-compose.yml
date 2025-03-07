@@ -1,8 +1,13 @@
+version: '3.8'
+
 services:
   api:
     image: ghcr.io/sceptorrh/4loki_api_v2:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3010:3000"
     environment:
       - NODE_ENV=production
       - DB_HOST=${DB_HOST:-db}
@@ -13,13 +18,15 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
 
   db:
     image: mariadb:10.11
@@ -36,9 +43,33 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  db-init:
+    image: mariadb:10.11
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./init:/init
+    command: >
+      /bin/sh -c "
+        echo 'Waiting for database to be ready...' &&
+        until mysql -h db -u$$DB_USER -p$$DB_PASSWORD $$DB_NAME -e 'SELECT 1' > /dev/null 2>&1; do
+          echo 'Database is unavailable - sleeping' &&
+          sleep 2;
+        done &&
+        echo 'Database is up - executing initialization scripts' &&
+        mysql -h db -u$$DB_USER -p$$DB_PASSWORD $$DB_NAME < /init/01-init.sql &&
+        echo 'Initialization complete'
+      "
+    environment:
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
 
 volumes:
   mariadb_data: 
