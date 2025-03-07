@@ -39,7 +39,7 @@ services:
       - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
       - mariadb_data:/var/lib/mysql
-      - ./init:/docker-entrypoint-initdb.d
+      - ./01-init.sql:/docker-entrypoint-initdb.d/01-init.sql
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
