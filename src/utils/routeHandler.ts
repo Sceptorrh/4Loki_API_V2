@@ -168,4 +168,50 @@ export class RouteHandler {
       throw new AppError('Error fetching records', 500);
     }
   }
+
+  async getCustomerTable(req: Request, res: Response) {
+    try {
+      const searchTerm = req.query.search as string || '';
+      const searchCondition = searchTerm 
+        ? `WHERE c.Contactpersoon LIKE ? OR c.Naam LIKE ? OR c.Emailadres LIKE ? OR c.Telefoonnummer LIKE ? OR d.Name LIKE ?`
+        : '';
+
+      const query = `
+        SELECT 
+          c.Id,
+          c.Contactpersoon,
+          c.Naam,
+          c.Emailadres,
+          c.Telefoonnummer,
+          c.IsAllowContactShare,
+          COUNT(DISTINCT d.Id) as DogCount,
+          GROUP_CONCAT(DISTINCT d.Name) as Dogs,
+          DATEDIFF(CURDATE(), MAX(a.Date)) as DaysSinceLastAppointment
+        FROM Customer c
+        LEFT JOIN Dog d ON c.Id = d.CustomerId
+        LEFT JOIN Appointment a ON c.Id = a.CustomerId
+        ${searchCondition}
+        GROUP BY c.Id, c.Contactpersoon, c.Naam, c.Emailadres, c.Telefoonnummer, c.IsAllowContactShare
+        ORDER BY c.Naam
+      `;
+
+      const searchParams = searchTerm 
+        ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
+        : [];
+
+      const [rows] = await pool.query(query, searchParams);
+
+      // Process the results to format the dogs array
+      const processedRows = (rows as any[]).map(row => ({
+        ...row,
+        Dogs: row.Dogs ? row.Dogs.split(',') : [],
+        DaysSinceLastAppointment: row.DaysSinceLastAppointment || null
+      }));
+
+      res.json(processedRows);
+    } catch (error) {
+      console.error('Error fetching customer table:', error);
+      throw new AppError('Error fetching customer table data', 500);
+    }
+  }
 } 

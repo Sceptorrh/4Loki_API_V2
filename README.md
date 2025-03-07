@@ -74,6 +74,19 @@ To use the Swagger UI:
 - `POST /api/v1/customers` - Create new customer
 - `PUT /api/v1/customers/:id` - Update customer
 - `DELETE /api/v1/customers/:id` - Delete customer
+- `GET /api/v1/customers/table` - Get customer table data with search functionality
+  - Query parameters:
+    - `search` (optional): Search term to filter customers by contact person, name, email, phone, or dog name
+  - Returns:
+    - Contact person
+    - Name
+    - Email
+    - Phone number
+    - Contact sharing permission
+    - Number of dogs
+    - List of dog names
+    - Days since last appointment
+  - Example: `/api/v1/customers/table?search=john`
 
 ### Dogs
 - `GET /api/v1/dogs` - Get all dogs
