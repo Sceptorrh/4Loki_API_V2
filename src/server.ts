@@ -19,6 +19,22 @@ import serviceRoutes from './routes/serviceRoutes';
 
 const app = express();
 
+// CORS configuration
+const allowedOrigins = process.env.VITE_ALLOWED_ORIGINS?.split(',') || ['*'];
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
+};
+
 // Middleware
 app.use(
   helmet({
@@ -26,7 +42,7 @@ app.use(
     crossOriginEmbedderPolicy: false,
   })
 );
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());
