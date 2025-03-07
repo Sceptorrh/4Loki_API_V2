@@ -3,11 +3,8 @@ version: '3.8'
 services:
   api:
     image: ghcr.io/sceptorrh/4loki_api_v2:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     ports:
-      - "3010:3000"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
       - DB_HOST=${DB_HOST:-db}
