@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { RouteHandler } from '../utils/routeHandler';
 import { customerSchema } from '../validation/schemas';
 import { validate } from '../middleware/validate';
+import { AppError } from '../middleware/errorHandler';
 
 const router = Router();
 const handler = new RouteHandler('Customer', customerSchema);
+const dogHandler = new RouteHandler('Dog');
 
 /**
  * @swagger
@@ -149,8 +151,18 @@ router.delete('/:id', handler.delete.bind(handler));
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Dog'
+ *       404:
+ *         description: Customer not found
+ *       500:
+ *         description: Server error
  */
-router.get('/:id/dogs', handler.getByCustomerId.bind(handler));
+router.get('/:id/dogs', async (req, res, next) => {
+  try {
+    await dogHandler.getByCustomerId(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @swagger

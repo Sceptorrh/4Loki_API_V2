@@ -116,13 +116,31 @@ export class RouteHandler {
   // Additional methods for specific operations
   async getByCustomerId(req: Request, res: Response) {
     try {
+      // First check if the customer exists
+      const [customer] = await pool.query(
+        'SELECT Id FROM Customer WHERE Id = ?',
+        [req.params.id]
+      );
+
+      if (!Array.isArray(customer) || customer.length === 0) {
+        throw new AppError('Customer not found', 404);
+      }
+
+      // Then get the dogs
       const [rows] = await pool.query(
         `SELECT * FROM ${this.tableName} WHERE CustomerId = ?`,
         [req.params.id]
       );
+
+      if (!Array.isArray(rows)) {
+        throw new AppError('Invalid response from database', 500);
+      }
+
       res.json(rows);
     } catch (error) {
-      throw new AppError('Error fetching records', 500);
+      console.error(`Error fetching ${this.tableName} for customer ${req.params.id}:`, error);
+      if (error instanceof AppError) throw error;
+      throw new AppError(`Error fetching ${this.tableName} records`, 500);
     }
   }
 
