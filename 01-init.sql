@@ -8,8 +8,8 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 -- Create database if it doesn't exist
-CREATE DATABASE IF NOT EXISTS `4loki` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `4loki`;
+CREATE DATABASE IF NOT EXISTS `${MYSQL_DATABASE}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `${MYSQL_DATABASE}`;
 
 -- Disable foreign key checks during table creation
 SET FOREIGN_KEY_CHECKS = 0;
