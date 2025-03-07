@@ -389,6 +389,70 @@ const swaggerOptions = {
             Order: { type: 'integer', description: 'Display order', example: 1 },
             Is_Active: { type: 'boolean', description: 'Active status', example: true }
           }
+        },
+        DetailedAppointment: {
+          type: 'object',
+          properties: {
+            appointment: {
+              type: 'object',
+              properties: {
+                Id: { type: 'integer', description: 'The unique identifier for the appointment', example: 1 },
+                Date: { type: 'string', format: 'date', description: 'Appointment date', example: '2024-03-07' },
+                TimeStart: { type: 'string', format: 'time', description: 'Start time', example: '14:00:00' },
+                TimeEnd: { type: 'string', format: 'time', description: 'End time', example: '15:30:00' },
+                DateEnd: { type: 'string', format: 'date', description: 'End date', example: '2024-03-07' },
+                ActualDuration: { type: 'integer', description: 'Actual duration in minutes', example: 90 },
+                Status: { type: 'string', description: 'Appointment status in readable format', example: 'Scheduled' },
+                TipAmount: { type: 'number', format: 'decimal', description: 'Tip amount', example: 5.00 },
+                Note: { type: 'string', description: 'Appointment notes', example: 'Regular grooming session' }
+              }
+            },
+            customer: {
+              type: 'object',
+              properties: {
+                Id: { type: 'integer', description: 'Customer ID', example: 42 },
+                Naam: { type: 'string', description: 'Customer name', example: 'John Doe' },
+                Emailadres: { type: 'string', format: 'email', description: 'Email address', example: 'john.doe@example.com' },
+                Telefoonnummer: { type: 'string', description: 'Phone number', example: '+31612345678' }
+              }
+            },
+            allCustomerDogs: {
+              type: 'array',
+              description: 'All dogs owned by the customer',
+              items: {
+                type: 'object',
+                properties: {
+                  Id: { type: 'integer', description: 'Dog ID', example: 1 },
+                  Name: { type: 'string', description: 'Dog name', example: 'Max' },
+                  DogSizeId: { type: 'string', description: 'Size category', example: 'MEDIUM' }
+                }
+              }
+            },
+            appointmentDogs: {
+              type: 'array',
+              description: 'Dogs included in this appointment',
+              items: {
+                type: 'object',
+                properties: {
+                  Id: { type: 'integer', description: 'Dog ID', example: 1 },
+                  Name: { type: 'string', description: 'Dog name', example: 'Max' },
+                  DogSizeId: { type: 'string', description: 'Size category', example: 'MEDIUM' },
+                  services: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        Id: { type: 'integer', description: 'Service ID', example: 1 },
+                        Name: { type: 'string', description: 'Service name', example: 'Full Grooming' },
+                        Price: { type: 'number', format: 'decimal', description: 'Service price', example: 50.00 }
+                      }
+                    }
+                  },
+                  Note: { type: 'string', description: 'Notes for this dog', example: 'Prefers gentle brushing' }
+                }
+              }
+            }
+          }
         }
       },
       securitySchemes: {

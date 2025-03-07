@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { RouteHandler } from '../utils/routeHandler';
 import { appointmentSchema } from '../validation/schemas';
 import { validate } from '../middleware/validate';
+import { getDetailedAppointment } from '../controllers/appointmentController';
 
 const router = Router();
 const handler = new RouteHandler('Appointment', appointmentSchema);
@@ -234,5 +235,33 @@ router.get('/status/:statusId', handler.getByAppointmentId.bind(handler));
  *                 $ref: '#/components/schemas/Appointment'
  */
 router.get('/type/:typeId', handler.getByAppointmentId.bind(handler));
+
+/**
+ * @swagger
+ * /appointments/{id}/details:
+ *   get:
+ *     summary: Get detailed appointment information
+ *     description: Retrieves full appointment details including customer information, all customer's dogs, dogs in the appointment, and their services
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment ID
+ *     responses:
+ *       200:
+ *         description: Detailed appointment information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DetailedAppointment'
+ *       404:
+ *         description: Appointment not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/details', getDetailedAppointment);
 
 export default router; 
