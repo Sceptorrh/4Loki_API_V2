@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   api:
-    image: ghcr.io/sceptorrh/4loki-api:latest
+    image: ghcr.io/sceptorrh/4loki_api_v2:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -37,6 +37,7 @@ services:
       - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
       - mariadb_data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
