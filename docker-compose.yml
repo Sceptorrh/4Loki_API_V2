@@ -2,16 +2,29 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    image: ghcr.io/${GITHUB_USERNAME}/4loki-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - DB_HOST=${DB_HOST:-db}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
     env_file:
       - .env
     depends_on:
       - db
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   db:
     image: mariadb:10.11
@@ -25,6 +38,11 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   mariadb_data: 
