@@ -10,6 +10,61 @@ const dogHandler = new RouteHandler('Dog');
 
 /**
  * @swagger
+ * /customers/table:
+ *   get:
+ *     summary: Get customer table data with search functionality
+ *     tags: [Customers]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for filtering customers by contact person, name, email, phone, or dog name
+ *     responses:
+ *       200:
+ *         description: List of customers with their details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Id:
+ *                     type: integer
+ *                     description: Customer ID
+ *                   Contactpersoon:
+ *                     type: string
+ *                     description: Contact person name
+ *                   Naam:
+ *                     type: string
+ *                     description: Customer name
+ *                   Emailadres:
+ *                     type: string
+ *                     description: Email address
+ *                   Telefoonnummer:
+ *                     type: string
+ *                     description: Phone number
+ *                   IsAllowContactShare:
+ *                     type: string
+ *                     description: Contact sharing permission
+ *                   DogCount:
+ *                     type: integer
+ *                     description: Number of dogs
+ *                   Dogs:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: List of dog names
+ *                   DaysSinceLastAppointment:
+ *                     type: integer
+ *                     nullable: true
+ *                     description: Days since last appointment
+ */
+router.get('/table', handler.getCustomerTable.bind(handler));
+
+/**
+ * @swagger
  * /customers:
  *   get:
  *     summary: Get all customers
@@ -213,60 +268,5 @@ router.get('/:id/appointments', handler.getByCustomerId.bind(handler));
  *                 $ref: '#/components/schemas/Invoice'
  */
 router.get('/:id/invoices', handler.getByCustomerId.bind(handler));
-
-/**
- * @swagger
- * /customers/table:
- *   get:
- *     summary: Get customer table data with search functionality
- *     tags: [Customers]
- *     parameters:
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search term for filtering customers by contact person, name, email, phone, or dog name
- *     responses:
- *       200:
- *         description: List of customers with their details
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   Id:
- *                     type: integer
- *                     description: Customer ID
- *                   Contactpersoon:
- *                     type: string
- *                     description: Contact person name
- *                   Naam:
- *                     type: string
- *                     description: Customer name
- *                   Emailadres:
- *                     type: string
- *                     description: Email address
- *                   Telefoonnummer:
- *                     type: string
- *                     description: Phone number
- *                   IsAllowContactShare:
- *                     type: string
- *                     description: Contact sharing permission
- *                   DogCount:
- *                     type: integer
- *                     description: Number of dogs
- *                   Dogs:
- *                     type: array
- *                     items:
- *                       type: string
- *                     description: List of dog names
- *                   DaysSinceLastAppointment:
- *                     type: integer
- *                     nullable: true
- *                     description: Days since last appointment
- */
-router.get('/table', handler.getCustomerTable.bind(handler));
 
 export default router; 

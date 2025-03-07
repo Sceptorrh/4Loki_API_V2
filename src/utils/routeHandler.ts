@@ -203,11 +203,18 @@ export class RouteHandler {
         ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         : [];
 
+      console.log('Search parameters:', searchParams);
+
       const [rows] = await pool.query(query, searchParams);
       console.log('Query executed successfully');
 
+      if (!Array.isArray(rows)) {
+        console.error('Invalid response from database:', rows);
+        throw new AppError('Invalid response from database', 500);
+      }
+
       // Process the results to format the dogs array
-      const processedRows = (rows as any[]).map(row => ({
+      const processedRows = rows.map((row: any) => ({
         ...row,
         Dogs: row.Dogs ? row.Dogs.split(',') : [],
         DaysSinceLastAppointment: row.DaysSinceLastAppointment || null
@@ -220,6 +227,12 @@ export class RouteHandler {
       if (error instanceof Error) {
         console.error('Error details:', error.message);
         console.error('Error stack:', error.stack);
+        if ('code' in error) {
+          console.error('Error code:', (error as any).code);
+        }
+        if ('sqlMessage' in error) {
+          console.error('SQL Message:', (error as any).sqlMessage);
+        }
       }
       throw new AppError('Error fetching customer table data', 500);
     }

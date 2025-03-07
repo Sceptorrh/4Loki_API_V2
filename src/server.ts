@@ -62,17 +62,17 @@ app.get('/api-spec.json', (req, res) => {
 // Serve Swagger UI static files
 app.use('/swagger-ui', express.static(path.join(__dirname, '../node_modules/swagger-ui-dist')));
 
-// Routes
-setupRoutes(app);
-app.use('/api/v1/appointments', appointmentRoutes);
-app.use('/api/v1/customers', customerRoutes);
-app.use('/api/v1/dogs', dogRoutes);
-app.use('/api/v1/services', serviceRoutes);
-
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// Routes
+const apiPrefix = process.env.API_PREFIX || '/api/v1';
+app.use(`${apiPrefix}/customers`, customerRoutes);
+app.use(`${apiPrefix}/dogs`, dogRoutes);
+app.use(`${apiPrefix}/appointments`, appointmentRoutes);
+app.use(`${apiPrefix}/services`, serviceRoutes);
 
 // Error handling
 app.use(notFoundHandler);
