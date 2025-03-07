@@ -10,9 +10,31 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: '/',
+        url: '/api/v1',
         description: 'API Server',
       },
+    ],
+    tags: [
+      {
+        name: 'Customers',
+        description: 'Customer management endpoints'
+      },
+      {
+        name: 'Dogs',
+        description: 'Dog management endpoints'
+      },
+      {
+        name: 'Appointments',
+        description: 'Appointment management endpoints'
+      },
+      {
+        name: 'Invoices',
+        description: 'Invoice management endpoints'
+      },
+      {
+        name: 'Services',
+        description: 'Service management endpoints'
+      }
     ],
     components: {
       schemas: {
