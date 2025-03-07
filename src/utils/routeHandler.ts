@@ -118,7 +118,7 @@ export class RouteHandler {
     try {
       const [rows] = await pool.query(
         `SELECT * FROM ${this.tableName} WHERE CustomerId = ?`,
-        [req.params.customerId]
+        [req.params.id]
       );
       res.json(rows);
     } catch (error) {
