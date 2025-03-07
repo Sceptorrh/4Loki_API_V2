@@ -171,7 +171,10 @@ export class RouteHandler {
 
   async getCustomerTable(req: Request, res: Response) {
     try {
+      console.log('Fetching customer table data...');
       const searchTerm = req.query.search as string || '';
+      console.log('Search term:', searchTerm);
+
       const searchCondition = searchTerm 
         ? `WHERE c.Contactpersoon LIKE ? OR c.Naam LIKE ? OR c.Emailadres LIKE ? OR c.Telefoonnummer LIKE ? OR d.Name LIKE ?`
         : '';
@@ -195,11 +198,13 @@ export class RouteHandler {
         ORDER BY c.Naam
       `;
 
+      console.log('Executing query:', query);
       const searchParams = searchTerm 
         ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         : [];
 
       const [rows] = await pool.query(query, searchParams);
+      console.log('Query executed successfully');
 
       // Process the results to format the dogs array
       const processedRows = (rows as any[]).map(row => ({
@@ -208,9 +213,14 @@ export class RouteHandler {
         DaysSinceLastAppointment: row.DaysSinceLastAppointment || null
       }));
 
+      console.log(`Returning ${processedRows.length} customers`);
       res.json(processedRows);
     } catch (error) {
-      console.error('Error fetching customer table:', error);
+      console.error('Error in getCustomerTable:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+        console.error('Error stack:', error.stack);
+      }
       throw new AppError('Error fetching customer table data', 500);
     }
   }

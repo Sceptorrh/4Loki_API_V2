@@ -16,21 +16,15 @@ import appointmentRoutes from './routes/appointmentRoutes';
 import customerRoutes from './routes/customerRoutes';
 import dogRoutes from './routes/dogRoutes';
 import serviceRoutes from './routes/serviceRoutes';
+import { NextFunction, Request, Response } from 'express';
 
 const app = express();
 
 // CORS configuration
-const allowedOrigins = process.env.VITE_ALLOWED_ORIGINS?.split(',') || ['*'];
 const corsOptions = {
-  origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
-    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins in development
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   credentials: true,
   maxAge: 86400 // 24 hours
 };
@@ -40,6 +34,7 @@ app.use(
   helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
 app.use(cors(corsOptions));
@@ -47,6 +42,12 @@ app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Add error logging middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Error:', err);
+  next(err);
+});
 
 // Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
