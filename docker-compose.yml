@@ -39,10 +39,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-root}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      interval: 5s      # Check more frequently during startup
+      timeout: 3s       # Fail faster if check doesn't respond
+      retries: 15       # More retries but with shorter interval
+      start_period: 45s # Give enough time for initial setup but not too long
 
 volumes:
   mariadb_data: 
