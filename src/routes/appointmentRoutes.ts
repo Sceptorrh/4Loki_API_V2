@@ -9,6 +9,39 @@ const handler = new RouteHandler('Appointment', appointmentSchema);
 
 /**
  * @swagger
+ * /appointments/date-range:
+ *   get:
+ *     summary: Get appointments by date range
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date (YYYY-MM-DD)
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: List of appointments within the date range
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
+router.get('/date-range', handler.getByDateRange.bind(handler));
+
+/**
+ * @swagger
  * /appointments:
  *   get:
  *     summary: Get all appointments
@@ -127,39 +160,6 @@ router.put('/:id', validate(appointmentSchema), handler.update.bind(handler));
  *         description: Appointment not found
  */
 router.delete('/:id', handler.delete.bind(handler));
-
-/**
- * @swagger
- * /appointments/date-range:
- *   get:
- *     summary: Get appointments by date range
- *     tags: [Appointments]
- *     parameters:
- *       - in: query
- *         name: startDate
- *         required: true
- *         schema:
- *           type: string
- *           format: date
- *         description: Start date (YYYY-MM-DD)
- *       - in: query
- *         name: endDate
- *         required: true
- *         schema:
- *           type: string
- *           format: date
- *         description: End date (YYYY-MM-DD)
- *     responses:
- *       200:
- *         description: List of appointments within the date range
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Appointment'
- */
-router.get('/date-range', handler.getByDateRange.bind(handler));
 
 /**
  * @swagger
