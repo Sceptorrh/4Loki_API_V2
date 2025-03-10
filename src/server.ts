@@ -52,7 +52,40 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Swagger documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  swaggerOptions: {
+    persistAuthorization: true,
+  },
+  customCss: '.swagger-ui .topbar { display: none } .swagger-ui .download-url-wrapper { display: flex !important }',
+  customSiteTitle: "4Loki API Documentation",
+  customfavIcon: "/favicon.ico",
+  customJs: '/custom-swagger.js'
+}));
+
+// Add custom JavaScript file for download button
+app.get('/custom-swagger.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.send(`
+    window.onload = function() {
+      // Create download button
+      const downloadButton = document.createElement('button');
+      downloadButton.className = 'btn download-spec-btn';
+      downloadButton.innerHTML = '⬇️ Download OpenAPI Spec';
+      downloadButton.style.cssText = 'margin: 10px 0; padding: 5px 10px; background: #4990e2; color: white; border: none; border-radius: 4px; cursor: pointer;';
+      
+      // Add click handler
+      downloadButton.onclick = function() {
+        window.location.href = '/api-spec.json';
+      };
+      
+      // Insert button after the info container
+      const infoContainer = document.querySelector('.information-container');
+      if (infoContainer) {
+        infoContainer.parentNode.insertBefore(downloadButton, infoContainer.nextSibling);
+      }
+    };
+  `);
+});
 
 // Add endpoint to download OpenAPI spec
 app.get('/api-spec.json', (req, res) => {
