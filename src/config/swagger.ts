@@ -24,6 +24,10 @@ const swaggerOptions = {
         description: 'Dog management endpoints'
       },
       {
+        name: 'Dog Breeds',
+        description: 'Dog breed management endpoints'
+      },
+      {
         name: 'Appointments',
         description: 'Appointment management endpoints'
       },
@@ -453,6 +457,57 @@ const swaggerOptions = {
               }
             }
           }
+        },
+        DogBreed: {
+          type: 'object',
+          properties: {
+            Id: { 
+              type: 'integer', 
+              description: 'The unique identifier for the dog breed',
+              example: 1
+            },
+            Name: { 
+              type: 'string', 
+              description: 'Name of the breed',
+              example: 'Golden Retriever'
+            },
+            Description: { 
+              type: 'string', 
+              description: 'Description of the breed',
+              example: 'Friendly, intelligent, and devoted'
+            },
+            AverageHeight: { 
+              type: 'string', 
+              description: 'Average height range',
+              example: '55-61 cm'
+            },
+            AverageWeight: { 
+              type: 'string', 
+              description: 'Average weight range',
+              example: '25-34 kg'
+            },
+            LifeExpectancy: { 
+              type: 'string', 
+              description: 'Average life expectancy',
+              example: '10-12 years'
+            },
+            Temperament: { 
+              type: 'string', 
+              description: 'Typical temperament characteristics',
+              example: 'Friendly, intelligent, devoted'
+            },
+            GroomingNeeds: { 
+              type: 'string', 
+              description: 'Grooming requirements',
+              example: 'Regular brushing, occasional bathing'
+            },
+            IsActive: { 
+              type: 'boolean', 
+              description: 'Whether the breed is active in the system',
+              example: true
+            }
+          },
+          required: ['Name']
         }
       },
       securitySchemes: {

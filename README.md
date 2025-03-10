@@ -94,6 +94,23 @@ To use the Swagger UI:
 - `POST /api/v1/dogs` - Create new dog
 - `PUT /api/v1/dogs/:id` - Update dog
 - `DELETE /api/v1/dogs/:id` - Delete dog
+- `GET /api/v1/dogs/table` - Get dog table data with detailed information
+  - Query parameters:
+    - `search` (optional): Search term to filter dogs by name, customer name, or breed
+  - Returns:
+    - Dog ID
+    - Dog name
+    - Customer contact person name
+    - Dog size (readable label)
+    - List of assigned dog breeds
+  - Example: `/api/v1/dogs/table?search=max`
+
+### Dog Breeds
+- `GET /api/v1/dog-breeds` - Get all dog breeds
+- `GET /api/v1/dog-breeds/:id` - Get dog breed by ID
+- `POST /api/v1/dog-breeds` - Create new dog breed
+- `PUT /api/v1/dog-breeds/:id` - Update dog breed
+- `DELETE /api/v1/dog-breeds/:id` - Delete dog breed
 
 ### Appointments
 - `GET /api/v1/appointments` - Get all appointments
@@ -150,6 +167,16 @@ To use the Swagger UI:
 - `POST /api/v1/travel-times` - Create new travel time
 - `PUT /api/v1/travel-times/:id` - Update travel time
 - `DELETE /api/v1/travel-times/:id` - Delete travel time
+
+### Dropdowns
+- `GET /api/v1/dropdowns/dogbreeds` - Get dog breeds for dropdown (id, name)
+- `GET /api/v1/dropdowns/customers` - Get customers with their dogs for dropdown (id, contactperson, list of dogs)
+- `GET /api/v1/dropdowns/paymenttypes` - Get payment types for dropdown (id, label)
+- `GET /api/v1/dropdowns/btwpercentages` - Get BTW percentages for dropdown (id, label, amount)
+- `GET /api/v1/dropdowns/invoicecategories` - Get invoice categories for dropdown (id, label, knab)
+- `GET /api/v1/dropdowns/hourtypes` - Get hour types for dropdown (id, label, defaulttext, isExport)
+- `GET /api/v1/dropdowns/custominvoices` - Get custom invoices for dropdown (id, referentie)
+- `GET /api/v1/dropdowns/customcolors` - Get custom colors for dropdown (color, hex, legend)
 
 ## Error Handling
 

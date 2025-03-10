@@ -16,6 +16,8 @@ import appointmentRoutes from './routes/appointmentRoutes';
 import customerRoutes from './routes/customerRoutes';
 import dogRoutes from './routes/dogRoutes';
 import serviceRoutes from './routes/serviceRoutes';
+import dogBreedRoutes from './routes/dogBreedRoutes';
+import dropdownRoutes from './routes/dropdownRoutes';
 import { NextFunction, Request, Response } from 'express';
 
 const app = express();
@@ -71,8 +73,10 @@ app.get('/api/v1/health', (req, res) => {
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
 app.use(`${apiPrefix}/customers`, customerRoutes);
 app.use(`${apiPrefix}/dogs`, dogRoutes);
+app.use(`${apiPrefix}/dog-breeds`, dogBreedRoutes);
 app.use(`${apiPrefix}/appointments`, appointmentRoutes);
 app.use(`${apiPrefix}/services`, serviceRoutes);
+app.use(`${apiPrefix}/dropdowns`, dropdownRoutes);
 
 // Error handling
 app.use(notFoundHandler);

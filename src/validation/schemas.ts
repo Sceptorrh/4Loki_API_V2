@@ -102,4 +102,15 @@ export const travelTimeSchema = z.object({
   Type: z.string().min(1, 'Type is required'),
   DateTime: z.string().datetime(),
   Value: z.number().int().min(0),
+});
+
+export const dogBreedSchema = z.object({
+  Name: z.string().min(1, 'Name is required'),
+  Description: z.string().optional(),
+  AverageHeight: z.string().optional(),
+  AverageWeight: z.string().optional(),
+  LifeExpectancy: z.string().optional(),
+  Temperament: z.string().optional(),
+  GroomingNeeds: z.string().optional(),
+  IsActive: z.boolean().optional().default(true)
 }); 

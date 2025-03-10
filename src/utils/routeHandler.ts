@@ -237,4 +237,70 @@ export class RouteHandler {
       throw new AppError('Error fetching customer table data', 500);
     }
   }
+
+  async getDogTable(req: Request, res: Response) {
+    try {
+      console.log('Fetching dog table data...');
+      const searchTerm = req.query.search as string || '';
+      console.log('Search term:', searchTerm);
+
+      const searchCondition = searchTerm 
+        ? `WHERE d.Name LIKE ? OR c.Contactpersoon LIKE ? OR db.Name LIKE ?`
+        : '';
+
+      const query = `
+        SELECT 
+          d.Id,
+          d.Name,
+          c.Contactpersoon as CustomerName,
+          ds.Label as Size,
+          GROUP_CONCAT(DISTINCT db.Name) as Breeds
+        FROM Dog d
+        LEFT JOIN Customer c ON d.CustomerId = c.Id
+        LEFT JOIN Statics_DogSize ds ON d.DogSizeId = ds.Id
+        LEFT JOIN DogDogbreed ddb ON d.Id = ddb.DogId
+        LEFT JOIN DogBreed db ON ddb.DogBreedId = db.Id
+        ${searchCondition}
+        GROUP BY d.Id, d.Name, c.Contactpersoon, ds.Label
+        ORDER BY d.Name
+      `;
+
+      console.log('Executing query:', query);
+      const searchParams = searchTerm 
+        ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
+        : [];
+
+      console.log('Search parameters:', searchParams);
+
+      const [rows] = await pool.query(query, searchParams);
+      console.log('Query executed successfully');
+
+      if (!Array.isArray(rows)) {
+        console.error('Invalid response from database:', rows);
+        throw new AppError('Invalid response from database', 500);
+      }
+
+      // Process the results to format the breeds array
+      const processedRows = rows.map((row: any) => ({
+        ...row,
+        Breeds: row.Breeds ? row.Breeds.split(',') : []
+      }));
+
+      console.log(`Returning ${processedRows.length} dogs`);
+      res.json(processedRows);
+    } catch (error) {
+      console.error('Error in getDogTable:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message);
+        console.error('Error stack:', error.stack);
+        if ('code' in error) {
+          console.error('Error code:', (error as any).code);
+        }
+        if ('sqlMessage' in error) {
+          console.error('SQL Message:', (error as any).sqlMessage);
+        }
+      }
+      throw new AppError('Error fetching dog table data', 500);
+    }
+  }
 } 
