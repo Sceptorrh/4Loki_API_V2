@@ -18,9 +18,14 @@ import dogRoutes from './routes/dogRoutes';
 import serviceRoutes from './routes/serviceRoutes';
 import dogBreedRoutes from './routes/dogBreedRoutes';
 import dropdownRoutes from './routes/dropdownRoutes';
+import staticRoutes from './routes/staticRoutes';
 import { NextFunction, Request, Response } from 'express';
+import { Server } from 'http';
 
 const app = express();
+
+// Create HTTP server instance
+let server: Server;
 
 // CORS configuration
 const corsOptions = {
@@ -41,7 +46,10 @@ app.use(
 );
 app.use(cors(corsOptions));
 app.use(compression());
-app.use(morgan('dev'));
+// Only use morgan logger in non-test environments
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('dev'));
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -110,34 +118,35 @@ app.use(`${apiPrefix}/dog-breeds`, dogBreedRoutes);
 app.use(`${apiPrefix}/appointments`, appointmentRoutes);
 app.use(`${apiPrefix}/services`, serviceRoutes);
 app.use(`${apiPrefix}/dropdowns`, dropdownRoutes);
+app.use(`${apiPrefix}/static`, staticRoutes);
 
 // Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+// Export app for testing
+export { app, server };
 
-// Start server with logging
-const startServer = async () => {
-  try {
-    // Log startup status
-    const dbConnected = await logStartupStatus();
-    
-    if (!dbConnected) {
-      console.error('❌ Failed to start server: Database connection failed');
-      process.exit(1);
-    }
+export function startServer(port: number = parseInt(process.env.PORT || '3000')) {
+  server = app.listen(port, () => {
+    logger.info(`Server is running on port ${port}`);
+  });
+  return server;
+}
 
-    app.listen(PORT, () => {
-      console.log(`✨ Server is running on port ${PORT}`);
-      console.log('🎉 API is ready to accept requests');
-      console.log(`📚 API Documentation available at http://localhost:${PORT}/api-docs`);
-      console.log(`OpenAPI Specification available at http://localhost:${PORT}/api-spec.json`);
+export function closeServer() {
+  if (server) {
+    return new Promise<void>((resolve, reject) => {
+      server.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
     });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
   }
-};
+  return Promise.resolve();
+}
 
-startServer(); 
+// Only call startServer if this file is being run directly
+if (require.main === module) {
+  startServer();
+} 

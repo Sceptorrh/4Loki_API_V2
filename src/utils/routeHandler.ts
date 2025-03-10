@@ -97,19 +97,22 @@ export class RouteHandler {
 
   async delete(req: Request, res: Response) {
     try {
-      const [result] = await pool.query(
-        `DELETE FROM ${this.tableName} WHERE Id = ?`,
-        [req.params.id]
-      );
-      
-      if ((result as any).affectedRows === 0) {
-        throw new AppError('Record not found', 404);
-      }
-      
-      res.status(204).send();
+      const id = req.params.id;
+      await pool.query(`DELETE FROM ${this.tableName} WHERE Id = ?`, [id]);
+      res.json({ message: `${this.tableName} deleted successfully` });
     } catch (error) {
-      if (error instanceof AppError) throw error;
-      throw new AppError('Error deleting record', 500);
+      console.error(`Error deleting ${this.tableName}:`, error);
+      throw new AppError(`Error deleting ${this.tableName}`, 500);
+    }
+  }
+
+  async deleteAll(req: Request, res: Response) {
+    try {
+      await pool.query(`DELETE FROM ${this.tableName}`);
+      res.json({ message: `All ${this.tableName}s deleted successfully` });
+    } catch (error) {
+      console.error(`Error deleting all ${this.tableName}s:`, error);
+      throw new AppError(`Error deleting all ${this.tableName}s`, 500);
     }
   }
 
@@ -171,10 +174,7 @@ export class RouteHandler {
 
   async getCustomerTable(req: Request, res: Response) {
     try {
-      console.log('Fetching customer table data...');
       const searchTerm = req.query.search as string || '';
-      console.log('Search term:', searchTerm);
-
       const searchCondition = searchTerm 
         ? `WHERE c.Contactpersoon LIKE ? OR c.Naam LIKE ? OR c.Emailadres LIKE ? OR c.Telefoonnummer LIKE ? OR d.Name LIKE ?`
         : '';
@@ -198,15 +198,11 @@ export class RouteHandler {
         ORDER BY c.Naam
       `;
 
-      console.log('Executing query:', query);
       const searchParams = searchTerm 
         ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         : [];
 
-      console.log('Search parameters:', searchParams);
-
       const [rows] = await pool.query(query, searchParams);
-      console.log('Query executed successfully');
 
       if (!Array.isArray(rows)) {
         console.error('Invalid response from database:', rows);
@@ -220,7 +216,6 @@ export class RouteHandler {
         DaysSinceLastAppointment: row.DaysSinceLastAppointment || null
       }));
 
-      console.log(`Returning ${processedRows.length} customers`);
       res.json(processedRows);
     } catch (error) {
       console.error('Error in getCustomerTable:', error);
@@ -240,10 +235,13 @@ export class RouteHandler {
 
   async getDogTable(req: Request, res: Response) {
     try {
-      console.log('Fetching dog table data...');
-      const searchTerm = req.query.search as string || '';
-      console.log('Search term:', searchTerm);
+      // First check if the Dog table exists and has data
+      const [tableCheck] = await pool.query('SELECT COUNT(*) as count FROM Dog');
+      if (!Array.isArray(tableCheck) || (tableCheck as any)[0].count === 0) {
+        return res.json([]);
+      }
 
+      const searchTerm = req.query.search as string || '';
       const searchCondition = searchTerm 
         ? `WHERE d.Name LIKE ? OR c.Contactpersoon LIKE ? OR db.Name LIKE ?`
         : '';
@@ -259,25 +257,21 @@ export class RouteHandler {
         LEFT JOIN Customer c ON d.CustomerId = c.Id
         LEFT JOIN Statics_DogSize ds ON d.DogSizeId = ds.Id
         LEFT JOIN DogDogbreed ddb ON d.Id = ddb.DogId
-        LEFT JOIN DogBreed db ON ddb.DogBreedId = db.Id
+        LEFT JOIN Dogbreed db ON ddb.DogBreedId = db.Id
         ${searchCondition}
         GROUP BY d.Id, d.Name, c.Contactpersoon, ds.Label
         ORDER BY d.Name
+        LIMIT 1000
       `;
 
-      console.log('Executing query:', query);
       const searchParams = searchTerm 
         ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         : [];
 
-      console.log('Search parameters:', searchParams);
-
       const [rows] = await pool.query(query, searchParams);
-      console.log('Query executed successfully');
 
       if (!Array.isArray(rows)) {
-        console.error('Invalid response from database:', rows);
-        throw new AppError('Invalid response from database', 500);
+        return res.json([]);
       }
 
       // Process the results to format the breeds array
@@ -286,19 +280,12 @@ export class RouteHandler {
         Breeds: row.Breeds ? row.Breeds.split(',') : []
       }));
 
-      console.log(`Returning ${processedRows.length} dogs`);
       res.json(processedRows);
     } catch (error) {
       console.error('Error in getDogTable:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', error.message);
-        console.error('Error stack:', error.stack);
-        if ('code' in error) {
-          console.error('Error code:', (error as any).code);
-        }
-        if ('sqlMessage' in error) {
-          console.error('SQL Message:', (error as any).sqlMessage);
-        }
+      // If there's a table not found error, return empty array
+      if (error instanceof Error && 'code' in error && (error as any).code === 'ER_NO_SUCH_TABLE') {
+        return res.json([]);
       }
       throw new AppError('Error fetching dog table data', 500);
     }

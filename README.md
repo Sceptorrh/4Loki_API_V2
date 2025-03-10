@@ -178,6 +178,28 @@ To use the Swagger UI:
 - `GET /api/v1/dropdowns/custominvoices` - Get custom invoices for dropdown (id, referentie)
 - `GET /api/v1/dropdowns/customcolors` - Get custom colors for dropdown (color, hex, legend)
 
+### Static Tables
+- `GET /api/v1/static/appointment-statuses` - Get all appointment statuses
+  - Returns: List of appointment statuses with id, label, order, is_active, and color
+- `GET /api/v1/static/appointment-types` - Get all appointment types
+  - Returns: List of appointment types with id, label, order, and is_active
+- `GET /api/v1/static/btw-percentages` - Get all BTW percentages
+  - Returns: List of BTW percentages with id, label, and amount
+- `GET /api/v1/static/custom-colors` - Get all custom colors
+  - Returns: List of custom colors with color, order, hex, and legend
+- `GET /api/v1/static/dog-sizes` - Get all dog sizes
+  - Returns: List of dog sizes with id, label, order, and is_active
+- `GET /api/v1/static/hour-types` - Get all hour types
+  - Returns: List of hour types with id, label, default_text, and is_export
+- `GET /api/v1/static/import-export-types` - Get all import/export types
+  - Returns: List of import/export types with id and label
+- `GET /api/v1/static/invoice-categories` - Get all invoice categories
+  - Returns: List of invoice categories with id, label, and knab
+- `GET /api/v1/static/payment-types` - Get all payment types
+  - Returns: List of payment types with id and label
+- `GET /api/v1/static/travel-time-types` - Get all travel time types
+  - Returns: List of travel time types with id and label
+
 ## Error Handling
 
 The API uses a consistent error response format:

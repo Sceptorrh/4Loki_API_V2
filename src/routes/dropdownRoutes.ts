@@ -32,12 +32,16 @@ const router = Router();
  *                   name:
  *                     type: string
  */
-router.get('/dogbreeds', async (req, res) => {
+router.get('/dogbreeds', async (req, res, next) => {
   try {
-    const [rows] = await pool.query('SELECT Id as id, Name as name FROM DogBreed ORDER BY name');
+    const [rows] = await pool.query('SELECT Id as id, Name as name FROM Dogbreed ORDER BY name');
+    if (!Array.isArray(rows)) {
+      return res.json([]); // Return empty array for invalid response
+    }
     res.json(rows);
   } catch (error) {
-    throw new AppError('Error fetching dog breeds', 500);
+    console.error('Error fetching dog breeds:', error);
+    next(new AppError('Error fetching dog breeds', 500));
   }
 });
 
@@ -152,12 +156,15 @@ router.get('/paymenttypes', async (req, res) => {
  *                   amount:
  *                     type: number
  */
-router.get('/btwpercentages', async (req, res) => {
+router.get('/btwpercentages', async (req, res, next) => {
   try {
-    const [rows] = await pool.query('SELECT Id as id, Label as label, Amount as amount FROM Statics_BTWPercentage ORDER BY amount');
+    const [rows] = await pool.query('SELECT Id as id, Label as label, Amount as amount FROM Statics_BTWpercentage ORDER BY amount');
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.json([]); // Return empty array instead of error for no results
+    }
     res.json(rows);
   } catch (error) {
-    throw new AppError('Error fetching BTW percentages', 500);
+    next(new AppError('Error fetching BTW percentages', 500));
   }
 });
 

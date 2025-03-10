@@ -8,7 +8,11 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "test": "jest"
+    "test": "jest --verbose --detectOpenHandles --forceExit --no-cache",
+    "test:with-db": "powershell ./scripts/run-tests.ps1",
+    "test:setup-db": "docker-compose -f docker-compose.test.yml up -d",
+    "test:teardown-db": "docker-compose -f docker-compose.test.yml down",
+    "test:env": "cross-env DB_HOST=127.0.0.1 DB_USER=root DB_PASSWORD=root DB_DATABASE=4Loki_db NODE_ENV=test jest --verbose --detectOpenHandles --forceExit --no-cache"
   },
   "dependencies": {
     "@types/compression": "^1.7.5",
@@ -29,16 +33,19 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
-    "@types/jest": "^29.5.11",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.10.5",
+    "@types/supertest": "^2.0.16",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "cross-env": "^7.0.3",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
-    "ts-jest": "^29.1.1",
+    "supertest": "^6.3.4",
+    "ts-jest": "^29.2.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }

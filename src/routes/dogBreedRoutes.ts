@@ -4,7 +4,7 @@ import { dogBreedSchema } from '../validation/schemas';
 import { validate } from '../middleware/validate';
 
 const router = Router();
-const handler = new RouteHandler('DogBreed', dogBreedSchema);
+const handler = new RouteHandler('Dogbreed', dogBreedSchema);
 
 /**
  * @swagger
@@ -126,5 +126,25 @@ router.put('/:id', validate(dogBreedSchema), handler.update.bind(handler));
  *         description: Dog breed not found
  */
 router.delete('/:id', handler.delete.bind(handler));
+
+/**
+ * @swagger
+ * /dog-breeds:
+ *   delete:
+ *     summary: Delete all dog breeds
+ *     tags: [Dog Breeds]
+ *     responses:
+ *       200:
+ *         description: All dog breeds deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Dog breeds deleted successfully
+ */
+router.delete('/', handler.deleteAll.bind(handler));
 
 export default router; 

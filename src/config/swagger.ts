@@ -471,40 +471,10 @@ const swaggerOptions = {
               description: 'Name of the breed',
               example: 'Golden Retriever'
             },
-            Description: { 
-              type: 'string', 
-              description: 'Description of the breed',
-              example: 'Friendly, intelligent, and devoted'
-            },
-            AverageHeight: { 
-              type: 'string', 
-              description: 'Average height range',
-              example: '55-61 cm'
-            },
-            AverageWeight: { 
-              type: 'string', 
-              description: 'Average weight range',
-              example: '25-34 kg'
-            },
-            LifeExpectancy: { 
-              type: 'string', 
-              description: 'Average life expectancy',
-              example: '10-12 years'
-            },
-            Temperament: { 
-              type: 'string', 
-              description: 'Typical temperament characteristics',
-              example: 'Friendly, intelligent, devoted'
-            },
-            GroomingNeeds: { 
-              type: 'string', 
-              description: 'Grooming requirements',
-              example: 'Regular brushing, occasional bathing'
-            },
-            IsActive: { 
-              type: 'boolean', 
-              description: 'Whether the breed is active in the system',
-              example: true
+            OwnerId: {
+              type: 'integer',
+              description: 'Owner ID',
+              example: 1
             }
           },
           required: ['Name']
