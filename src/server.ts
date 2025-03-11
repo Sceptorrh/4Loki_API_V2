@@ -72,11 +72,14 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none } .swagger-ui .download-url-wrapper { display: flex !important }',
   customSiteTitle: "4Loki API Documentation",
   customfavIcon: "/favicon.ico",
-  customJs: '/custom-swagger.js'
+  customJs: '/api-docs/custom-swagger.js'
 }));
 
+// Serve Swagger UI static files first (before the custom JS route)
+app.use('/api-docs', express.static(path.join(__dirname, '../node_modules/swagger-ui-dist')));
+
 // Add custom JavaScript file for download button
-app.get('/custom-swagger.js', (req, res) => {
+app.get('/api-docs/custom-swagger.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
   res.send(`
     window.onload = function() {
@@ -106,9 +109,6 @@ app.get('/api-spec.json', (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename=openapi-spec.json');
   res.send(JSON.stringify(swaggerSpec, null, 2));
 });
-
-// Serve Swagger UI static files
-app.use('/swagger-ui', express.static(path.join(__dirname, '../node_modules/swagger-ui-dist')));
 
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {
