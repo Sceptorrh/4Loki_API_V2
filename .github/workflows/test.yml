@@ -36,7 +36,7 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install
 
     - name: Set database timezone
       run: mysql -h127.0.0.1 -P3306 -uroot -proot -e "SET GLOBAL time_zone = '+00:00';"
