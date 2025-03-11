@@ -1,6 +1,6 @@
 # 4Loki API
 
-[![API Tests](https://github.com/BradleyLansford/4Loki_API_V2/actions/workflows/test.yml/badge.svg)](https://github.com/BradleyLansford/4Loki_API_V2/actions/workflows/test.yml)
+[![API Tests](https://github.com/Sceptorrh/4Loki_API_V2/actions/workflows/test.yml/badge.svg)](https://github.com/Sceptorrh/4Loki_API_V2/actions/workflows/test.yml)
 
 A RESTful API for the 4Loki dog grooming business management system.
 
