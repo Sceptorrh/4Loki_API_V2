@@ -2,161 +2,82 @@ import request from 'supertest';
 import { app } from '../server';
 
 describe('API Endpoints', () => {
-  // Health check endpoint
-  describe('GET /api/v1/health', () => {
-    it('GET /api/v1/health should return 200 OK', async () => {
-      const res = await request(app).get('/api/v1/health');
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual({ status: 'ok' });
-    });
+  // Ensure static data is inserted before all other tests
+  beforeAll(async () => {
+    // Insert custom colors first
+    const colors = [
+      { color: 'Cancelled', order: 4, hex: '#a80808', legend: 'Geannuleerd' },
+      { color: 'Exported', order: 3, hex: '#74ed86', legend: 'Geexporteerd' },
+      { color: 'Invoiced', order: 2, hex: '#4973de', legend: 'Gefactureerd' },
+      { color: 'NotExported', order: 6, hex: '#b5cc8d', legend: 'Niet geexporteerd' },
+      { color: 'OtherHours', order: 5, hex: '#57c2bb', legend: 'Andere uren' },
+      { color: 'Planned', order: 1, hex: '#a9abb0', legend: 'Geplanned' }
+    ];
+    
+    await request(app).delete('/api/v1/static/appointment-statuses');
+    await request(app).delete('/api/v1/static/custom-colors');
+    await request(app).post('/api/v1/static/custom-colors').send(colors);
+
+    // Insert appointment statuses
+    const statuses = [
+      { id: 'Can', label: 'Geannuleerd', order: 3, is_active: 1, color: 'Cancelled' },
+      { id: 'Exp', label: 'Geexporteerd', order: 7, is_active: 1, color: 'Exported' },
+      { id: 'Inv', label: 'Gefactureerd', order: 5, is_active: 1, color: 'Invoiced' },
+      { id: 'NotExp', label: 'NotExported', order: 8, is_active: 1, color: 'NotExported' },
+      { id: 'Pln', label: 'Gepland', order: 2, is_active: 1, color: 'Planned' }
+    ];
+    await request(app).post('/api/v1/static/appointment-statuses').send(statuses);
+
+    // Insert dog sizes (required for dog tests)
+    console.log('Setting up dog sizes...');
+    try {
+      // First delete existing dog sizes
+      console.log('Deleting existing dog sizes...');
+      await request(app).delete('/api/v1/static/dog-sizes');
+      
+      const sizes = [
+        { id: 'L', label: 'Large', order: 3, is_active: true },
+        { id: 'M', label: 'Middle', order: 2, is_active: true },
+        { id: 'S', label: 'Small', order: 1, is_active: true },
+        { id: 'X', label: 'ExtraLarge', order: 4, is_active: true }
+      ];
+      
+      console.log('Inserting dog sizes:', JSON.stringify(sizes, null, 2));
+      const res = await request(app).post('/api/v1/static/dog-sizes').send(sizes);
+      console.log('Dog sizes insertion response:', res.status, res.body);
+      
+      if (res.status !== 201) {
+        throw new Error(`Failed to insert dog sizes: ${JSON.stringify(res.body)}`);
+      }
+      
+      // Verify dog sizes were inserted
+      const checkRes = await request(app).get('/api/v1/static/dog-sizes');
+      console.log('Verifying dog sizes:', checkRes.status, checkRes.body);
+      if (!Array.isArray(checkRes.body) || checkRes.body.length !== 4) {
+        throw new Error('Dog sizes verification failed');
+      }
+    } catch (error) {
+      console.error('Error setting up dog sizes:', error);
+      throw error;
+    }
+
+    // Insert dog breeds
+    const breeds = [
+      { Name: 'Labrador Retriever', OwnerId: 1 },
+      { Name: 'German Shepherd', OwnerId: 1 },
+      { Name: 'Golden Retriever', OwnerId: 1 },
+      { Name: 'French Bulldog', OwnerId: 1 },
+      { Name: 'Poodle', OwnerId: 1 }
+    ];
+
+    await request(app).delete('/api/v1/dog-breeds');
+    for (const breed of breeds) {
+      await request(app).post('/api/v1/dog-breeds').send(breed);
+    }
   });
 
-  // Dropdown endpoints
-  describe('Dropdown Endpoints', () => {
-    it('GET /api/v1/dropdowns/dogbreeds should return dog breeds', async () => {
-      const res = await request(app).get('/api/v1/dropdowns/dogbreeds');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/dropdowns/customers should return customers with dogs', async () => {
-      const res = await request(app).get('/api/v1/dropdowns/customers');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/dropdowns/paymenttypes should return payment types', async () => {
-      const res = await request(app).get('/api/v1/dropdowns/paymenttypes');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/dropdowns/btwpercentages should return BTW percentages', async () => {
-      const res = await request(app).get('/api/v1/dropdowns/btwpercentages');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/dropdowns/hourtypes should return hour types', async () => {
-      const res = await request(app).get('/api/v1/dropdowns/hourtypes');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-  });
-
-  // Customer endpoints
-  describe('Customer Endpoints', () => {
-    it('GET /api/v1/customers/table should return customer table data', async () => {
-      const res = await request(app).get('/api/v1/customers/table');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/customers/table?search=test should handle customer search', async () => {
-      const res = await request(app).get('/api/v1/customers/table?search=test');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-  });
-
-  // Dog endpoints
-  describe('Dog Endpoints', () => {
-    it('GET /api/v1/dogs/table should return dog table data', async () => {
-      const res = await request(app).get('/api/v1/dogs/table');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/dogs/table?search=test should handle dog search', async () => {
-      const res = await request(app).get('/api/v1/dogs/table?search=test');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-  });
-
-  // OpenAPI/Swagger endpoints
-  describe('API Documentation', () => {
-    it('GET /api-docs/ should serve Swagger UI', async () => {
-      const res = await request(app).get('/api-docs/');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toContain('text/html');
-    });
-
-    it('GET /api-spec.json should serve OpenAPI spec', async () => {
-      const res = await request(app).get('/api-spec.json');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toContain('application/json');
-    });
-
-    it('GET /custom-swagger.js should serve custom Swagger JS', async () => {
-      const res = await request(app).get('/custom-swagger.js');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toContain('application/javascript');
-    });
-  });
-
-  // Static Table endpoints
+  // Static Table endpoints first
   describe('Static Table Endpoints', () => {
-    it('GET /api/v1/static/appointment-statuses should return appointment statuses', async () => {
-      const res = await request(app).get('/api/v1/static/appointment-statuses');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/appointment-types should return appointment types', async () => {
-      const res = await request(app).get('/api/v1/static/appointment-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/btw-percentages should return BTW percentages', async () => {
-      const res = await request(app).get('/api/v1/static/btw-percentages');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/custom-colors should return custom colors', async () => {
-      const res = await request(app).get('/api/v1/static/custom-colors');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/dog-sizes should return dog sizes', async () => {
-      const res = await request(app).get('/api/v1/static/dog-sizes');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/hour-types should return hour types', async () => {
-      const res = await request(app).get('/api/v1/static/hour-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/import-export-types should return import/export types', async () => {
-      const res = await request(app).get('/api/v1/static/import-export-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/invoice-categories should return invoice categories', async () => {
-      const res = await request(app).get('/api/v1/static/invoice-categories');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/payment-types should return payment types', async () => {
-      const res = await request(app).get('/api/v1/static/payment-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/travel-time-types should return travel time types', async () => {
-      const res = await request(app).get('/api/v1/static/travel-time-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
     describe('Insert Static Data', () => {
       it('POST /api/v1/static/custom-colors should insert custom colors first', async () => {
         // First delete appointment statuses due to foreign key constraint
@@ -275,18 +196,6 @@ describe('API Endpoints', () => {
         expect(res.body.message).toBe('BTW percentages inserted successfully');
       });
 
-      it('POST /api/v1/static/dog-sizes should insert dog sizes', async () => {
-        const sizes = [
-          { id: 'L', label: 'Large', order: 3, is_active: true },
-          { id: 'M', label: 'Middle', order: 2, is_active: true },
-          { id: 'S', label: 'Small', order: 1, is_active: true },
-          { id: 'X', label: 'ExtraLarge', order: 4, is_active: true }
-        ];
-        const res = await request(app).post('/api/v1/static/dog-sizes').send(sizes);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Dog sizes inserted successfully');
-      });
-
       it('POST /api/v1/static/hour-types should insert hour types', async () => {
         const types = [
           { id: 'Adm', label: 'Administratie', order: 1, is_active: true, default_text: 'Administratie', is_export: true },
@@ -388,10 +297,73 @@ describe('API Endpoints', () => {
         }
       });
     });
+
+    // Static table GET endpoints
+    it('GET /api/v1/static/appointment-statuses should return appointment statuses', async () => {
+      const res = await request(app).get('/api/v1/static/appointment-statuses');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/appointment-types should return appointment types', async () => {
+      const res = await request(app).get('/api/v1/static/appointment-types');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/btw-percentages should return BTW percentages', async () => {
+      const res = await request(app).get('/api/v1/static/btw-percentages');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/custom-colors should return custom colors', async () => {
+      const res = await request(app).get('/api/v1/static/custom-colors');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/dog-sizes should return dog sizes', async () => {
+      const res = await request(app).get('/api/v1/static/dog-sizes');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/hour-types should return hour types', async () => {
+      const res = await request(app).get('/api/v1/static/hour-types');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/import-export-types should return import/export types', async () => {
+      const res = await request(app).get('/api/v1/static/import-export-types');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/invoice-categories should return invoice categories', async () => {
+      const res = await request(app).get('/api/v1/static/invoice-categories');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/payment-types should return payment types', async () => {
+      const res = await request(app).get('/api/v1/static/payment-types');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/static/travel-time-types should return travel time types', async () => {
+      const res = await request(app).get('/api/v1/static/travel-time-types');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
   });
 
   // Customer and Dog Data Tests
   describe('Customer and Dog Data', () => {
+    let customerIds: { [key: string]: number };
+
     it('POST /api/v1/customers should insert customers', async () => {
       const customers = [
         {
@@ -436,7 +408,7 @@ describe('API Endpoints', () => {
         }
       ];
 
-      // Insert each customer
+      // Insert each customer and store their IDs
       const insertedCustomers = [];
       for (const customer of customers) {
         const res = await request(app)
@@ -445,9 +417,19 @@ describe('API Endpoints', () => {
           .send(customer);
 
         expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Customer inserted successfully');
+        expect(res.body).toMatchObject(customer);
+        expect(res.body.Id).toBeDefined();
         insertedCustomers.push(res.body);
       }
+
+      // Store customer IDs for use in other tests
+      customerIds = {
+        johnDoeId: insertedCustomers[0].Id,
+        janeSmithId: insertedCustomers[1].Id,
+        aliceJohnsonId: insertedCustomers[2].Id,
+        bobWilsonId: insertedCustomers[3].Id
+      };
+      console.log('Stored customer IDs:', customerIds);
 
       // Verify customers were inserted
       const checkCustomersRes = await request(app).get('/api/v1/customers/table');
@@ -456,7 +438,9 @@ describe('API Endpoints', () => {
       expect(checkCustomersRes.body.length).toBe(4);
 
       // Verify customer search works
-      const searchRes = await request(app).get('/api/v1/customers/table?search=john');
+      console.log('Searching for customer with "John Doe"...');
+      const searchRes = await request(app).get('/api/v1/customers/table?search=John Doe');
+      console.log('Search response:', searchRes.status, searchRes.body);
       expect(searchRes.status).toBe(200);
       expect(Array.isArray(searchRes.body)).toBe(true);
       expect(searchRes.body.length).toBe(1);
@@ -464,82 +448,197 @@ describe('API Endpoints', () => {
     });
 
     it('POST /api/v1/dogs should insert dogs and connect them to customers', async () => {
-      // First get the customers to get their IDs
-      const customersRes = await request(app).get('/api/v1/customers/table');
-      const customers = customersRes.body;
+      // Verify we have customer IDs
+      expect(customerIds).toBeDefined();
+      expect(customerIds.johnDoeId).toBeDefined();
+      expect(customerIds.janeSmithId).toBeDefined();
+      expect(customerIds.bobWilsonId).toBeDefined();
       
+      // Verify dog sizes exist
+      const dogSizesRes = await request(app).get('/api/v1/static/dog-sizes');
+      expect(dogSizesRes.status).toBe(200);
+      expect(Array.isArray(dogSizesRes.body)).toBe(true);
+      expect(dogSizesRes.body.length).toBe(4);
+
       // Create dogs for specific customers
       const dogs = [
         {
-          CustomerId: customers[0].Id, // John Doe's dogs
+          CustomerId: customerIds.johnDoeId,
           Name: 'Max',
-          Birthday: '2020-01-01T00:00:00.000Z',
+          Birthday: '2020-01-01',
           Allergies: 'None',
           ServiceNote: 'Regular grooming needed',
           DogSizeId: 'L'
         },
         {
-          CustomerId: customers[0].Id,
+          CustomerId: customerIds.johnDoeId,
           Name: 'Luna',
-          Birthday: '2021-02-15T00:00:00.000Z',
+          Birthday: '2021-02-15',
           Allergies: 'Chicken',
           ServiceNote: 'Sensitive skin',
           DogSizeId: 'M'
         },
         {
-          CustomerId: customers[1].Id, // Jane Smith's dog
+          CustomerId: customerIds.janeSmithId,
           Name: 'Charlie',
-          Birthday: '2019-06-30T00:00:00.000Z',
+          Birthday: '2019-06-30',
           ServiceNote: 'Very friendly',
           DogSizeId: 'L'
         },
         {
-          CustomerId: customers[3].Id, // Bob Wilson's dogs
+          CustomerId: customerIds.bobWilsonId,
           Name: 'Bella',
-          Birthday: '2022-03-10T00:00:00.000Z',
+          Birthday: '2022-03-10',
           Allergies: 'Grain',
           ServiceNote: 'Short coat',
           DogSizeId: 'S'
         },
         {
-          CustomerId: customers[3].Id,
+          CustomerId: customerIds.bobWilsonId,
           Name: 'Rocky',
-          Birthday: '2021-11-20T00:00:00.000Z',
+          Birthday: '2021-11-20',
           ServiceNote: 'Regular trimming needed',
           DogSizeId: 'M'
         },
         {
-          CustomerId: customers[3].Id,
+          CustomerId: customerIds.bobWilsonId,
           Name: 'Daisy',
-          Birthday: '2020-08-15T00:00:00.000Z',
+          Birthday: '2020-08-15',
           ServiceNote: 'Long coat',
           DogSizeId: 'L'
         }
       ];
 
-      // Insert each dog
-      for (const dog of dogs) {
-        const res = await request(app)
+      // Insert all dogs in parallel
+      const insertPromises = dogs.map(dog => 
+        request(app)
           .post('/api/v1/dogs')
-          .set('Content-Type', 'application/json')
-          .send(dog);
+          .send(dog)
+          .then(res => {
+            expect(res.status).toBe(201);
+            expect(res.body.Name).toBe(dog.Name);
+            expect(res.body.CustomerId).toBe(dog.CustomerId);
+            expect(res.body.DogSizeId).toBe(dog.DogSizeId);
+            return res.body;
+          })
+      );
 
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Dog inserted successfully');
-      }
+      const insertedDogs = await Promise.all(insertPromises);
+      expect(insertedDogs.length).toBe(6);
 
-      // Verify dogs were inserted
-      const checkDogsRes = await request(app).get('/api/v1/dogs/table');
+      // Verify dogs were inserted using the base endpoint
+      const checkDogsRes = await request(app).get('/api/v1/dogs');
       expect(checkDogsRes.status).toBe(200);
       expect(Array.isArray(checkDogsRes.body)).toBe(true);
       expect(checkDogsRes.body.length).toBe(6);
 
-      // Verify dog search works
+      // Debug: Log all dogs to verify their data
+      console.log('All dogs:', JSON.stringify(checkDogsRes.body, null, 2));
+
+      // Verify dog search works using the table endpoint
+      console.log('Attempting to search for dog "Max"...');
       const dogSearchRes = await request(app).get('/api/v1/dogs/table?search=max');
+      console.log('Search response:', JSON.stringify(dogSearchRes.body, null, 2));
       expect(dogSearchRes.status).toBe(200);
       expect(Array.isArray(dogSearchRes.body)).toBe(true);
       expect(dogSearchRes.body.length).toBe(1);
       expect(dogSearchRes.body[0].Name).toBe('Max');
     });
   });
+
+  // Health check endpoint
+  describe('GET /api/v1/health', () => {
+    it('GET /api/v1/health should return 200 OK', async () => {
+      const res = await request(app).get('/api/v1/health');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ status: 'ok' });
+    });
+  });
+
+  // Dropdown endpoints
+  describe('Dropdown Endpoints', () => {
+    it('GET /api/v1/dropdowns/dogbreeds should return dog breeds', async () => {
+      const res = await request(app).get('/api/v1/dropdowns/dogbreeds');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/dropdowns/customers should return customers with dogs', async () => {
+      const res = await request(app).get('/api/v1/dropdowns/customers');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/dropdowns/paymenttypes should return payment types', async () => {
+      const res = await request(app).get('/api/v1/dropdowns/paymenttypes');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/dropdowns/btwpercentages should return BTW percentages', async () => {
+      const res = await request(app).get('/api/v1/dropdowns/btwpercentages');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/dropdowns/hourtypes should return hour types', async () => {
+      const res = await request(app).get('/api/v1/dropdowns/hourtypes');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+  });
+
+  // Customer endpoints
+  describe('Customer Endpoints', () => {
+    it('GET /api/v1/customers/table should return customer table data', async () => {
+      const res = await request(app).get('/api/v1/customers/table');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/customers/table?search=test should handle customer search', async () => {
+      const res = await request(app).get('/api/v1/customers/table?search=test');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+  });
+
+  // Dog endpoints
+  describe('Dog Endpoints', () => {
+    it('GET /api/v1/dogs/table should return dog table data', async () => {
+      const res = await request(app).get('/api/v1/dogs/table');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    it('GET /api/v1/dogs/table?search=test should handle dog search', async () => {
+      const res = await request(app).get('/api/v1/dogs/table?search=test');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+  });
+
+  // OpenAPI/Swagger endpoints
+  describe('API Documentation', () => {
+    it('GET /api-docs/ should serve Swagger UI', async () => {
+      const res = await request(app).get('/api-docs/');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('text/html');
+    });
+
+    it('GET /api-spec.json should serve OpenAPI spec', async () => {
+      const res = await request(app).get('/api-spec.json');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('application/json');
+    });
+
+    it('GET /custom-swagger.js should serve custom Swagger JS', async () => {
+      const res = await request(app).get('/custom-swagger.js');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toContain('application/javascript');
+    });
+  });
 }); 
+
+
+

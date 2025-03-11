@@ -21,6 +21,7 @@ import dropdownRoutes from './routes/dropdownRoutes';
 import staticRoutes from './routes/staticRoutes';
 import { NextFunction, Request, Response } from 'express';
 import { Server } from 'http';
+import { convertDatesToUTC, convertDatesInResponse } from './middleware/dateHandler';
 
 const app = express();
 
@@ -52,6 +53,10 @@ if (process.env.NODE_ENV !== 'test') {
 }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Apply date handling middleware
+app.use(convertDatesToUTC);
+app.use(convertDatesInResponse);
 
 // Add error logging middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
@@ -112,8 +117,10 @@ app.get('/api/v1/health', (req, res) => {
 
 // Routes
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
+console.log('Registering routes with prefix:', apiPrefix);
 app.use(`${apiPrefix}/customers`, customerRoutes);
 app.use(`${apiPrefix}/dogs`, dogRoutes);
+console.log('Dog routes registered at:', `${apiPrefix}/dogs`);
 app.use(`${apiPrefix}/dog-breeds`, dogBreedRoutes);
 app.use(`${apiPrefix}/appointments`, appointmentRoutes);
 app.use(`${apiPrefix}/services`, serviceRoutes);

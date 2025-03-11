@@ -19,10 +19,11 @@ export const customerSchema = z.object({
 export const dogSchema = z.object({
   CustomerId: z.number().int().positive(),
   Name: z.string().min(1, 'Name is required'),
-  Birthday: z.string().datetime(),
+  Birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Birthday must be in YYYY-MM-DD format'),
   Allergies: z.string().optional(),
   ServiceNote: z.string().optional(),
   DogSizeId: z.string().min(1, 'Dog size is required'),
+  OwnerId: z.number().int().positive().optional()
 });
 
 export const appointmentSchema = z.object({

@@ -28,6 +28,48 @@ router.get('/', handler.getAll.bind(handler));
 
 /**
  * @swagger
+ * /dogs/table:
+ *   get:
+ *     summary: Get dog table data with detailed information
+ *     tags: [Dogs]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for filtering dogs by name, customer name, or breed
+ *     responses:
+ *       200:
+ *         description: List of dogs with their details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Id:
+ *                     type: integer
+ *                     description: Dog ID
+ *                   Name:
+ *                     type: string
+ *                     description: Dog name
+ *                   CustomerName:
+ *                     type: string
+ *                     description: Customer contact person name
+ *                   Size:
+ *                     type: string
+ *                     description: Dog size label (e.g., Small, Medium, Large)
+ *                   Breeds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: List of dog breeds assigned to the dog
+ */
+router.get('/table', handler.getDogTable.bind(handler));
+
+/**
+ * @swagger
  * /dogs/{id}:
  *   get:
  *     summary: Get dog by ID
@@ -73,7 +115,19 @@ router.get('/:id', handler.getById.bind(handler));
  *       400:
  *         description: Invalid input
  */
-router.post('/', validate(dogSchema), handler.create.bind(handler));
+router.post('/', validate(dogSchema), async (req, res, next) => {
+  console.log('Received POST request to /dogs');
+  // Sanitize input data
+  if (req.body.Birthday) {
+    req.body.Birthday = req.body.Birthday.trim();
+  }
+  console.log('Request body:', req.body);
+  try {
+    await handler.create(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -242,47 +296,5 @@ router.get('/service-notes', async (req, res) => {
     throw new AppError('Error fetching dogs with service notes', 500);
   }
 });
-
-/**
- * @swagger
- * /dogs/table:
- *   get:
- *     summary: Get dog table data with detailed information
- *     tags: [Dogs]
- *     parameters:
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search term for filtering dogs by name, customer name, or breed
- *     responses:
- *       200:
- *         description: List of dogs with their details
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   Id:
- *                     type: integer
- *                     description: Dog ID
- *                   Name:
- *                     type: string
- *                     description: Dog name
- *                   CustomerName:
- *                     type: string
- *                     description: Customer contact person name
- *                   Size:
- *                     type: string
- *                     description: Dog size label (e.g., Small, Medium, Large)
- *                   Breeds:
- *                     type: array
- *                     items:
- *                       type: string
- *                     description: List of dog breeds assigned to the dog
- */
-router.get('/table', handler.getDogTable.bind(handler));
 
 export default router; 

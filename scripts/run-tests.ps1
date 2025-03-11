@@ -2,8 +2,10 @@
 docker stop test-db 2>$null
 docker rm test-db 2>$null
 
-# Start test database
-docker run --name test-db -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=4Loki_db -p 3307:3306 -d mariadb:latest
+# Start test database with UTC timezone
+docker run --name test-db -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=4Loki_db -e TZ=UTC -p 3307:3306 -d mariadb:10.11
+
+
 
 # Wait for database to be ready
 Write-Host "Waiting for database to be ready..."
@@ -34,6 +36,10 @@ if (-not $ready) {
 
 # Initialize database schema
 Write-Host "Initializing database schema..."
+
+
+# Set UTC timezone in the database
+mysql --host=127.0.0.1 --port=3307 --user=root --password=root -e "SET GLOBAL time_zone = '+00:00';"
 
 # Function to execute SQL and handle errors
 function Execute-SQL {
@@ -101,8 +107,3 @@ Write-Host "Port: 3307"
 Write-Host "User: root"
 Write-Host "Password: root"
 Write-Host "Database: 4Loki_db"
-
-# Keep the script running
-while ($true) {
-    Start-Sleep -Seconds 1
-} 

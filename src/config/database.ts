@@ -11,7 +11,16 @@ const pool = mysql.createPool({
   database: process.env.DB_DATABASE || process.env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  timezone: 'Z',
+  dateStrings: ['DATETIME', 'DATE', 'TIMESTAMP'],
+  typeCast: function (field, next) {
+    if (field.type === 'DATE') {
+      const value = field.string();
+      return value === null ? value : value.split('T')[0];
+    }
+    return next();
+  }
 });
 
 export default pool; 

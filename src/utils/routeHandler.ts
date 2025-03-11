@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler';
 import pool from '../config/database';
 import { AnyZodObject } from 'zod';
+import { convertDateFieldsToUTC } from '../middleware/dateHandler';
+import { getDateFields } from './tableConfig';
 
 export class RouteHandler {
   constructor(
@@ -11,7 +13,10 @@ export class RouteHandler {
 
   async getAll(req: Request, res: Response) {
     try {
-      const [rows] = await pool.query(`SELECT * FROM ${this.tableName}`);
+      const dateFields = getDateFields(this.tableName);
+      const dateConversion = dateFields.length > 0 ? `, ${convertDateFieldsToUTC(dateFields)}` : '';
+      
+      const [rows] = await pool.query(`SELECT *${dateConversion} FROM ${this.tableName}`);
       res.json(rows);
     } catch (error) {
       throw new AppError('Error fetching records', 500);
@@ -20,8 +25,11 @@ export class RouteHandler {
 
   async getById(req: Request, res: Response) {
     try {
+      const dateFields = getDateFields(this.tableName);
+      const dateConversion = dateFields.length > 0 ? `, ${convertDateFieldsToUTC(dateFields)}` : '';
+      
       const [rows] = await pool.query(
-        `SELECT * FROM ${this.tableName} WHERE Id = ?`,
+        `SELECT *${dateConversion} FROM ${this.tableName} WHERE Id = ?`,
         [req.params.id]
       );
       
@@ -38,7 +46,9 @@ export class RouteHandler {
 
   async create(req: Request, res: Response) {
     try {
+      console.log('RouteHandler.create called for table:', this.tableName);
       if (this.validationSchema) {
+        console.log('Validating request body:', req.body);
         await this.validationSchema.parseAsync(req.body);
       }
 
@@ -46,19 +56,47 @@ export class RouteHandler {
       const values = Object.values(req.body);
       const placeholders = fields.map(() => '?').join(', ');
       
-      const [result] = await pool.query(
-        `INSERT INTO ${this.tableName} (${fields.join(', ')}) VALUES (${placeholders})`,
-        values
-      );
+      const query = `INSERT INTO ${this.tableName} (${fields.join(', ')}) VALUES (${placeholders})`;
+      console.log('Executing query:', query);
+      console.log('With values:', values);
       
-      const [newRecord] = await pool.query(
-        `SELECT * FROM ${this.tableName} WHERE Id = ?`,
-        [(result as any).insertId]
-      );
-      
-      res.status(201).json(Array.isArray(newRecord) ? newRecord[0] : newRecord);
+      try {
+        const [result] = await pool.query(query, values);
+        console.log('Insert result:', result);
+        
+        // Get date fields for this table from configuration
+        const dateFields = getDateFields(this.tableName);
+        
+        // Only add date conversion if there are date fields
+        const dateConversion = dateFields.length > 0 ? `, ${convertDateFieldsToUTC(dateFields)}` : '';
+        
+        const [newRecord] = await pool.query(
+          `SELECT *${dateConversion}
+           FROM ${this.tableName} WHERE Id = ?`,
+          [(result as any).insertId]
+        );
+        
+        if (!Array.isArray(newRecord) || newRecord.length === 0) {
+          throw new AppError('Failed to retrieve newly created record', 500);
+        }
+        
+        res.status(201).json(Array.isArray(newRecord) ? newRecord[0] : newRecord);
+      } catch (sqlError) {
+        console.error('SQL Error details:');
+        console.error('Error code:', (sqlError as any).code);
+        console.error('Error number:', (sqlError as any).errno);
+        console.error('SQL message:', (sqlError as any).sqlMessage);
+        console.error('SQL state:', (sqlError as any).sqlState);
+        console.error('SQL:', (sqlError as any).sql);
+        throw new AppError(`Database error: ${(sqlError as any).sqlMessage || 'Unknown error'}`, 500);
+      }
     } catch (error) {
+      console.error('Error in create method:', error);
       if (error instanceof AppError) throw error;
+      if ((error as any).name === 'ZodError') {
+        console.error('Validation error:', error);
+        throw new AppError('Validation failed: ' + JSON.stringify((error as any).errors), 400);
+      }
       throw new AppError('Error creating record', 500);
     }
   }
@@ -175,8 +213,14 @@ export class RouteHandler {
   async getCustomerTable(req: Request, res: Response) {
     try {
       const searchTerm = req.query.search as string || '';
+      console.log('Search term:', searchTerm);
+
       const searchCondition = searchTerm 
-        ? `WHERE c.Contactpersoon LIKE ? OR c.Naam LIKE ? OR c.Emailadres LIKE ? OR c.Telefoonnummer LIKE ? OR d.Name LIKE ?`
+        ? `WHERE LOWER(c.Contactpersoon) LIKE LOWER(?) 
+           OR LOWER(c.Naam) LIKE LOWER(?) 
+           OR LOWER(c.Emailadres) LIKE LOWER(?) 
+           OR c.Telefoonnummer LIKE ? 
+           OR LOWER(d.Name) LIKE LOWER(?)`
         : '';
 
       const query = `
@@ -202,6 +246,9 @@ export class RouteHandler {
         ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         : [];
 
+      console.log('Query:', query);
+      console.log('Search params:', searchParams);
+
       const [rows] = await pool.query(query, searchParams);
 
       if (!Array.isArray(rows)) {
@@ -209,12 +256,16 @@ export class RouteHandler {
         throw new AppError('Invalid response from database', 500);
       }
 
+      console.log('Raw rows:', rows);
+
       // Process the results to format the dogs array
       const processedRows = rows.map((row: any) => ({
         ...row,
         Dogs: row.Dogs ? row.Dogs.split(',') : [],
         DaysSinceLastAppointment: row.DaysSinceLastAppointment || null
       }));
+
+      console.log('Processed rows:', processedRows);
 
       res.json(processedRows);
     } catch (error) {
@@ -237,14 +288,31 @@ export class RouteHandler {
     try {
       // First check if the Dog table exists and has data
       const [tableCheck] = await pool.query('SELECT COUNT(*) as count FROM Dog');
+      console.log('Dog table count:', (tableCheck as any)[0].count);
+      
       if (!Array.isArray(tableCheck) || (tableCheck as any)[0].count === 0) {
         return res.json([]);
       }
 
+      // Debug logging for request query
+      console.log('Request query:', req.query);
+      console.log('Request query type:', typeof req.query);
+      console.log('Request query keys:', Object.keys(req.query));
+      
       const searchTerm = req.query.search as string || '';
+      console.log('Search term:', searchTerm);
+      console.log('Search term type:', typeof searchTerm);
+      
       const searchCondition = searchTerm 
-        ? `WHERE d.Name LIKE ? OR c.Contactpersoon LIKE ? OR db.Name LIKE ?`
+        ? `WHERE LOWER(d.Name) LIKE LOWER(?) OR LOWER(c.Contactpersoon) LIKE LOWER(?) OR LOWER(db.Name) LIKE LOWER(?)`
         : '';
+
+      const searchParams = searchTerm 
+        ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
+        : [];
+
+      console.log('Search condition:', searchCondition);
+      console.log('Search params:', searchParams);
 
       const query = `
         SELECT 
@@ -264,13 +332,14 @@ export class RouteHandler {
         LIMIT 1000
       `;
 
-      const searchParams = searchTerm 
-        ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
-        : [];
+      console.log('Executing query:', query);
+      console.log('With params:', searchParams);
 
       const [rows] = await pool.query(query, searchParams);
+      console.log('Raw query results:', rows);
 
       if (!Array.isArray(rows)) {
+        console.log('Query did not return an array');
         return res.json([]);
       }
 
@@ -280,6 +349,7 @@ export class RouteHandler {
         Breeds: row.Breeds ? row.Breeds.split(',') : []
       }));
 
+      console.log('Processed rows:', processedRows);
       res.json(processedRows);
     } catch (error) {
       console.error('Error in getDogTable:', error);
