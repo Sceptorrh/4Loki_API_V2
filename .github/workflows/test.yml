@@ -15,14 +15,17 @@ jobs:
         image: mariadb:latest
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test_db
+          MYSQL_DATABASE: 4Loki_db
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
+          MARIADB_INNODB_USE_NATIVE_AIO: '0'
         ports:
           - 3306:3306
         options: >-
           --health-cmd="mysqladmin ping -h localhost -uroot -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+          --health-interval=5s
+          --health-timeout=10s
+          --health-retries=10
+          --health-start-period=30s
 
     steps:
     - uses: actions/checkout@v3
@@ -48,12 +51,12 @@ jobs:
         mysql -h127.0.0.1 -uroot -proot test_db < ./database/migrations/01-init.sql
       
     - name: Run tests
-      run: npm test
+      run: npm run test:env
       env:
         DB_HOST: 127.0.0.1
         DB_USER: root
         DB_PASSWORD: root
-        DB_DATABASE: test_db
+        DB_DATABASE: 4Loki_db
         NODE_ENV: test
         
     - name: Upload test results
