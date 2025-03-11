@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# Add permissions for the test reporter
+permissions:
+  checks: write
+  contents: read
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
