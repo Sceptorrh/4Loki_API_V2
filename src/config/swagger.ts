@@ -492,7 +492,12 @@ const swaggerOptions = {
       bearerAuth: [],
     }],
   },
-  apis: ['./src/routes/*.ts'], // Path to the API routes
+  apis: [
+    './src/routes/*.ts',  // Path to route files
+    './src/routes/**/*.ts',  // Include nested route files
+    './dist/routes/*.js',  // Include compiled JavaScript files
+    './dist/routes/**/*.js'  // Include nested compiled JavaScript files
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(swaggerOptions); 
