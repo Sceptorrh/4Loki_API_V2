@@ -1,3 +1,43 @@
+# Function to check if a command exists
+function Test-CommandExists {
+    param (
+        [string]$command
+    )
+    $exists = $null -ne (Get-Command -Name $command -ErrorAction SilentlyContinue)
+    return $exists
+}
+
+# Check if Docker is running
+Write-Host "Checking if Docker is running..."
+try {
+    $dockerStatus = docker ps 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: Docker is not running or not installed."
+        Write-Host "Please make sure Docker Desktop is installed and running."
+        Write-Host "You can download Docker Desktop from: https://www.docker.com/products/docker-desktop"
+        exit 1
+    }
+    Write-Host "Docker is running."
+} catch {
+    Write-Host "Error: Docker is not installed or not in PATH."
+    Write-Host "Please install Docker Desktop from: https://www.docker.com/products/docker-desktop"
+    exit 1
+}
+
+# Check if MySQL client is available
+Write-Host "Checking if MySQL client is available..."
+if (-not (Test-CommandExists "mysql")) {
+    Write-Host "Error: MySQL client is not installed or not in PATH."
+    Write-Host "Please install MySQL client:"
+    Write-Host "1. Download MySQL Installer from: https://dev.mysql.com/downloads/installer/"
+    Write-Host "2. Run the installer and select 'Custom' installation"
+    Write-Host "3. Select 'MySQL Command Line Client' from the available products"
+    Write-Host "4. Complete the installation"
+    Write-Host "5. Make sure to add MySQL to your system PATH"
+    exit 1
+}
+Write-Host "MySQL client is available."
+
 # Clean up existing containers
 docker stop test-db 2>$null
 docker rm test-db 2>$null

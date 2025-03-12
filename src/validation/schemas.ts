@@ -27,10 +27,10 @@ export const dogSchema = z.object({
 });
 
 export const appointmentSchema = z.object({
-  Date: z.string().datetime(),
+  Date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   TimeStart: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
   TimeEnd: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
-  DateEnd: z.string().datetime(),
+  DateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   ActualDuration: z.number().int().min(0),
   CustomerId: z.number().int().positive(),
   AppointmentStatusId: z.string().min(1, 'Appointment status is required'),
@@ -62,8 +62,9 @@ export const serviceSchema = z.object({
 export const dogPictureSchema = z.object({
   DogId: z.number().int().positive(),
   AppointmentId: z.number().int().positive(),
-  DateTime: z.string().datetime(),
-  Picture: z.instanceof(Buffer),
+  DateTime: z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, 'DateTime must be in YYYY-MM-DD HH:mm:ss format'),
+  OwnerId: z.number().int().positive().optional(),
+  Picture: z.string()
 });
 
 export const additionalHourSchema = z.object({

@@ -2,6 +2,10 @@ import request from 'supertest';
 import { app } from '../server';
 
 describe('API Endpoints', () => {
+  // Global test variables
+  let customerIds: { [key: string]: number };
+  let serviceIds: { [key: string]: number };
+  
   // Ensure static data is inserted before all other tests
   beforeAll(async () => {
     // Insert custom colors first
@@ -256,46 +260,6 @@ describe('API Endpoints', () => {
         expect(res.status).toBe(201);
         expect(res.body.message).toBe('Travel time types inserted successfully');
       });
-
-      test('POST /api/v1/dog-breeds - Insert dog breeds', async () => {
-        console.log('Attempting to delete existing dog breeds...');
-        const deleteResponse = await request(app)
-          .delete('/api/v1/dog-breeds')
-          .expect(200);
-        console.log('Delete response:', deleteResponse.status, deleteResponse.body);
-
-        const breeds = [
-          { Name: 'Labrador Retriever', OwnerId: 1 },
-          { Name: 'German Shepherd', OwnerId: 1 },
-          { Name: 'Golden Retriever', OwnerId: 1 },
-          { Name: 'French Bulldog', OwnerId: 1 },
-          { Name: 'Poodle', OwnerId: 1 }
-        ];
-
-        // Insert each breed individually
-        for (const breed of breeds) {
-          console.log('Attempting to insert dog breed:', breed);
-          const response = await request(app)
-            .post('/api/v1/dog-breeds')
-            .send(breed)
-            .expect(201);
-          console.log('Insert response:', response.status, response.body);
-        }
-
-        console.log('Verifying inserted breeds...');
-        const verifyResponse = await request(app)
-          .get('/api/v1/dropdowns/dogbreeds')
-          .expect(200);
-        console.log('Verify response:', verifyResponse.status, verifyResponse.body);
-        expect(verifyResponse.body).toBeInstanceOf(Array);
-        expect(verifyResponse.body.length).toBe(5);
-
-        // Verify each breed was inserted correctly
-        for (const expectedBreed of breeds) {
-          const foundBreed = verifyResponse.body.find((b: { name: string }) => b.name === expectedBreed.Name);
-          expect(foundBreed).toBeDefined();
-        }
-      });
     });
 
     // Static table GET endpoints
@@ -362,8 +326,6 @@ describe('API Endpoints', () => {
 
   // Customer and Dog Data Tests
   describe('Customer and Dog Data', () => {
-    let customerIds: { [key: string]: number };
-
     it('POST /api/v1/customers should insert customers', async () => {
       const customers = [
         {
@@ -546,6 +508,283 @@ describe('API Endpoints', () => {
     });
   });
 
+  // Dog Breed Tests
+  describe('Dog Breed Data', () => {
+    it('POST /api/v1/dog-breeds should insert dog breeds', async () => {
+      console.log('Attempting to delete existing dog breeds...');
+      const deleteResponse = await request(app)
+        .delete('/api/v1/dog-breeds')
+        .expect(200);
+      console.log('Delete response:', deleteResponse.status, deleteResponse.body);
+
+      const breeds = [
+        { Name: 'Labrador Retriever', OwnerId: 1 },
+        { Name: 'German Shepherd', OwnerId: 1 },
+        { Name: 'Golden Retriever', OwnerId: 1 },
+        { Name: 'French Bulldog', OwnerId: 1 },
+        { Name: 'Poodle', OwnerId: 1 }
+      ];
+
+      // Insert each breed individually
+      for (const breed of breeds) {
+        console.log('Attempting to insert dog breed:', breed);
+        const response = await request(app)
+          .post('/api/v1/dog-breeds')
+          .send(breed)
+          .expect(201);
+        console.log('Insert response:', response.status, response.body);
+      }
+
+      console.log('Verifying inserted breeds...');
+      const verifyResponse = await request(app)
+        .get('/api/v1/dropdowns/dogbreeds')
+        .expect(200);
+      console.log('Verify response:', verifyResponse.status, verifyResponse.body);
+      expect(verifyResponse.body).toBeInstanceOf(Array);
+      expect(verifyResponse.body.length).toBe(5);
+
+      // Verify each breed was inserted correctly
+      for (const expectedBreed of breeds) {
+        const foundBreed = verifyResponse.body.find((b: { name: string }) => b.name === expectedBreed.Name);
+        expect(foundBreed).toBeDefined();
+      }
+    });
+
+    it('GET /api/v1/dog-breeds should return all dog breeds', async () => {
+      const res = await request(app).get('/api/v1/dog-breeds');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBe(5);
+    });
+  });
+
+  // Service Tests
+  describe('Service Data', () => {
+    interface Service {
+      Name: string;
+      StandardPrice: number;
+      StandardDuration: number;
+      IsPrice0Allowed: boolean;
+      OwnerId: number;
+    }
+
+    const services: Service[] = [
+      {
+        Name: 'Basic Grooming',
+        StandardPrice: 50.00,
+        StandardDuration: 60,
+        IsPrice0Allowed: false,
+        OwnerId: 1
+      },
+      {
+        Name: 'Full Grooming',
+        StandardPrice: 75.00,
+        StandardDuration: 90,
+        IsPrice0Allowed: false,
+        OwnerId: 1
+      },
+      {
+        Name: 'Nail Trimming',
+        StandardPrice: 20.00,
+        StandardDuration: 30,
+        IsPrice0Allowed: false,
+        OwnerId: 1
+      }
+    ];
+
+    // Insert each service and store their IDs
+    interface ServiceResponse extends Service {
+      Id: number;
+    }
+    const insertedServices: ServiceResponse[] = [];
+
+    it('POST /api/v1/services should insert services', async () => {
+      for (const service of services) {
+        const res = await request(app)
+          .post('/api/v1/services')
+          .send(service);
+
+        expect(res.status).toBe(201);
+        // Update expectations to handle type conversions
+        expect(res.body.Name).toBe(service.Name);
+        expect(parseFloat(res.body.StandardPrice)).toBe(service.StandardPrice);
+        expect(res.body.StandardDuration).toBe(service.StandardDuration);
+        expect(Boolean(res.body.IsPrice0Allowed)).toBe(service.IsPrice0Allowed);
+        expect(res.body.OwnerId).toBe(service.OwnerId);
+        expect(res.body.Id).toBeDefined();
+        insertedServices.push(res.body);
+      }
+
+      // Store service IDs for use in other tests
+      serviceIds = {
+        basicGroomingId: insertedServices[0].Id,
+        fullGroomingId: insertedServices[1].Id,
+        nailTrimmingId: insertedServices[2].Id
+      };
+      console.log('Stored service IDs:', serviceIds);
+    });
+
+    it('GET /api/v1/services should return all services', async () => {
+      const res = await request(app).get('/api/v1/services');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBe(services.length);
+      
+      // Verify each service was inserted correctly
+      for (const expectedService of services) {
+        const foundService = res.body.find((s: any) => s.Name === expectedService.Name);
+        expect(foundService).toBeDefined();
+        expect(parseFloat(foundService.StandardPrice)).toBe(expectedService.StandardPrice);
+        expect(foundService.StandardDuration).toBe(expectedService.StandardDuration);
+        expect(Boolean(foundService.IsPrice0Allowed)).toBe(expectedService.IsPrice0Allowed);
+        expect(foundService.OwnerId).toBe(expectedService.OwnerId);
+      }
+    });
+  });
+
+  // Appointment Tests
+  describe('Appointment Data', () => {
+    let appointmentIds: { [key: string]: number };
+
+    it('POST /api/v1/appointments should insert appointments', async () => {
+      // Verify we have customer and service IDs from previous tests
+      expect(customerIds).toBeDefined();
+      expect(customerIds.johnDoeId).toBeDefined();
+      expect(serviceIds).toBeDefined();
+      expect(serviceIds.basicGroomingId).toBeDefined();
+
+      const appointments = [
+        {
+          CustomerId: customerIds.johnDoeId,
+          Date: '2024-03-20',
+          TimeStart: '10:00',
+          TimeEnd: '11:00',
+          DateEnd: '2024-03-20',
+          ActualDuration: 60,
+          AppointmentStatusId: 'Pln',
+          AppointmentTypeId: 3,
+          Note: 'First appointment'
+        },
+        {
+          CustomerId: customerIds.janeSmithId,
+          Date: '2024-03-21',
+          TimeStart: '14:00',
+          TimeEnd: '15:30',
+          DateEnd: '2024-03-21',
+          ActualDuration: 90,
+          AppointmentStatusId: 'Pln',
+          AppointmentTypeId: 2,
+          Note: 'Second appointment'
+        },
+        {
+          CustomerId: customerIds.bobWilsonId,
+          Date: '2024-03-22',
+          TimeStart: '09:30',
+          TimeEnd: '10:30',
+          DateEnd: '2024-03-22',
+          ActualDuration: 60,
+          AppointmentStatusId: 'Pln',
+          AppointmentTypeId: 1,
+          Note: 'Third appointment'
+        }
+      ];
+
+      // Insert each appointment and store their IDs
+      const insertedAppointments = [];
+      for (const appointment of appointments) {
+        const res = await request(app)
+          .post('/api/v1/appointments')
+          .send(appointment);
+
+        expect(res.status).toBe(201);
+        expect(res.body.CustomerId).toBe(appointment.CustomerId);
+        expect(res.body.AppointmentStatusId).toBe(appointment.AppointmentStatusId);
+        expect(res.body.Id).toBeDefined();
+        insertedAppointments.push(res.body);
+      }
+
+      // Store appointment IDs for use in other tests
+      appointmentIds = {
+        appointment1Id: insertedAppointments[0].Id,
+        appointment2Id: insertedAppointments[1].Id,
+        appointment3Id: insertedAppointments[2].Id
+      };
+
+      // Verify appointments were inserted
+      const checkAppointmentsRes = await request(app).get('/api/v1/appointments');
+      expect(checkAppointmentsRes.status).toBe(200);
+      expect(Array.isArray(checkAppointmentsRes.body)).toBe(true);
+      expect(checkAppointmentsRes.body.length).toBe(3);
+    });
+
+    it('GET /api/v1/appointments should return all appointments', async () => {
+      const res = await request(app).get('/api/v1/appointments');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBe(3);
+    });
+
+    it('GET /api/v1/appointments/status/:statusId should return appointments by status', async () => {
+      const res = await request(app).get('/api/v1/appointments/status/Pln');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBe(3);
+    });
+  });
+
+  // Dog Picture Tests
+  describe('Dog Picture Data', () => {
+    it('POST /api/v1/dog-pictures should insert dog pictures', async () => {
+      // First get an appointment ID
+      const appointmentsRes = await request(app).get('/api/v1/appointments');
+      expect(appointmentsRes.status).toBe(200);
+      expect(Array.isArray(appointmentsRes.body)).toBe(true);
+      expect(appointmentsRes.body.length).toBeGreaterThan(0);
+      
+      const appointmentId = appointmentsRes.body[0].Id;
+      expect(appointmentId).toBeDefined();
+
+      const now = new Date();
+      const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
+      
+      const dogPictures = [
+        {
+          DogId: 1,
+          AppointmentId: appointmentId,
+          DateTime: mysqlDatetime,
+          OwnerId: 1,
+          Picture: Buffer.from('test image 1').toString('base64')
+        },
+        {
+          DogId: 1,
+          AppointmentId: appointmentId,
+          DateTime: mysqlDatetime,
+          OwnerId: 1,
+          Picture: Buffer.from('test image 2').toString('base64')
+        }
+      ];
+
+      // Insert each dog picture
+      for (const picture of dogPictures) {
+        const res = await request(app)
+          .post('/api/v1/dog-pictures')
+          .send(picture);
+
+        expect(res.status).toBe(201);
+        expect(res.body.DogId).toBe(picture.DogId);
+        expect(res.body.AppointmentId).toBe(picture.AppointmentId);
+        expect(res.body.Id).toBeDefined();
+      }
+    });
+
+    it('GET /api/v1/dog-pictures should return all dog pictures', async () => {
+      const res = await request(app).get('/api/v1/dog-pictures');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBe(2);
+    });
+  });
+
   // Health check endpoint
   describe('GET /api/v1/health', () => {
     it('GET /api/v1/health should return 200 OK', async () => {
@@ -632,8 +871,8 @@ describe('API Endpoints', () => {
       expect(res.headers['content-type']).toContain('application/json');
     });
 
-    it('GET /custom-swagger.js should serve custom Swagger JS', async () => {
-      const res = await request(app).get('/custom-swagger.js');
+    it('GET /api-docs/custom-swagger.js should serve custom Swagger JS', async () => {
+      const res = await request(app).get('/api-docs/custom-swagger.js');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('application/javascript');
     });

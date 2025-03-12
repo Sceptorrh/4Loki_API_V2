@@ -9,6 +9,9 @@ import additionalHourRoutes from './additionalHourRoutes';
 import digiBTWRoutes from './digiBTWRoutes';
 import exportLogRoutes from './exportLogRoutes';
 import travelTimeRoutes from './travelTimeRoutes';
+import staticRoutes from './staticRoutes';
+import dropdownRoutes from './dropdownRoutes';
+import dogBreedRoutes from './dogBreedRoutes';
 
 export const setupRoutes = (app: Express) => {
   const apiPrefix = process.env.API_PREFIX || '/api/v1';
@@ -23,4 +26,7 @@ export const setupRoutes = (app: Express) => {
   app.use(`${apiPrefix}/digi-btw`, digiBTWRoutes);
   app.use(`${apiPrefix}/export-logs`, exportLogRoutes);
   app.use(`${apiPrefix}/travel-times`, travelTimeRoutes);
+  app.use(`${apiPrefix}/static`, staticRoutes);
+  app.use(`${apiPrefix}/dropdowns`, dropdownRoutes);
+  app.use(`${apiPrefix}/dog-breeds`, dogBreedRoutes);
 }; 

@@ -209,7 +209,7 @@ router.get('/customer/:customerId', handler.getByCustomerId.bind(handler));
  *               items:
  *                 $ref: '#/components/schemas/Appointment'
  */
-router.get('/status/:statusId', handler.getByAppointmentId.bind(handler));
+router.get('/status/:statusId', handler.getByStatus.bind(handler));
 
 /**
  * @swagger

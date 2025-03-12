@@ -197,6 +197,18 @@ export class RouteHandler {
     }
   }
 
+  async getByStatus(req: Request, res: Response) {
+    try {
+      const [rows] = await pool.query(
+        `SELECT * FROM ${this.tableName} WHERE AppointmentStatusId = ?`,
+        [req.params.statusId]
+      );
+      res.json(rows);
+    } catch (error) {
+      throw new AppError('Error fetching records by status', 500);
+    }
+  }
+
   async getByDateRange(req: Request, res: Response) {
     try {
       const { startDate, endDate } = req.query;

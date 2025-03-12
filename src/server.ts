@@ -64,23 +64,12 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   next(err);
 });
 
-// Swagger documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  swaggerOptions: {
-    persistAuthorization: true,
-  },
-  customCss: '.swagger-ui .topbar { display: none } .swagger-ui .download-url-wrapper { display: flex !important }',
-  customSiteTitle: "4Loki API Documentation",
-  customfavIcon: "/favicon.ico",
-  customJs: '/api-docs/custom-swagger.js'
-}));
-
-// Serve Swagger UI static files first (before the custom JS route)
-app.use('/api-docs', express.static(path.join(__dirname, '../node_modules/swagger-ui-dist')));
-
 // Add custom JavaScript file for download button
 app.get('/api-docs/custom-swagger.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
+  res.set({
+    'Content-Type': 'application/javascript',
+    'Cache-Control': 'public, max-age=0'
+  });
   res.send(`
     window.onload = function() {
       // Create download button
@@ -103,6 +92,20 @@ app.get('/api-docs/custom-swagger.js', (req, res) => {
   `);
 });
 
+// Serve Swagger UI static files
+app.use('/api-docs', express.static(path.join(__dirname, '../node_modules/swagger-ui-dist')));
+
+// Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  swaggerOptions: {
+    persistAuthorization: true,
+  },
+  customCss: '.swagger-ui .topbar { display: none } .swagger-ui .download-url-wrapper { display: flex !important }',
+  customSiteTitle: "4Loki API Documentation",
+  customfavIcon: "/favicon.ico",
+  customJs: '/api-docs/custom-swagger.js'
+}));
+
 // Add endpoint to download OpenAPI spec
 app.get('/api-spec.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
@@ -118,14 +121,7 @@ app.get('/api/v1/health', (req, res) => {
 // Routes
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
 console.log('Registering routes with prefix:', apiPrefix);
-app.use(`${apiPrefix}/customers`, customerRoutes);
-app.use(`${apiPrefix}/dogs`, dogRoutes);
-console.log('Dog routes registered at:', `${apiPrefix}/dogs`);
-app.use(`${apiPrefix}/dog-breeds`, dogBreedRoutes);
-app.use(`${apiPrefix}/appointments`, appointmentRoutes);
-app.use(`${apiPrefix}/services`, serviceRoutes);
-app.use(`${apiPrefix}/dropdowns`, dropdownRoutes);
-app.use(`${apiPrefix}/static`, staticRoutes);
+setupRoutes(app);
 
 // Error handling
 app.use(notFoundHandler);

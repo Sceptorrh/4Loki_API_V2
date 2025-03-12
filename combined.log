@@ -49,3 +49,47 @@
 {"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-11T09:28:53.119Z"}
 {"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-11T09:29:46.978Z"}
 {"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-11T09:30:27.675Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T10:46:27.665Z"}
+{"level":"error","message":"Validation failed: [{\"field\":\"StandardPrice\",\"message\":\"Required\"},{\"field\":\"IsPrice0Allowed\",\"message\":\"Required\"},{\"field\":\"StandardDuration\",\"message\":\"Required\"}]","method":"POST","path":"/api/v1/services","stack":"Error: Validation failed: [{\"field\":\"StandardPrice\",\"message\":\"Required\"},{\"field\":\"IsPrice0Allowed\",\"message\":\"Required\"},{\"field\":\"StandardDuration\",\"message\":\"Required\"}]\n    at C:\\Users\\Bradl\\Documents\\CursorProjects\\4Loki_API_V2\\src\\middleware\\validate.ts:23:14\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","statusCode":400,"timestamp":"2025-03-12T10:46:29.007Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-pictures","timestamp":"2025-03-12T10:46:32.083Z"}
+{"level":"warn","message":"Route not found: GET /api/v1/dog-pictures","timestamp":"2025-03-12T10:46:32.097Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T10:48:03.949Z"}
+{"level":"error","message":"Validation failed: [{\"field\":\"StandardPrice\",\"message\":\"Required\"},{\"field\":\"IsPrice0Allowed\",\"message\":\"Required\"},{\"field\":\"StandardDuration\",\"message\":\"Required\"}]","method":"POST","path":"/api/v1/services","stack":"Error: Validation failed: [{\"field\":\"StandardPrice\",\"message\":\"Required\"},{\"field\":\"IsPrice0Allowed\",\"message\":\"Required\"},{\"field\":\"StandardDuration\",\"message\":\"Required\"}]\n    at C:\\Users\\Bradl\\Documents\\CursorProjects\\4Loki_API_V2\\src\\middleware\\validate.ts:23:14\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","statusCode":400,"timestamp":"2025-03-12T10:48:05.204Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-pictures","timestamp":"2025-03-12T10:48:08.274Z"}
+{"level":"warn","message":"Route not found: GET /api/v1/dog-pictures","timestamp":"2025-03-12T10:48:08.289Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T10:50:58.314Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-pictures","timestamp":"2025-03-12T10:51:05.660Z"}
+{"level":"warn","message":"Route not found: GET /api/v1/dog-pictures","timestamp":"2025-03-12T10:51:05.676Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T10:54:15.444Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-pictures","timestamp":"2025-03-12T10:54:19.772Z"}
+{"level":"warn","message":"Route not found: GET /api/v1/dog-pictures","timestamp":"2025-03-12T10:54:19.787Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T10:58:45.480Z"}
+{"level":"error","message":"Validation failed: [{\"field\":\"Date\",\"message\":\"Required\"},{\"field\":\"TimeStart\",\"message\":\"Required\"},{\"field\":\"TimeEnd\",\"message\":\"Required\"},{\"field\":\"DateEnd\",\"message\":\"Required\"},{\"field\":\"ActualDuration\",\"message\":\"Required\"},{\"field\":\"AppointmentStatusId\",\"message\":\"Required\"},{\"field\":\"AppointmentTypeId\",\"message\":\"Required\"}]","method":"POST","path":"/api/v1/appointments","stack":"Error: Validation failed: [{\"field\":\"Date\",\"message\":\"Required\"},{\"field\":\"TimeStart\",\"message\":\"Required\"},{\"field\":\"TimeEnd\",\"message\":\"Required\"},{\"field\":\"DateEnd\",\"message\":\"Required\"},{\"field\":\"ActualDuration\",\"message\":\"Required\"},{\"field\":\"AppointmentStatusId\",\"message\":\"Required\"},{\"field\":\"AppointmentTypeId\",\"message\":\"Required\"}]\n    at C:\\Users\\Bradl\\Documents\\CursorProjects\\4Loki_API_V2\\src\\middleware\\validate.ts:23:14\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","statusCode":400,"timestamp":"2025-03-12T10:58:46.778Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-pictures","timestamp":"2025-03-12T10:58:49.822Z"}
+{"level":"warn","message":"Route not found: GET /api/v1/dog-pictures","timestamp":"2025-03-12T10:58:49.839Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:01:55.489Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-pictures","timestamp":"2025-03-12T11:02:02.857Z"}
+{"level":"warn","message":"Route not found: GET /api/v1/dog-pictures","timestamp":"2025-03-12T11:02:02.873Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/appointment-statuses","timestamp":"2025-03-12T11:03:51.613Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/custom-colors","timestamp":"2025-03-12T11:03:51.652Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/static/custom-colors","timestamp":"2025-03-12T11:03:51.688Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/static/appointment-statuses","timestamp":"2025-03-12T11:03:51.705Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:03:51.720Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:03:51.741Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:20:19.986Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/dog-breeds","timestamp":"2025-03-12T11:20:20.048Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-breeds","timestamp":"2025-03-12T11:20:20.068Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-breeds","timestamp":"2025-03-12T11:20:20.083Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-breeds","timestamp":"2025-03-12T11:20:20.099Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-breeds","timestamp":"2025-03-12T11:20:20.116Z"}
+{"level":"warn","message":"Route not found: POST /api/v1/dog-breeds","timestamp":"2025-03-12T11:20:20.131Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/dog-breeds","timestamp":"2025-03-12T11:20:20.541Z"}
+{"level":"error","message":"Validation failed: [{\"field\":\"Date\",\"message\":\"Invalid datetime\"},{\"field\":\"DateEnd\",\"message\":\"Invalid datetime\"}]","method":"POST","path":"/api/v1/appointments","stack":"Error: Validation failed: [{\"field\":\"Date\",\"message\":\"Invalid datetime\"},{\"field\":\"DateEnd\",\"message\":\"Invalid datetime\"}]\n    at C:\\Users\\Bradl\\Documents\\CursorProjects\\4Loki_API_V2\\src\\middleware\\validate.ts:23:14\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","statusCode":400,"timestamp":"2025-03-12T11:20:21.207Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:28:08.830Z"}
+{"level":"error","message":"Validation failed: [{\"field\":\"Date\",\"message\":\"Invalid datetime\"},{\"field\":\"DateEnd\",\"message\":\"Invalid datetime\"}]","method":"POST","path":"/api/v1/appointments","stack":"Error: Validation failed: [{\"field\":\"Date\",\"message\":\"Invalid datetime\"},{\"field\":\"DateEnd\",\"message\":\"Invalid datetime\"}]\n    at C:\\Users\\Bradl\\Documents\\CursorProjects\\4Loki_API_V2\\src\\middleware\\validate.ts:23:14\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","statusCode":400,"timestamp":"2025-03-12T11:28:10.195Z"}
+{"level":"error","message":"Validation failed: [{\"field\":\"DateTime\",\"message\":\"Invalid datetime\"}]","method":"POST","path":"/api/v1/dog-pictures","stack":"Error: Validation failed: [{\"field\":\"DateTime\",\"message\":\"Invalid datetime\"}]\n    at C:\\Users\\Bradl\\Documents\\CursorProjects\\4Loki_API_V2\\src\\middleware\\validate.ts:23:14\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","statusCode":400,"timestamp":"2025-03-12T11:28:13.253Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:40:20.292Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:42:02.652Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:43:33.569Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:45:32.333Z"}
+{"level":"warn","message":"Route not found: DELETE /api/v1/static/dog-sizes","timestamp":"2025-03-12T11:46:25.457Z"}
