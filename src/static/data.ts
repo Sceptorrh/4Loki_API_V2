@@ -6,7 +6,6 @@ import {
     DogSize,
     HourType,
     ImportExportType,
-    InvoiceCategory,
     PaymentType,
     TravelTimeType
 } from './types';
@@ -64,12 +63,6 @@ export const importExportTypes: ImportExportType[] = [
     { Id: 'Invoice', Label: 'Invoice' },
     { Id: 'Purchase', Label: 'Purchase' },
     { Id: 'Relation', Label: 'Relation' }
-];
-
-export const invoiceCategories: InvoiceCategory[] = [
-    { Id: 1, Label: 'Paarden', Order: 3, Is_Active: true, Knab: 'Omzet Paarden' },
-    { Id: 2, Label: 'Trimsalon', Order: 1, Is_Active: true, Knab: 'Omzet Trimsalon' },
-    { Id: 3, Label: 'Chuck & Charlie', Order: 2, Is_Active: true, Knab: 'Omzet Chuck&Charlie' }
 ];
 
 export const paymentTypes: PaymentType[] = [

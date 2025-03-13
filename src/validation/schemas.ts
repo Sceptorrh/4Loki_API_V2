@@ -53,18 +53,10 @@ export const invoiceSchema = z.object({
 });
 
 export const serviceSchema = z.object({
-  Name: z.string().min(1, 'Name is required'),
-  StandardPrice: z.number().min(0),
-  IsPrice0Allowed: z.boolean(),
-  StandardDuration: z.number().int().min(1),
-});
-
-export const dogPictureSchema = z.object({
-  DogId: z.number().int().positive(),
-  AppointmentId: z.number().int().positive(),
-  DateTime: z.string().regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, 'DateTime must be in YYYY-MM-DD HH:mm:ss format'),
-  OwnerId: z.number().int().positive().optional(),
-  Picture: z.string()
+  Label: z.string().min(1, 'Label is required'),
+  Order: z.number().int().min(0),
+  Is_Active: z.boolean(),
+  OwnerId: z.number().int().min(1)
 });
 
 export const additionalHourSchema = z.object({

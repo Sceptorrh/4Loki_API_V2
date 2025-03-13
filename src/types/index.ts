@@ -76,15 +76,6 @@ export interface Service {
   OwnerId: number;
 }
 
-export interface DogPicture {
-  Id: number;
-  DogId: number;
-  AppointmentId: number;
-  DateTime: Date;
-  OwnerId: number;
-  Picture: Buffer;
-}
-
 export interface AdditionalHour {
   Id: number;
   HourTypeId: string;

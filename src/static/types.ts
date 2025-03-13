@@ -48,14 +48,6 @@ export interface ImportExportType {
     Label: string;
 }
 
-export interface InvoiceCategory {
-    Id: number;
-    Label: string;
-    Order: number;
-    Is_Active: boolean;
-    Knab: string;
-}
-
 export interface PaymentType {
     Id: string;
     Label: string;

@@ -56,7 +56,10 @@ export class RouteHandler {
       const values = Object.values(req.body);
       const placeholders = fields.map(() => '?').join(', ');
       
-      const query = `INSERT INTO ${this.tableName} (${fields.join(', ')}) VALUES (${placeholders})`;
+      // Escape column names with backticks
+      const escapedFields = fields.map(field => `\`${field}\``).join(', ');
+      
+      const query = `INSERT INTO ${this.tableName} (${escapedFields}) VALUES (${placeholders})`;
       console.log('Executing query:', query);
       console.log('With values:', values);
       

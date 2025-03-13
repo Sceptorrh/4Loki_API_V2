@@ -6,7 +6,6 @@ import {
     DogSize,
     HourType,
     ImportExportType,
-    InvoiceCategory,
     PaymentType,
     TravelTimeType
 } from './types';
@@ -18,7 +17,6 @@ import {
     dogSizes,
     hourTypes,
     importExportTypes,
-    invoiceCategories,
     paymentTypes,
     travelTimeTypes
 } from './data';
@@ -47,9 +45,6 @@ export const getHourTypeById = (id: string): HourType | undefined =>
 
 export const getImportExportTypeById = (id: string): ImportExportType | undefined => 
     importExportTypes.find((type: ImportExportType) => type.Id === id);
-
-export const getInvoiceCategoryById = (id: number): InvoiceCategory | undefined => 
-    invoiceCategories.find((category: InvoiceCategory) => category.Id === id);
 
 export const getPaymentTypeById = (id: string): PaymentType | undefined => 
     paymentTypes.find((type: PaymentType) => type.Id === id);

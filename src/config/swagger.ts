@@ -168,18 +168,6 @@ const swaggerOptions = {
           },
           required: ['DogId', 'DogBreedId']
         },
-        DogPicture: {
-          type: 'object',
-          properties: {
-            Id: { type: 'integer', description: 'The unique identifier', example: 1 },
-            DogId: { type: 'integer', description: 'Dog ID', example: 1 },
-            AppointmentId: { type: 'integer', description: 'Appointment ID', example: 1 },
-            DateTime: { type: 'string', format: 'date-time', description: 'Picture timestamp', example: '2024-03-07T10:00:00Z' },
-            OwnerId: { type: 'integer', description: 'Owner ID', example: 1 },
-            Picture: { type: 'string', format: 'binary', description: 'Picture data', example: 'base64EncodedImageData' }
-          },
-          required: ['DogId']
-        },
         ExportLog: {
           type: 'object',
           properties: {

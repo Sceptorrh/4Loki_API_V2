@@ -73,15 +73,6 @@ CREATE TABLE IF NOT EXISTS `Statics_ImportExportType` (
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `Statics_InvoiceCategory` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Label` varchar(255) DEFAULT NULL,
-  `Order` int(11) DEFAULT NULL,
-  `Is_Active` tinyint(1) DEFAULT NULL,
-  `Knab` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS `Statics_PaymentType` (
   `Id` varchar(50) NOT NULL,
   `Label` varchar(255) DEFAULT NULL,
@@ -230,18 +221,6 @@ CREATE TABLE IF NOT EXISTS `DogDogbreed` (
   KEY `DogId` (`DogId`)
 ) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `DogPicture` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `DogId` int(11) NOT NULL,
-  `AppointmentId` int(11) DEFAULT NULL,
-  `DateTime` datetime DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `Picture` blob DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `AppointmentId` (`AppointmentId`),
-  KEY `DogId` (`DogId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS `ExportLog` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `IssuedOn` datetime DEFAULT NULL,
@@ -260,42 +239,40 @@ CREATE TABLE IF NOT EXISTS `InvoiceLine` (
   `BTWpercentageId` int(11) DEFAULT NULL,
   `Bedragexcl_btw` decimal(10,2) DEFAULT NULL,
   `Categorie` varchar(255) DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `InvoiceCategoryId` int(11) DEFAULT NULL,
   PRIMARY KEY (`Id`),
-  KEY `BTWpercentageId` (`BTWpercentageId`),
-  KEY `InvoiceCategoryId` (`InvoiceCategoryId`),
-  KEY `InvoiceId` (`InvoiceId`)
-) ENGINE=InnoDB AUTO_INCREMENT=1218 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY `InvoiceId` (`InvoiceId`),
+  KEY `BTWpercentageId` (`BTWpercentageId`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `Service` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Name` varchar(255) DEFAULT NULL,
-  `StandardPrice` decimal(10,2) DEFAULT NULL,
-  `IsPrice0Allowed` tinyint(1) DEFAULT NULL,
-  `StandardDuration` int(11) DEFAULT NULL,
+  `Label` varchar(255) DEFAULT NULL,
+  `Order` int(11) DEFAULT NULL,
+  `Is_Active` tinyint(1) DEFAULT NULL,
   `OwnerId` int(11) DEFAULT NULL,
   PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `AppointmentDogId` int(11) DEFAULT NULL,
-  `ServiceId` int(11) DEFAULT NULL,
-  `Price` decimal(10,2) DEFAULT NULL,
+  `ServiceId` int(11) NOT NULL,
+  `AppointmentDogId` int(11) NOT NULL,
   `OwnerId` int(11) DEFAULT NULL,
   PRIMARY KEY (`Id`),
   KEY `ServiceId` (`ServiceId`),
   KEY `AppointmentDogId` (`AppointmentDogId`)
-) ENGINE=InnoDB AUTO_INCREMENT=1951 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `TravelTime` (
-  `Type` TEXT NOT NULL,
-  `DateTime` DATETIME NOT NULL,
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Value` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `AppointmentId` int(11) DEFAULT NULL,
+  `TravelTimeTypeId` int(11) DEFAULT NULL,
+  `Duration` int(11) DEFAULT NULL,
+  `OwnerId` int(11) DEFAULT NULL,
+  PRIMARY KEY (`Id`),
+  KEY `AppointmentId` (`AppointmentId`),
+  KEY `TravelTimeTypeId` (`TravelTimeTypeId`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert static data
 INSERT INTO `Statics_AppointmentStatus` (`Id`, `Label`, `Order`, `Is_Active`, `Color`) VALUES
@@ -346,11 +323,6 @@ INSERT INTO `Statics_ImportExportType` (`Id`, `Label`) VALUES
     ('Purchase', 'Purchase'),
     ('Relation', 'Relation');
 
-INSERT INTO `Statics_InvoiceCategory` (`Id`, `Label`, `Order`, `Is_Active`, `Knab`) VALUES
-    (1, 'Paarden', 3, 1, 'Omzet Paarden'),
-    (2, 'Trimsalon', 1, 1, 'Omzet Trimsalon'),
-    (3, 'Chuck & Charlie', 2, 1, 'Omzet Chuck&Charlie');
-
 INSERT INTO `Statics_PaymentType` (`Id`, `Label`, `Order`, `Is_Active`, `LabelDutch`) VALUES
     ('BT', 'Bank', 3, 1, NULL),
     ('Csh', 'Cash', 2, 1, NULL);
@@ -359,315 +331,35 @@ INSERT INTO `Statics_TravelTimeType` (`Id`, `Label`, `Order`, `Is_Active`) VALUE
     (1, 'HomeWork', 1, 1),
     (2, 'WorkHome', 2, 1);
 
-CREATE TABLE IF NOT EXISTS `Customer` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Naam` varchar(255) DEFAULT NULL,
-  `Contactpersoon` varchar(255) DEFAULT NULL,
-  `Emailadres` varchar(255) DEFAULT NULL,
-  `Telefoonnummer` varchar(50) DEFAULT NULL,
-  `Adres` varchar(100) DEFAULT NULL,
-  `Postcode` varchar(50) DEFAULT NULL,
-  `Stad` varchar(50) DEFAULT NULL,
-  `Land` varchar(50) DEFAULT NULL,
-  `KvKnummer` varchar(50) DEFAULT NULL,
-  `Btwnummer` varchar(50) DEFAULT NULL,
-  `IBAN` varchar(50) DEFAULT NULL,
-  `Notities` text DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT NULL,
-  `UpdatedOn` datetime DEFAULT NULL,
-  `IsExported` tinyint(1) DEFAULT NULL,
-  `HasChanged` tinyint(1) DEFAULT NULL,
-  `IsAllowContactShare` varchar(10) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  UNIQUE KEY `customer_naam_unique` (`Naam`)
-) ENGINE=InnoDB AUTO_INCREMENT=256 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `Dog` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `CustomerId` int(11) DEFAULT NULL,
-  `Name` varchar(255) DEFAULT NULL,
-  `Birthday` date DEFAULT NULL,
-  `Allergies` text DEFAULT NULL,
-  `ServiceNote` text DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT NULL,
-  `UpdatedOn` datetime DEFAULT NULL,
-  `DogSizeId` varchar(50) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `DogSizeId` (`DogSizeId`),
-  KEY `CustomerId` (`CustomerId`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `Appointment` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Date` date DEFAULT NULL,
-  `TimeStart` time DEFAULT NULL,
-  `TimeEnd` time DEFAULT NULL,
-  `DateEnd` date DEFAULT NULL,
-  `ActualDuration` int(11) DEFAULT NULL,
-  `CustomerId` int(11) DEFAULT NULL,
-  `AppointmentStatusId` varchar(50) DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT NULL,
-  `UpdatedOn` datetime DEFAULT NULL,
-  `TipAmount` decimal(10,2) DEFAULT NULL,
-  `AppointmentTypeId` int(11) DEFAULT NULL,
-  `Owner` int(11) DEFAULT NULL,
-  `Note` text DEFAULT NULL,
-  `ReasonForCancellation` text DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `CustomerId` (`CustomerId`),
-  KEY `AppointmentStatusId` (`AppointmentStatusId`),
-  KEY `AppointmentTypeId` (`AppointmentTypeId`),
-  KEY `Id` (`Id`),
-  KEY `Date` (`Date`)
-) ENGINE=InnoDB AUTO_INCREMENT=882 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `AppointmentDog` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `AppointmentId` int(11) NOT NULL,
-  `DogId` int(11) NOT NULL,
-  `Note` text DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `DogId` (`DogId`),
-  KEY `AppointmentId` (`AppointmentId`)
-) ENGINE=InnoDB AUTO_INCREMENT=2223 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `Invoice` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `AppointmentId` int(11) DEFAULT NULL,
-  `SerialNumber` int(11) DEFAULT NULL,
-  `IsExported` tinyint(1) DEFAULT NULL,
-  `PaymentTypeId` varchar(50) DEFAULT NULL,
-  `Factuurnummer` varchar(255) DEFAULT NULL,
-  `Referentie` varchar(255) DEFAULT NULL,
-  `Factuurdatum` date DEFAULT NULL,
-  `Vervaldatum` date DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `IsIncludeInExport` tinyint(1) DEFAULT NULL,
-  `CustomCustomerId` int(11) DEFAULT NULL,
-  `IsPaid` tinyint(1) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `AppointmentId` (`AppointmentId`),
-  KEY `CustomCustomerId` (`CustomCustomerId`),
-  KEY `PaymentTypeId` (`PaymentTypeId`)
-) ENGINE=InnoDB AUTO_INCREMENT=1047 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `AdditionalHour` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `HourTypeId` varchar(20) DEFAULT NULL,
-  `Duration` int(11) DEFAULT NULL,
-  `Date` date DEFAULT NULL,
-  `DateEnd` date DEFAULT NULL,
-  `StartTime` time DEFAULT NULL,
-  `EndTime` time DEFAULT NULL,
-  `IsShowOnPlanning` tinyint(1) DEFAULT NULL,
-  `Description` text DEFAULT NULL,
-  `IsExported` tinyint(1) DEFAULT NULL,
-  `OwnerId` int(11) NOT NULL,
-  `InvoiceId` int(11) DEFAULT NULL,
-  `IsSkippedExport` tinyint(1) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `InvoiceId` (`InvoiceId`),
-  KEY `HourTypeId` (`HourTypeId`)
-) ENGINE=InnoDB AUTO_INCREMENT=443 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `Dogbreed` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Name` varchar(255) DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `DogDogbreed` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `DogId` int(11) NOT NULL,
-  `DogBreedId` int(11) NOT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `DogBreedId` (`DogBreedId`),
-  KEY `DogId` (`DogId`)
-) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `DogPicture` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `DogId` int(11) NOT NULL,
-  `AppointmentId` int(11) DEFAULT NULL,
-  `DateTime` datetime DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `Picture` blob DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `AppointmentId` (`AppointmentId`),
-  KEY `DogId` (`DogId`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `ExportLog` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `IssuedOn` datetime DEFAULT NULL,
-  `ForMonthDate` date DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `IsSuccesfull` tinyint(1) DEFAULT NULL,
-  `IsDummy` tinyint(1) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `InvoiceLine` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `InvoiceId` int(11) DEFAULT NULL,
-  `Omschrijving` text DEFAULT NULL,
-  `Aantal` int(11) DEFAULT NULL,
-  `BTWpercentageId` int(11) DEFAULT NULL,
-  `Bedragexcl_btw` decimal(10,2) DEFAULT NULL,
-  `Categorie` varchar(255) DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  `InvoiceCategoryId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `BTWpercentageId` (`BTWpercentageId`),
-  KEY `InvoiceCategoryId` (`InvoiceCategoryId`),
-  KEY `InvoiceId` (`InvoiceId`)
-) ENGINE=InnoDB AUTO_INCREMENT=1218 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `Service` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Name` varchar(255) DEFAULT NULL,
-  `StandardPrice` decimal(10,2) DEFAULT NULL,
-  `IsPrice0Allowed` tinyint(1) DEFAULT NULL,
-  `StandardDuration` int(11) DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `AppointmentDogId` int(11) DEFAULT NULL,
-  `ServiceId` int(11) DEFAULT NULL,
-  `Price` decimal(10,2) DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `ServiceId` (`ServiceId`),
-  KEY `AppointmentDogId` (`AppointmentDogId`)
-) ENGINE=InnoDB AUTO_INCREMENT=1951 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `TravelTime` (
-  `Type` TEXT NOT NULL,
-  `DateTime` DATETIME NOT NULL,
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Value` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Create the stored procedure
-DELIMITER //
-CREATE PROCEDURE IF NOT EXISTS `GetNewCustomersByMonth`()
-BEGIN
-    SELECT 
-        COUNT(Customer.Naam) AS newCustomersThisMonth,
-        YEAR(Appointment.Date) AS year,
-        MONTH(Appointment.Date) AS month
-    FROM Appointment
-    LEFT JOIN Customer ON Customer.Id = Appointment.CustomerId
-    WHERE Appointment.Date = (
-        SELECT MIN(a2.Date)
-        FROM Appointment a2
-        WHERE a2.CustomerId = Customer.Id
-    )
-    GROUP BY YEAR(Appointment.Date), MONTH(Appointment.Date)
-    ORDER BY year ASC, month ASC;
-END//
-DELIMITER ;
-
--- Enable foreign key checks and add constraints
+-- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- Add foreign key constraints
-ALTER TABLE `Statics_AppointmentStatus`
-  DROP FOREIGN KEY IF EXISTS `Statics_AppointmentStatus_ibfk_1`,
-  ADD CONSTRAINT `Statics_AppointmentStatus_ibfk_1` 
-  FOREIGN KEY (`Color`) REFERENCES `Statics_CustomColor` (`Color`);
+ALTER TABLE `Statics_AppointmentStatus` ADD CONSTRAINT `Statics_AppointmentStatus_ibfk_1` FOREIGN KEY (`Color`) REFERENCES `Statics_CustomColor` (`Color`);
+ALTER TABLE `Dog` ADD CONSTRAINT `Dog_ibfk_1` FOREIGN KEY (`DogSizeId`) REFERENCES `Statics_DogSize` (`Id`);
+ALTER TABLE `Dog` ADD CONSTRAINT `Dog_ibfk_2` FOREIGN KEY (`CustomerId`) REFERENCES `Customer` (`Id`);
+ALTER TABLE `Appointment` ADD CONSTRAINT `Appointment_ibfk_1` FOREIGN KEY (`CustomerId`) REFERENCES `Customer` (`Id`);
+ALTER TABLE `Appointment` ADD CONSTRAINT `Appointment_ibfk_2` FOREIGN KEY (`AppointmentStatusId`) REFERENCES `Statics_AppointmentStatus` (`Id`);
+ALTER TABLE `Appointment` ADD CONSTRAINT `Appointment_ibfk_3` FOREIGN KEY (`AppointmentTypeId`) REFERENCES `Statics_AppointmentType` (`Id`);
+ALTER TABLE `AppointmentDog` ADD CONSTRAINT `AppointmentDog_ibfk_1` FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`);
+ALTER TABLE `AppointmentDog` ADD CONSTRAINT `AppointmentDog_ibfk_2` FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`);
+ALTER TABLE `Invoice` ADD CONSTRAINT `Invoice_ibfk_1` FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`);
+ALTER TABLE `Invoice` ADD CONSTRAINT `Invoice_ibfk_2` FOREIGN KEY (`CustomCustomerId`) REFERENCES `Customer` (`Id`);
+ALTER TABLE `Invoice` ADD CONSTRAINT `Invoice_ibfk_3` FOREIGN KEY (`PaymentTypeId`) REFERENCES `Statics_PaymentType` (`Id`);
+ALTER TABLE `AdditionalHour` ADD CONSTRAINT `AdditionalHour_ibfk_1` FOREIGN KEY (`InvoiceId`) REFERENCES `Invoice` (`Id`);
+ALTER TABLE `AdditionalHour` ADD CONSTRAINT `AdditionalHour_ibfk_2` FOREIGN KEY (`HourTypeId`) REFERENCES `Statics_HourType` (`Id`);
+ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_1` FOREIGN KEY (`DogBreedId`) REFERENCES `Dogbreed` (`Id`);
+ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_2` FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`);
+ALTER TABLE `InvoiceLine` ADD CONSTRAINT `InvoiceLine_ibfk_1` FOREIGN KEY (`InvoiceId`) REFERENCES `Invoice` (`Id`);
+ALTER TABLE `InvoiceLine` ADD CONSTRAINT `InvoiceLine_ibfk_2` FOREIGN KEY (`BTWpercentageId`) REFERENCES `Statics_BTWpercentage` (`Id`);
+ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_1` FOREIGN KEY (`ServiceId`) REFERENCES `Service` (`Id`);
+ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_2` FOREIGN KEY (`AppointmentDogId`) REFERENCES `AppointmentDog` (`Id`);
+ALTER TABLE `TravelTime` ADD CONSTRAINT `TravelTime_ibfk_1` FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`);
+ALTER TABLE `TravelTime` ADD CONSTRAINT `TravelTime_ibfk_2` FOREIGN KEY (`TravelTimeTypeId`) REFERENCES `Statics_TravelTimeType` (`Id`);
 
-ALTER TABLE `Dog`
-  DROP FOREIGN KEY IF EXISTS `Dog_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `Dog_ibfk_2`,
-  ADD CONSTRAINT `Dog_ibfk_1` 
-  FOREIGN KEY (`CustomerId`) REFERENCES `Customer` (`Id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `Dog_ibfk_2` 
-  FOREIGN KEY (`DogSizeId`) REFERENCES `Statics_DogSize` (`Id`);
-
-ALTER TABLE `Appointment`
-  DROP FOREIGN KEY IF EXISTS `Appointment_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `Appointment_ibfk_2`,
-  DROP FOREIGN KEY IF EXISTS `Appointment_ibfk_3`,
-  ADD CONSTRAINT `Appointment_ibfk_1` 
-  FOREIGN KEY (`CustomerId`) REFERENCES `Customer` (`Id`),
-  ADD CONSTRAINT `Appointment_ibfk_2` 
-  FOREIGN KEY (`AppointmentStatusId`) REFERENCES `Statics_AppointmentStatus` (`Id`),
-  ADD CONSTRAINT `Appointment_ibfk_3` 
-  FOREIGN KEY (`AppointmentTypeId`) REFERENCES `Statics_AppointmentType` (`Id`);
-
-ALTER TABLE `AppointmentDog`
-  DROP FOREIGN KEY IF EXISTS `AppointmentDog_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `AppointmentDog_ibfk_2`,
-  ADD CONSTRAINT `AppointmentDog_ibfk_1` 
-  FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `AppointmentDog_ibfk_2` 
-  FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`);
-
-ALTER TABLE `Invoice`
-  DROP FOREIGN KEY IF EXISTS `Invoice_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `Invoice_ibfk_2`,
-  DROP FOREIGN KEY IF EXISTS `Invoice_ibfk_3`,
-  ADD CONSTRAINT `Invoice_ibfk_1` 
-  FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`),
-  ADD CONSTRAINT `Invoice_ibfk_2` 
-  FOREIGN KEY (`CustomCustomerId`) REFERENCES `Customer` (`Id`),
-  ADD CONSTRAINT `Invoice_ibfk_3` 
-  FOREIGN KEY (`PaymentTypeId`) REFERENCES `Statics_PaymentType` (`Id`);
-
-ALTER TABLE `AdditionalHour`
-  DROP FOREIGN KEY IF EXISTS `AdditionalHour_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `AdditionalHour_ibfk_2`,
-  ADD CONSTRAINT `AdditionalHour_ibfk_1` 
-  FOREIGN KEY (`InvoiceId`) REFERENCES `Invoice` (`Id`),
-  ADD CONSTRAINT `AdditionalHour_ibfk_2` 
-  FOREIGN KEY (`HourTypeId`) REFERENCES `Statics_HourType` (`Id`);
-
-ALTER TABLE `DogDogbreed`
-  DROP FOREIGN KEY IF EXISTS `DogDogbreed_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `DogDogbreed_ibfk_2`,
-  ADD CONSTRAINT `DogDogbreed_ibfk_1` 
-  FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `DogDogbreed_ibfk_2` 
-  FOREIGN KEY (`DogBreedId`) REFERENCES `Dogbreed` (`Id`);
-
-ALTER TABLE `DogPicture`
-  DROP FOREIGN KEY IF EXISTS `DogPicture_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `DogPicture_ibfk_2`,
-  ADD CONSTRAINT `DogPicture_ibfk_1` 
-  FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `DogPicture_ibfk_2` 
-  FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`);
-
-ALTER TABLE `InvoiceLine`
-  DROP FOREIGN KEY IF EXISTS `InvoiceLine_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `InvoiceLine_ibfk_2`,
-  DROP FOREIGN KEY IF EXISTS `InvoiceLine_ibfk_3`,
-  ADD CONSTRAINT `InvoiceLine_ibfk_1` 
-  FOREIGN KEY (`InvoiceId`) REFERENCES `Invoice` (`Id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `InvoiceLine_ibfk_2` 
-  FOREIGN KEY (`BTWpercentageId`) REFERENCES `Statics_BTWpercentage` (`Id`),
-  ADD CONSTRAINT `InvoiceLine_ibfk_3` 
-  FOREIGN KEY (`InvoiceCategoryId`) REFERENCES `Statics_InvoiceCategory` (`Id`);
-
-ALTER TABLE `ServiceAppointmentDog`
-  DROP FOREIGN KEY IF EXISTS `ServiceAppointmentDog_ibfk_1`,
-  DROP FOREIGN KEY IF EXISTS `ServiceAppointmentDog_ibfk_2`,
-  ADD CONSTRAINT `ServiceAppointmentDog_ibfk_1` 
-  FOREIGN KEY (`AppointmentDogId`) REFERENCES `AppointmentDog` (`Id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `ServiceAppointmentDog_ibfk_2` 
-  FOREIGN KEY (`ServiceId`) REFERENCES `Service` (`Id`);
-
-/*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
-/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
-/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */; 
+-- Restore original settings
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET SQL_NOTES=@OLD_SQL_NOTES;
+SET TIME_ZONE=@OLD_TIME_ZONE;
+SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT; 

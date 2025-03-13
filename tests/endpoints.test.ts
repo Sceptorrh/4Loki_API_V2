@@ -39,10 +39,9 @@ interface Appointment {
 
 interface Service {
   Id?: number;
-  Name: string;
-  StandardPrice: number;
-  StandardDuration: number;
-  IsPrice0Allowed: boolean;
+  Label: string;
+  Order: number;
+  Is_Active: boolean;
   OwnerId: number;
 }
 
@@ -97,7 +96,6 @@ describe('API Endpoints', () => {
   afterAll(async () => {
     try {
       // Delete dependent records first
-      await request(app).delete('/api/v1/dog-pictures');
       await request(app).delete('/api/v1/appointments');
       // Add a delay to ensure appointments are fully deleted
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -345,24 +343,21 @@ describe('API Endpoints', () => {
   describe('Service Data', () => {
     const services: Service[] = [
       {
-        Name: 'Basic Grooming',
-        StandardPrice: 50.00,
-        StandardDuration: 60,
-        IsPrice0Allowed: false,
+        Label: 'Basic Grooming',
+        Order: 1,
+        Is_Active: true,
         OwnerId: 1
       },
       {
-        Name: 'Full Grooming',
-        StandardPrice: 75.00,
-        StandardDuration: 90,
-        IsPrice0Allowed: false,
+        Label: 'Full Grooming',
+        Order: 2,
+        Is_Active: true,
         OwnerId: 1
       },
       {
-        Name: 'Nail Trimming',
-        StandardPrice: 20.00,
-        StandardDuration: 30,
-        IsPrice0Allowed: false,
+        Label: 'Nail Trimming',
+        Order: 3,
+        Is_Active: true,
         OwnerId: 1
       }
     ];
@@ -376,10 +371,9 @@ describe('API Endpoints', () => {
           .send(service);
 
         expect(res.status).toBe(201);
-        expect(res.body.Name).toBe(service.Name);
-        expect(parseFloat(res.body.StandardPrice)).toBe(service.StandardPrice);
-        expect(res.body.StandardDuration).toBe(service.StandardDuration);
-        expect(Boolean(res.body.IsPrice0Allowed)).toBe(service.IsPrice0Allowed);
+        expect(res.body.Label).toBe(service.Label);
+        expect(res.body.Order).toBe(service.Order);
+        expect(Boolean(res.body.Is_Active)).toBe(service.Is_Active);
         expect(res.body.OwnerId).toBe(service.OwnerId);
         expect(res.body.Id).toBeDefined();
         insertedServices.push(res.body);
@@ -401,11 +395,10 @@ describe('API Endpoints', () => {
       
       // Verify each service was inserted correctly
       for (const expectedService of services) {
-        const foundService = res.body.find((s: Service) => s.Name === expectedService.Name);
+        const foundService = res.body.find((s: Service) => s.Label === expectedService.Label);
         expect(foundService).toBeDefined();
-        expect(parseFloat(foundService.StandardPrice)).toBe(expectedService.StandardPrice);
-        expect(foundService.StandardDuration).toBe(expectedService.StandardDuration);
-        expect(Boolean(foundService.IsPrice0Allowed)).toBe(expectedService.IsPrice0Allowed);
+        expect(foundService.Order).toBe(expectedService.Order);
+        expect(Boolean(foundService.Is_Active)).toBe(expectedService.Is_Active);
         expect(foundService.OwnerId).toBe(expectedService.OwnerId);
       }
     });
@@ -496,68 +489,6 @@ describe('API Endpoints', () => {
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.length).toBe(3);
-    });
-  });
-
-  // Dog Picture Tests
-  describe('Dog Picture Data', () => {
-    interface DogPicture {
-      Id?: number;
-      DogId: number;
-      AppointmentId: number;
-      DateTime: string;
-      OwnerId: number;
-      Picture: string;
-    }
-
-    it('POST /api/v1/dog-pictures should insert dog pictures', async () => {
-      // First get an appointment ID
-      const appointmentsRes = await request(app).get('/api/v1/appointments');
-      expect(appointmentsRes.status).toBe(200);
-      expect(Array.isArray(appointmentsRes.body)).toBe(true);
-      expect(appointmentsRes.body.length).toBeGreaterThan(0);
-      
-      const appointmentId = appointmentsRes.body[0].Id;
-      expect(appointmentId).toBeDefined();
-
-      const now = new Date();
-      const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
-      
-      const dogPictures: DogPicture[] = [
-        {
-          DogId: 1,
-          AppointmentId: appointmentId,
-          DateTime: mysqlDatetime,
-          OwnerId: 1,
-          Picture: Buffer.from('test image 1').toString('base64')
-        },
-        {
-          DogId: 1,
-          AppointmentId: appointmentId,
-          DateTime: mysqlDatetime,
-          OwnerId: 1,
-          Picture: Buffer.from('test image 2').toString('base64')
-        }
-      ];
-
-      // Insert each dog picture
-      for (const picture of dogPictures) {
-        const res = await request(app)
-          .post('/api/v1/dog-pictures')
-          .send(picture);
-
-        expect(res.status).toBe(201);
-        expect(res.body.DogId).toBe(picture.DogId);
-        expect(res.body.AppointmentId).toBe(picture.AppointmentId);
-        expect(res.body.Id).toBeDefined();
-      }
-    });
-
-    it('GET /api/v1/dog-pictures should return all dog pictures', async () => {
-      const res = await request(app).get('/api/v1/dog-pictures');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(2);
     });
   });
 
