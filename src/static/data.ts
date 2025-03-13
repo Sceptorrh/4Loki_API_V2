@@ -7,7 +7,8 @@ import {
     HourType,
     ImportExportType,
     PaymentType,
-    TravelTimeType
+    TravelTimeType,
+    Service
 } from './types';
 
 export const appointmentStatuses: AppointmentStatus[] = [
@@ -73,4 +74,10 @@ export const paymentTypes: PaymentType[] = [
 export const travelTimeTypes: TravelTimeType[] = [
     { Id: 1, Label: 'HomeWork', Order: 1, Is_Active: true },
     { Id: 2, Label: 'WorkHome', Order: 2, Is_Active: true }
+];
+
+export const services: Service[] = [
+    { Id: 'trimmen', Name: 'Trimmen', StandardPrice: 60.0, IsPriceAllowed: false, StandardDuration: 120, OwnerId: 11 },
+    { Id: 'nagels_knippen', Name: 'Nagels knippen', StandardPrice: 15.0, IsPriceAllowed: false, StandardDuration: 30, OwnerId: 11 },
+    { Id: 'puppy_beurt', Name: 'Puppy beurt', StandardPrice: 0.0, IsPriceAllowed: true, StandardDuration: 0, OwnerId: 11 }
 ]; 

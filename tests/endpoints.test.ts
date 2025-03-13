@@ -101,7 +101,6 @@ describe('API Endpoints', () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       await request(app).delete('/api/v1/dogs');
       await request(app).delete('/api/v1/customers');
-      await request(app).delete('/api/v1/services');
       await request(app).delete('/api/v1/dog-breeds');
     } catch (error) {
       throw new Error(`Failed to clean up test data: ${error}`);
@@ -339,79 +338,12 @@ describe('API Endpoints', () => {
     });
   });
 
-  // Service Tests
-  describe('Service Data', () => {
-    const services: Service[] = [
-      {
-        Label: 'Basic Grooming',
-        Order: 1,
-        Is_Active: true,
-        OwnerId: 1
-      },
-      {
-        Label: 'Full Grooming',
-        Order: 2,
-        Is_Active: true,
-        OwnerId: 1
-      },
-      {
-        Label: 'Nail Trimming',
-        Order: 3,
-        Is_Active: true,
-        OwnerId: 1
-      }
-    ];
-
-    it('POST /api/v1/services should insert services', async () => {
-      // Insert each service and store their IDs
-      const insertedServices: Service[] = [];
-      for (const service of services) {
-        const res = await request(app)
-          .post('/api/v1/services')
-          .send(service);
-
-        expect(res.status).toBe(201);
-        expect(res.body.Label).toBe(service.Label);
-        expect(res.body.Order).toBe(service.Order);
-        expect(Boolean(res.body.Is_Active)).toBe(service.Is_Active);
-        expect(res.body.OwnerId).toBe(service.OwnerId);
-        expect(res.body.Id).toBeDefined();
-        insertedServices.push(res.body);
-      }
-
-      // Store service IDs for use in other tests
-      serviceIds = {
-        basicGroomingId: insertedServices[0].Id!,
-        fullGroomingId: insertedServices[1].Id!,
-        nailTrimmingId: insertedServices[2].Id!
-      };
-    });
-
-    it('GET /api/v1/services should return all services', async () => {
-      const res = await request(app).get('/api/v1/services');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(3);
-      
-      // Verify each service was inserted correctly
-      for (const expectedService of services) {
-        const foundService = res.body.find((s: Service) => s.Label === expectedService.Label);
-        expect(foundService).toBeDefined();
-        expect(foundService.Order).toBe(expectedService.Order);
-        expect(Boolean(foundService.Is_Active)).toBe(expectedService.Is_Active);
-        expect(foundService.OwnerId).toBe(expectedService.OwnerId);
-      }
-    });
-  });
-
   // Appointment Tests
   describe('Appointment Data', () => {
     it('POST /api/v1/appointments should insert appointments', async () => {
       // Verify we have customer and service IDs from previous tests
       expect(customerIds).toBeDefined();
       expect(customerIds.johnDoeId).toBeDefined();
-      expect(serviceIds).toBeDefined();
-      expect(serviceIds.basicGroomingId).toBeDefined();
 
       const appointments: Appointment[] = [
         {

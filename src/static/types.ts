@@ -61,4 +61,13 @@ export interface TravelTimeType {
     Label: string;
     Order: number;
     Is_Active: boolean;
+}
+
+export interface Service {
+    Id: string;
+    Name: string;
+    StandardPrice: number;
+    IsPriceAllowed: boolean;
+    StandardDuration: number;
+    OwnerId: number;
 } 

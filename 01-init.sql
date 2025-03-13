@@ -90,6 +90,16 @@ CREATE TABLE IF NOT EXISTS `Statics_TravelTimeType` (
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `Statics_Service` (
+  `Id` varchar(50) NOT NULL,
+  `Name` varchar(255) DEFAULT NULL,
+  `StandardPrice` decimal(10,2) DEFAULT NULL,
+  `IsPriceAllowed` tinyint(1) DEFAULT NULL,
+  `StandardDuration` int(11) DEFAULT NULL,
+  `OwnerId` int(11) DEFAULT NULL,
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `Customer` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `Naam` varchar(255) DEFAULT NULL,
@@ -244,18 +254,9 @@ CREATE TABLE IF NOT EXISTS `InvoiceLine` (
   KEY `BTWpercentageId` (`BTWpercentageId`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `Service` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Label` varchar(255) DEFAULT NULL,
-  `Order` int(11) DEFAULT NULL,
-  `Is_Active` tinyint(1) DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `ServiceId` int(11) NOT NULL,
+  `ServiceId` varchar(50) NOT NULL,
   `AppointmentDogId` int(11) NOT NULL,
   `OwnerId` int(11) DEFAULT NULL,
   PRIMARY KEY (`Id`),
@@ -275,6 +276,12 @@ CREATE TABLE IF NOT EXISTS `TravelTime` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert static data
+
+INSERT INTO `Statics_Service` (`Id`, `Name`, `StandardPrice`, `IsPriceAllowed`, `StandardDuration`, `OwnerId`) VALUES 
+    ('trimmen', 'Trimmen', 60.0, 0, 120, 11),
+    ('nagels_knippen', 'Nagels knippen', 15.0, 0, 30, 11),
+    ('puppy_beurt', 'Puppy beurt', 0.0, 1, 0, 11);
+
 INSERT INTO `Statics_AppointmentStatus` (`Id`, `Label`, `Order`, `Is_Active`, `Color`) VALUES
     ('Can', 'Geannuleerd', 3, 1, 'Cancelled'),
     ('Exp', 'Geexporteerd', 7, 1, 'Exported'),
@@ -352,7 +359,7 @@ ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_1` FOREIGN KEY (`DogB
 ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_2` FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`);
 ALTER TABLE `InvoiceLine` ADD CONSTRAINT `InvoiceLine_ibfk_1` FOREIGN KEY (`InvoiceId`) REFERENCES `Invoice` (`Id`);
 ALTER TABLE `InvoiceLine` ADD CONSTRAINT `InvoiceLine_ibfk_2` FOREIGN KEY (`BTWpercentageId`) REFERENCES `Statics_BTWpercentage` (`Id`);
-ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_1` FOREIGN KEY (`ServiceId`) REFERENCES `Service` (`Id`);
+ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_1` FOREIGN KEY (`ServiceId`) REFERENCES `Statics_Service` (`Id`);
 ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_2` FOREIGN KEY (`AppointmentDogId`) REFERENCES `AppointmentDog` (`Id`);
 ALTER TABLE `TravelTime` ADD CONSTRAINT `TravelTime_ibfk_1` FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`);
 ALTER TABLE `TravelTime` ADD CONSTRAINT `TravelTime_ibfk_2` FOREIGN KEY (`TravelTimeTypeId`) REFERENCES `Statics_TravelTimeType` (`Id`);
