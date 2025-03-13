@@ -771,7 +771,17 @@ router.post('/travel-time-types', async (req, res) => {
  */
 router.delete('/appointment-statuses', async (req, res) => {
   try {
+    // First, get all appointments that have appointment statuses
+    const [appointments] = await pool.query('SELECT Id, AppointmentStatusId FROM Appointment');
+    
+    if (Array.isArray(appointments) && appointments.length > 0) {
+      // Update all appointments to use a temporary status
+      await pool.query('UPDATE Appointment SET AppointmentStatusId = NULL');
+    }
+    
+    // Now we can safely delete the appointment statuses
     await pool.query('DELETE FROM Statics_AppointmentStatus');
+    
     res.json({ message: 'All appointment statuses deleted successfully' });
   } catch (error: any) {
     console.error('Error deleting appointment statuses:', error);
@@ -796,6 +806,66 @@ router.delete('/custom-colors', async (req, res) => {
   } catch (error: any) {
     console.error('Error deleting custom colors:', error);
     throw new AppError(`Error deleting custom colors: ${error.message || 'Unknown error'}`, 500);
+  }
+});
+
+/**
+ * @swagger
+ * /static/appointment-types:
+ *   delete:
+ *     summary: Delete all appointment types
+ *     tags: [Static Tables]
+ *     responses:
+ *       200:
+ *         description: All appointment types deleted successfully
+ */
+router.delete('/appointment-types', async (req, res) => {
+  try {
+    // First, get all appointments that have appointment types
+    const [appointments] = await pool.query('SELECT Id, AppointmentTypeId FROM Appointment');
+    
+    if (Array.isArray(appointments) && appointments.length > 0) {
+      // Update all appointments to use a temporary type
+      await pool.query('UPDATE Appointment SET AppointmentTypeId = NULL');
+    }
+    
+    // Now we can safely delete the appointment types
+    await pool.query('DELETE FROM Statics_AppointmentType');
+    
+    res.json({ message: 'All appointment types deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting appointment types:', error);
+    throw new AppError(`Error deleting appointment types: ${error.message || 'Unknown error'}`, 500);
+  }
+});
+
+/**
+ * @swagger
+ * /static/dog-sizes:
+ *   delete:
+ *     summary: Delete all dog sizes
+ *     tags: [Static Tables]
+ *     responses:
+ *       200:
+ *         description: All dog sizes deleted successfully
+ */
+router.delete('/dog-sizes', async (req, res) => {
+  try {
+    // First, get all dogs that have sizes
+    const [dogs] = await pool.query('SELECT Id, DogSizeId FROM Dog');
+    
+    if (Array.isArray(dogs) && dogs.length > 0) {
+      // Update all dogs to use a temporary size
+      await pool.query('UPDATE Dog SET DogSizeId = NULL');
+    }
+    
+    // Now we can safely delete the dog sizes
+    await pool.query('DELETE FROM Statics_DogSize');
+    
+    res.json({ message: 'All dog sizes deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting dog sizes:', error);
+    throw new AppError(`Error deleting dog sizes: ${error.message || 'Unknown error'}`, 500);
   }
 });
 

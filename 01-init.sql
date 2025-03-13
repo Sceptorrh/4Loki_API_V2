@@ -290,15 +290,12 @@ CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1951 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `TravelTime` (
+  `Type` TEXT NOT NULL,
+  `DateTime` DATETIME NOT NULL,
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `AppointmentId` int(11) DEFAULT NULL,
-  `TravelTimeTypeId` int(11) DEFAULT NULL,
-  `Duration` int(11) DEFAULT NULL,
-  `OwnerId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `AppointmentId` (`AppointmentId`),
-  KEY `TravelTimeTypeId` (`TravelTimeTypeId`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `Value` int(11) DEFAULT NULL,
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Create the stored procedure
 DELIMITER //

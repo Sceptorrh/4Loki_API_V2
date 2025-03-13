@@ -17,22 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    services:
-      mariadb:
-        image: mariadb:10.11
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: 4Loki_db
-          TZ: UTC
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mariadb-admin ping -h localhost -uroot -proot"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=5
-          --health-start-period=20s
-
     steps:
     - uses: actions/checkout@v3
 
@@ -47,19 +31,11 @@ jobs:
       run: npm install
       timeout-minutes: 5
 
-    - name: Set database timezone
-      run: mysql -h127.0.0.1 -P3306 -uroot -proot -e "SET GLOBAL time_zone = '+00:00';"
-      timeout-minutes: 1
-
-    - name: Initialize database
-      run: |
-        mysql -h127.0.0.1 -P3306 -uroot -proot 4Loki_db < 01-init.sql
-      timeout-minutes: 2
-
     - name: Run tests
       run: npm test
       env:
         DB_HOST: 127.0.0.1
+        DB_PORT: 3307
         DB_USER: root
         DB_PASSWORD: root
         DB_DATABASE: 4Loki_db

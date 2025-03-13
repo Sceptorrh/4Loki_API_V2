@@ -8,7 +8,8 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "test": "powershell ./scripts/run-tests.ps1"
+    "setup-test-db": "node scripts/setup-test-db.js",
+    "test": "npm run setup-test-db && jest --verbose --detectOpenHandles --forceExit --no-cache"
   },
   "dependencies": {
     "@types/compression": "^1.7.5",

@@ -193,4 +193,16 @@ router.get('/dog/:dogId', handler.getByCustomerId.bind(handler));
  */
 router.get('/appointment/:appointmentId', handler.getByAppointmentId.bind(handler));
 
+/**
+ * @swagger
+ * /dog-pictures:
+ *   delete:
+ *     summary: Delete all dog pictures
+ *     tags: [Dog Pictures]
+ *     responses:
+ *       200:
+ *         description: All dog pictures deleted successfully
+ */
+router.delete('/', handler.deleteAll.bind(handler));
+
 export default router; 

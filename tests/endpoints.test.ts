@@ -1,10 +1,56 @@
 import request from 'supertest';
 import { app } from '../src/server';
 
+// Define interfaces for test data
+interface Customer {
+  Id?: number;
+  Naam: string;
+  Contactpersoon: string;
+  Emailadres: string;
+  Telefoonnummer: string;
+  Adres: string;
+  Postcode: string;
+  Stad: string;
+  Land: string;
+}
+
+interface Dog {
+  Id?: number;
+  CustomerId: number;
+  Name: string;
+  Birthday: string;
+  Allergies?: string;
+  ServiceNote?: string;
+  DogSizeId: string;
+}
+
+interface Appointment {
+  Id?: number;
+  CustomerId: number;
+  Date: string;
+  TimeStart: string;
+  TimeEnd: string;
+  DateEnd: string;
+  ActualDuration: number;
+  AppointmentStatusId: string;
+  AppointmentTypeId: number;
+  Note?: string;
+}
+
+interface Service {
+  Id?: number;
+  Name: string;
+  StandardPrice: number;
+  StandardDuration: number;
+  IsPrice0Allowed: boolean;
+  OwnerId: number;
+}
+
 describe('API Endpoints', () => {
-  // Global test variables
+  // Global test variables with proper typing
   let customerIds: { [key: string]: number };
   let serviceIds: { [key: string]: number };
+  let appointmentIds: { [key: string]: number };
   
   // Ensure static data is inserted before all other tests
   beforeAll(async () => {
@@ -32,38 +78,22 @@ describe('API Endpoints', () => {
     ];
     await request(app).post('/api/v1/static/appointment-statuses').send(statuses);
 
-    // Insert dog sizes (required for dog tests)
-    console.log('Setting up dog sizes...');
-    try {
-      // First delete existing dog sizes
-      console.log('Deleting existing dog sizes...');
-      await request(app).delete('/api/v1/static/dog-sizes');
-      
-      const sizes = [
-        { id: 'L', label: 'Large', order: 3, is_active: true },
-        { id: 'M', label: 'Middle', order: 2, is_active: true },
-        { id: 'S', label: 'Small', order: 1, is_active: true },
-        { id: 'X', label: 'ExtraLarge', order: 4, is_active: true }
-      ];
-      
-      console.log('Inserting dog sizes:', JSON.stringify(sizes, null, 2));
-      const res = await request(app).post('/api/v1/static/dog-sizes').send(sizes);
-      console.log('Dog sizes insertion response:', res.status, res.body);
-      
-      if (res.status !== 201) {
-        throw new Error(`Failed to insert dog sizes: ${JSON.stringify(res.body)}`);
-      }
-      
-      // Verify dog sizes were inserted
-      const checkRes = await request(app).get('/api/v1/static/dog-sizes');
-      console.log('Verifying dog sizes:', checkRes.status, checkRes.body);
-      if (!Array.isArray(checkRes.body) || checkRes.body.length !== 4) {
-        throw new Error('Dog sizes verification failed');
-      }
-    } catch (error) {
-      console.error('Error setting up dog sizes:', error);
-      throw error;
-    }
+    // Insert dog sizes
+    const sizes = [
+      { id: 'L', label: 'Large', order: 3, is_active: true },
+      { id: 'M', label: 'Middle', order: 2, is_active: true },
+      { id: 'S', label: 'Small', order: 1, is_active: true },
+      { id: 'X', label: 'ExtraLarge', order: 4, is_active: true }
+    ];
+    await request(app).post('/api/v1/static/dog-sizes').send(sizes);
+
+    // Insert appointment types
+    const appointmentTypes = [
+      { id: 1, label: 'Regular Grooming', order: 1, is_active: true },
+      { id: 2, label: 'Full Grooming', order: 2, is_active: true },
+      { id: 3, label: 'Nail Trimming', order: 3, is_active: true }
+    ];
+    await request(app).post('/api/v1/static/appointment-types').send(appointmentTypes);
 
     // Insert dog breeds
     const breeds = [
@@ -80,254 +110,33 @@ describe('API Endpoints', () => {
     }
   });
 
-  // Static Table endpoints first
-  describe('Static Table Endpoints', () => {
-    describe('Insert Static Data', () => {
-      it('POST /api/v1/static/custom-colors should insert custom colors first', async () => {
-        // First delete appointment statuses due to foreign key constraint
-        const deleteStatusRes = await request(app).delete('/api/v1/static/appointment-statuses');
-        expect(deleteStatusRes.status).toBe(200);
-
-        // Then delete custom colors
-        const deleteColorsRes = await request(app).delete('/api/v1/static/custom-colors');
-        expect(deleteColorsRes.status).toBe(200);
-        
-        const colors = [
-          { color: 'Cancelled', order: 4, hex: '#a80808', legend: 'Geannuleerd' },
-          { color: 'Exported', order: 3, hex: '#74ed86', legend: 'Geexporteerd' },
-          { color: 'Invoiced', order: 2, hex: '#4973de', legend: 'Gefactureerd' },
-          { color: 'NotExported', order: 6, hex: '#b5cc8d', legend: 'Niet geexporteerd' },
-          { color: 'OtherHours', order: 5, hex: '#57c2bb', legend: 'Andere uren' },
-          { color: 'Planned', order: 1, hex: '#a9abb0', legend: 'Geplanned' }
-        ];
-        
-        console.log('Sending custom colors:', JSON.stringify(colors, null, 2));
-        
-        const res = await request(app)
-          .post('/api/v1/static/custom-colors')
-          .set('Content-Type', 'application/json')
-          .send(colors);
-          
-        console.log('Custom colors response:', res.status, res.body);
-        
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Custom colors inserted successfully');
-
-        // Verify the colors were inserted
-        const checkRes = await request(app).get('/api/v1/static/custom-colors');
-        console.log('Inserted colors:', checkRes.body);
-        expect(checkRes.status).toBe(200);
-        expect(Array.isArray(checkRes.body)).toBe(true);
-        expect(checkRes.body.length).toBe(6);
-
-        // Verify each color was inserted correctly
-        for (const expectedColor of colors) {
-          const foundColor = checkRes.body.find((c: { color: string }) => c.color === expectedColor.color);
-          expect(foundColor).toBeDefined();
-          expect(foundColor.order).toBe(expectedColor.order);
-          expect(foundColor.hex).toBe(expectedColor.hex);
-          expect(foundColor.legend).toBe(expectedColor.legend);
-        }
-      });
-
-      it('POST /api/v1/static/appointment-statuses should then insert appointment statuses', async () => {
-        // Clear existing appointment statuses first
-        const deleteRes = await request(app).delete('/api/v1/static/appointment-statuses');
-        expect(deleteRes.status).toBe(200);
-        
-        // Verify custom colors exist before proceeding
-        const colorsRes = await request(app).get('/api/v1/static/custom-colors');
-        expect(colorsRes.status).toBe(200);
-        expect(Array.isArray(colorsRes.body)).toBe(true);
-        expect(colorsRes.body.length).toBe(6);
-        
-        const statuses = [
-          { id: 'Can', label: 'Geannuleerd', order: 3, is_active: 1, color: 'Cancelled' },
-          { id: 'Exp', label: 'Geexporteerd', order: 7, is_active: 1, color: 'Exported' },
-          { id: 'Inv', label: 'Gefactureerd', order: 5, is_active: 1, color: 'Invoiced' },
-          { id: 'NotExp', label: 'NotExported', order: 8, is_active: 1, color: 'NotExported' },
-          { id: 'Pln', label: 'Gepland', order: 2, is_active: 1, color: 'Planned' }
-        ];
-        
-        console.log('Sending appointment statuses:', JSON.stringify(statuses, null, 2));
-        
-        const res = await request(app)
-          .post('/api/v1/static/appointment-statuses')
-          .set('Content-Type', 'application/json')
-          .send(statuses);
-          
-        console.log('Response:', res.status, res.body);
-        
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Appointment statuses inserted successfully');
-
-        // Verify the data was inserted correctly
-        const checkRes = await request(app).get('/api/v1/static/appointment-statuses');
-        console.log('Inserted data:', checkRes.body);
-        expect(checkRes.status).toBe(200);
-        expect(Array.isArray(checkRes.body)).toBe(true);
-        expect(checkRes.body.length).toBe(5);
-
-        // Verify each status was inserted correctly
-        for (const expectedStatus of statuses) {
-          const foundStatus = checkRes.body.find((s: { id: string }) => s.id === expectedStatus.id);
-          expect(foundStatus).toBeDefined();
-          expect(foundStatus.label).toBe(expectedStatus.label);
-          expect(foundStatus.order).toBe(expectedStatus.order);
-          expect(foundStatus.is_active).toBe(expectedStatus.is_active);
-          expect(foundStatus.color).toBe(expectedStatus.color);
-        }
-      });
-
-      it('POST /api/v1/static/appointment-types should insert appointment types', async () => {
-        const types = [
-          { id: 1, label: 'DogWalking', order: 2, is_active: true, label_dutch: 'Uitlaatservice' },
-          { id: 2, label: 'Absent', order: 3, is_active: true, label_dutch: 'Afwezigheid' },
-          { id: 3, label: 'Grooming', order: 1, is_active: true, label_dutch: 'Trimmen' }
-        ];
-        const res = await request(app).post('/api/v1/static/appointment-types').send(types);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Appointment types inserted successfully');
-      });
-
-      it('POST /api/v1/static/btw-percentages should insert BTW percentages', async () => {
-        const percentages = [
-          { id: 1, label: '21%', amount: 21 },
-          { id: 2, label: '0%', amount: 0 }
-        ];
-        const res = await request(app).post('/api/v1/static/btw-percentages').send(percentages);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('BTW percentages inserted successfully');
-      });
-
-      it('POST /api/v1/static/hour-types should insert hour types', async () => {
-        const types = [
-          { id: 'Adm', label: 'Administratie', order: 1, is_active: true, default_text: 'Administratie', is_export: true },
-          { id: 'App', label: 'Afspraak', order: 10, is_active: true, default_text: null, is_export: false },
-          { id: 'Cur', label: 'Cursus', order: 3, is_active: true, default_text: 'Cursus gevolgd', is_export: true },
-          { id: 'Fac', label: 'Factuur', order: 5, is_active: true, default_text: null, is_export: true },
-          { id: 'Ink', label: 'Inkopen', order: 2, is_active: true, default_text: 'Inkopen gedaan', is_export: true },
-          { id: 'Reis', label: 'Reistijd', order: 6, is_active: true, default_text: 'Reistijd', is_export: true },
-          { id: 'sch', label: 'Schoonmaken', order: 4, is_active: true, default_text: 'Trimsalon schoongemaakt', is_export: true },
-          { id: 'Stage', label: 'Stage trimsalon', order: 7, is_active: true, default_text: 'Stage trimsalon', is_export: true },
-          { id: 'Vak', label: 'Vakantie', order: 8, is_active: true, default_text: 'Vakantie', is_export: false },
-          { id: 'Zk', label: 'Ziek', order: 9, is_active: true, default_text: 'Ziek', is_export: false }
-        ];
-        const res = await request(app).post('/api/v1/static/hour-types').send(types);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Hour types inserted successfully');
-      });
-
-      it('POST /api/v1/static/import-export-types should insert import/export types', async () => {
-        const types = [
-          { id: 'Hour', label: 'Hour' },
-          { id: 'Invoice', label: 'Invoice' },
-          { id: 'Purchase', label: 'Purchase' },
-          { id: 'Relation', label: 'Relation' }
-        ];
-        const res = await request(app).post('/api/v1/static/import-export-types').send(types);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Import/export types inserted successfully');
-      });
-
-      it('POST /api/v1/static/invoice-categories should insert invoice categories', async () => {
-        const categories = [
-          { id: 1, label: 'Paarden', order: 3, is_active: true, knab: 'Omzet Paarden' },
-          { id: 2, label: 'Trimsalon', order: 1, is_active: true, knab: 'Omzet Trimsalon' },
-          { id: 3, label: 'Chuck & Charlie', order: 2, is_active: true, knab: 'Omzet Chuck&Charlie' }
-        ];
-        const res = await request(app).post('/api/v1/static/invoice-categories').send(categories);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Invoice categories inserted successfully');
-      });
-
-      it('POST /api/v1/static/payment-types should insert payment types', async () => {
-        const types = [
-          { id: 'BT', label: 'Bank', order: 3, is_active: true, label_dutch: null },
-          { id: 'Csh', label: 'Cash', order: 2, is_active: true, label_dutch: null }
-        ];
-        const res = await request(app).post('/api/v1/static/payment-types').send(types);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Payment types inserted successfully');
-      });
-
-      it('POST /api/v1/static/travel-time-types should insert travel time types', async () => {
-        const types = [
-          { id: 1, label: 'HomeWork', order: 1, is_active: true },
-          { id: 2, label: 'WorkHome', order: 2, is_active: true }
-        ];
-        const res = await request(app).post('/api/v1/static/travel-time-types').send(types);
-        expect(res.status).toBe(201);
-        expect(res.body.message).toBe('Travel time types inserted successfully');
-      });
-    });
-
-    // Static table GET endpoints
-    it('GET /api/v1/static/appointment-statuses should return appointment statuses', async () => {
-      const res = await request(app).get('/api/v1/static/appointment-statuses');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/appointment-types should return appointment types', async () => {
-      const res = await request(app).get('/api/v1/static/appointment-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/btw-percentages should return BTW percentages', async () => {
-      const res = await request(app).get('/api/v1/static/btw-percentages');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/custom-colors should return custom colors', async () => {
-      const res = await request(app).get('/api/v1/static/custom-colors');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/dog-sizes should return dog sizes', async () => {
-      const res = await request(app).get('/api/v1/static/dog-sizes');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/hour-types should return hour types', async () => {
-      const res = await request(app).get('/api/v1/static/hour-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/import-export-types should return import/export types', async () => {
-      const res = await request(app).get('/api/v1/static/import-export-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/invoice-categories should return invoice categories', async () => {
-      const res = await request(app).get('/api/v1/static/invoice-categories');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/payment-types should return payment types', async () => {
-      const res = await request(app).get('/api/v1/static/payment-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/static/travel-time-types should return travel time types', async () => {
-      const res = await request(app).get('/api/v1/static/travel-time-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
+  // Clean up after all tests
+  afterAll(async () => {
+    try {
+      // Delete dependent records first
+      await request(app).delete('/api/v1/dog-pictures');
+      await request(app).delete('/api/v1/appointments');
+      // Add a delay to ensure appointments are fully deleted
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await request(app).delete('/api/v1/dogs');
+      await request(app).delete('/api/v1/customers');
+      await request(app).delete('/api/v1/services');
+      await request(app).delete('/api/v1/dog-breeds');
+      
+      // Delete static data last
+      await request(app).delete('/api/v1/static/appointment-types');
+      await request(app).delete('/api/v1/static/appointment-statuses');
+      await request(app).delete('/api/v1/static/custom-colors');
+      await request(app).delete('/api/v1/static/dog-sizes');
+    } catch (error) {
+      throw new Error(`Failed to clean up test data: ${error}`);
+    }
   });
 
   // Customer and Dog Data Tests
   describe('Customer and Dog Data', () => {
     it('POST /api/v1/customers should insert customers', async () => {
-      const customers = [
+      const customers: Customer[] = [
         {
           Naam: 'John Doe',
           Contactpersoon: 'John Doe',
@@ -371,7 +180,7 @@ describe('API Endpoints', () => {
       ];
 
       // Insert each customer and store their IDs
-      const insertedCustomers = [];
+      const insertedCustomers: Customer[] = [];
       for (const customer of customers) {
         const res = await request(app)
           .post('/api/v1/customers')
@@ -386,12 +195,11 @@ describe('API Endpoints', () => {
 
       // Store customer IDs for use in other tests
       customerIds = {
-        johnDoeId: insertedCustomers[0].Id,
-        janeSmithId: insertedCustomers[1].Id,
-        aliceJohnsonId: insertedCustomers[2].Id,
-        bobWilsonId: insertedCustomers[3].Id
+        johnDoeId: insertedCustomers[0].Id!,
+        janeSmithId: insertedCustomers[1].Id!,
+        aliceJohnsonId: insertedCustomers[2].Id!,
+        bobWilsonId: insertedCustomers[3].Id!
       };
-      console.log('Stored customer IDs:', customerIds);
 
       // Verify customers were inserted
       const checkCustomersRes = await request(app).get('/api/v1/customers/table');
@@ -400,9 +208,7 @@ describe('API Endpoints', () => {
       expect(checkCustomersRes.body.length).toBe(4);
 
       // Verify customer search works
-      console.log('Searching for customer with "John Doe"...');
       const searchRes = await request(app).get('/api/v1/customers/table?search=John Doe');
-      console.log('Search response:', searchRes.status, searchRes.body);
       expect(searchRes.status).toBe(200);
       expect(Array.isArray(searchRes.body)).toBe(true);
       expect(searchRes.body.length).toBe(1);
@@ -560,14 +366,6 @@ describe('API Endpoints', () => {
 
   // Service Tests
   describe('Service Data', () => {
-    interface Service {
-      Name: string;
-      StandardPrice: number;
-      StandardDuration: number;
-      IsPrice0Allowed: boolean;
-      OwnerId: number;
-    }
-
     const services: Service[] = [
       {
         Name: 'Basic Grooming',
@@ -592,20 +390,15 @@ describe('API Endpoints', () => {
       }
     ];
 
-    // Insert each service and store their IDs
-    interface ServiceResponse extends Service {
-      Id: number;
-    }
-    const insertedServices: ServiceResponse[] = [];
-
     it('POST /api/v1/services should insert services', async () => {
+      // Insert each service and store their IDs
+      const insertedServices: Service[] = [];
       for (const service of services) {
         const res = await request(app)
           .post('/api/v1/services')
           .send(service);
 
         expect(res.status).toBe(201);
-        // Update expectations to handle type conversions
         expect(res.body.Name).toBe(service.Name);
         expect(parseFloat(res.body.StandardPrice)).toBe(service.StandardPrice);
         expect(res.body.StandardDuration).toBe(service.StandardDuration);
@@ -617,22 +410,21 @@ describe('API Endpoints', () => {
 
       // Store service IDs for use in other tests
       serviceIds = {
-        basicGroomingId: insertedServices[0].Id,
-        fullGroomingId: insertedServices[1].Id,
-        nailTrimmingId: insertedServices[2].Id
+        basicGroomingId: insertedServices[0].Id!,
+        fullGroomingId: insertedServices[1].Id!,
+        nailTrimmingId: insertedServices[2].Id!
       };
-      console.log('Stored service IDs:', serviceIds);
     });
 
     it('GET /api/v1/services should return all services', async () => {
       const res = await request(app).get('/api/v1/services');
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(services.length);
+      expect(res.body.length).toBe(3);
       
       // Verify each service was inserted correctly
       for (const expectedService of services) {
-        const foundService = res.body.find((s: any) => s.Name === expectedService.Name);
+        const foundService = res.body.find((s: Service) => s.Name === expectedService.Name);
         expect(foundService).toBeDefined();
         expect(parseFloat(foundService.StandardPrice)).toBe(expectedService.StandardPrice);
         expect(foundService.StandardDuration).toBe(expectedService.StandardDuration);
@@ -644,8 +436,6 @@ describe('API Endpoints', () => {
 
   // Appointment Tests
   describe('Appointment Data', () => {
-    let appointmentIds: { [key: string]: number };
-
     it('POST /api/v1/appointments should insert appointments', async () => {
       // Verify we have customer and service IDs from previous tests
       expect(customerIds).toBeDefined();
@@ -653,7 +443,7 @@ describe('API Endpoints', () => {
       expect(serviceIds).toBeDefined();
       expect(serviceIds.basicGroomingId).toBeDefined();
 
-      const appointments = [
+      const appointments: Appointment[] = [
         {
           CustomerId: customerIds.johnDoeId,
           Date: '2024-03-20',
@@ -690,7 +480,7 @@ describe('API Endpoints', () => {
       ];
 
       // Insert each appointment and store their IDs
-      const insertedAppointments = [];
+      const insertedAppointments: Appointment[] = [];
       for (const appointment of appointments) {
         const res = await request(app)
           .post('/api/v1/appointments')
@@ -705,9 +495,9 @@ describe('API Endpoints', () => {
 
       // Store appointment IDs for use in other tests
       appointmentIds = {
-        appointment1Id: insertedAppointments[0].Id,
-        appointment2Id: insertedAppointments[1].Id,
-        appointment3Id: insertedAppointments[2].Id
+        appointment1Id: insertedAppointments[0].Id!,
+        appointment2Id: insertedAppointments[1].Id!,
+        appointment3Id: insertedAppointments[2].Id!
       };
 
       // Verify appointments were inserted
@@ -734,6 +524,15 @@ describe('API Endpoints', () => {
 
   // Dog Picture Tests
   describe('Dog Picture Data', () => {
+    interface DogPicture {
+      Id?: number;
+      DogId: number;
+      AppointmentId: number;
+      DateTime: string;
+      OwnerId: number;
+      Picture: string;
+    }
+
     it('POST /api/v1/dog-pictures should insert dog pictures', async () => {
       // First get an appointment ID
       const appointmentsRes = await request(app).get('/api/v1/appointments');
@@ -747,7 +546,7 @@ describe('API Endpoints', () => {
       const now = new Date();
       const mysqlDatetime = now.toISOString().slice(0, 19).replace('T', ' ');
       
-      const dogPictures = [
+      const dogPictures: DogPicture[] = [
         {
           DogId: 1,
           AppointmentId: appointmentId,

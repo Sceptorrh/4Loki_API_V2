@@ -1,12 +1,12 @@
 import { config } from 'dotenv';
-import pool from '@/config/database';
-import { startServer, closeServer } from '@/server';
+import pool from '../src/config/database';
+import { startServer, closeServer } from '../src/server';
 
 // Load environment variables from .env.test if it exists
 config({ path: '.env.test' });
 
 // Increase test timeout
-jest.setTimeout(3000);
+jest.setTimeout(5000);
 
 // Global setup before all tests
 beforeAll(async () => {

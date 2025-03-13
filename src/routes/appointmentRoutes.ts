@@ -163,6 +163,18 @@ router.delete('/:id', handler.delete.bind(handler));
 
 /**
  * @swagger
+ * /appointments:
+ *   delete:
+ *     summary: Delete all appointments
+ *     tags: [Appointments]
+ *     responses:
+ *       200:
+ *         description: All appointments deleted successfully
+ */
+router.delete('/', handler.deleteAll.bind(handler));
+
+/**
+ * @swagger
  * /appointments/customer/{customerId}:
  *   get:
  *     summary: Get appointments by customer

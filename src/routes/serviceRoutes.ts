@@ -127,4 +127,16 @@ router.put('/:id', validate(serviceSchema), handler.update.bind(handler));
  */
 router.delete('/:id', handler.delete.bind(handler));
 
+/**
+ * @swagger
+ * /services:
+ *   delete:
+ *     summary: Delete all services
+ *     tags: [Services]
+ *     responses:
+ *       200:
+ *         description: All services deleted successfully
+ */
+router.delete('/', handler.deleteAll.bind(handler));
+
 export default router; 

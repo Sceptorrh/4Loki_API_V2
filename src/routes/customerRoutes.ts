@@ -165,6 +165,18 @@ router.put('/:id', validate(customerSchema), handler.update.bind(handler));
 
 /**
  * @swagger
+ * /customers:
+ *   delete:
+ *     summary: Delete all customers
+ *     tags: [Customers]
+ *     responses:
+ *       200:
+ *         description: All customers deleted successfully
+ */
+router.delete('/', handler.deleteAll.bind(handler));
+
+/**
+ * @swagger
  * /customers/{id}:
  *   delete:
  *     summary: Delete a customer

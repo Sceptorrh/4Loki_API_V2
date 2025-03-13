@@ -297,4 +297,16 @@ router.get('/service-notes', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /dogs:
+ *   delete:
+ *     summary: Delete all dogs
+ *     tags: [Dogs]
+ *     responses:
+ *       200:
+ *         description: All dogs deleted successfully
+ */
+router.delete('/', handler.deleteAll.bind(handler));
+
 export default router; 
