@@ -52,48 +52,31 @@ describe('API Endpoints', () => {
   let serviceIds: { [key: string]: number };
   let appointmentIds: { [key: string]: number };
   
-  // Ensure static data is inserted before all other tests
+  // Verify static data exists before all other tests
   beforeAll(async () => {
-    // Insert custom colors first
-    const colors = [
-      { color: 'Cancelled', order: 4, hex: '#a80808', legend: 'Geannuleerd' },
-      { color: 'Exported', order: 3, hex: '#74ed86', legend: 'Geexporteerd' },
-      { color: 'Invoiced', order: 2, hex: '#4973de', legend: 'Gefactureerd' },
-      { color: 'NotExported', order: 6, hex: '#b5cc8d', legend: 'Niet geexporteerd' },
-      { color: 'OtherHours', order: 5, hex: '#57c2bb', legend: 'Andere uren' },
-      { color: 'Planned', order: 1, hex: '#a9abb0', legend: 'Geplanned' }
-    ];
-    
-    await request(app).delete('/api/v1/static/appointment-statuses');
-    await request(app).delete('/api/v1/static/custom-colors');
-    await request(app).post('/api/v1/static/custom-colors').send(colors);
+    // Verify custom colors exist
+    const colorsRes = await request(app).get('/api/v1/static/custom-colors');
+    expect(colorsRes.status).toBe(200);
+    expect(Array.isArray(colorsRes.body)).toBe(true);
+    expect(colorsRes.body.length).toBeGreaterThan(0);
 
-    // Insert appointment statuses
-    const statuses = [
-      { id: 'Can', label: 'Geannuleerd', order: 3, is_active: 1, color: 'Cancelled' },
-      { id: 'Exp', label: 'Geexporteerd', order: 7, is_active: 1, color: 'Exported' },
-      { id: 'Inv', label: 'Gefactureerd', order: 5, is_active: 1, color: 'Invoiced' },
-      { id: 'NotExp', label: 'NotExported', order: 8, is_active: 1, color: 'NotExported' },
-      { id: 'Pln', label: 'Gepland', order: 2, is_active: 1, color: 'Planned' }
-    ];
-    await request(app).post('/api/v1/static/appointment-statuses').send(statuses);
+    // Verify appointment statuses exist
+    const statusesRes = await request(app).get('/api/v1/static/appointment-statuses');
+    expect(statusesRes.status).toBe(200);
+    expect(Array.isArray(statusesRes.body)).toBe(true);
+    expect(statusesRes.body.length).toBeGreaterThan(0);
 
-    // Insert dog sizes
-    const sizes = [
-      { id: 'L', label: 'Large', order: 3, is_active: true },
-      { id: 'M', label: 'Middle', order: 2, is_active: true },
-      { id: 'S', label: 'Small', order: 1, is_active: true },
-      { id: 'X', label: 'ExtraLarge', order: 4, is_active: true }
-    ];
-    await request(app).post('/api/v1/static/dog-sizes').send(sizes);
+    // Verify dog sizes exist
+    const sizesRes = await request(app).get('/api/v1/static/dog-sizes');
+    expect(sizesRes.status).toBe(200);
+    expect(Array.isArray(sizesRes.body)).toBe(true);
+    expect(sizesRes.body.length).toBeGreaterThan(0);
 
-    // Insert appointment types
-    const appointmentTypes = [
-      { id: 1, label: 'Regular Grooming', order: 1, is_active: true },
-      { id: 2, label: 'Full Grooming', order: 2, is_active: true },
-      { id: 3, label: 'Nail Trimming', order: 3, is_active: true }
-    ];
-    await request(app).post('/api/v1/static/appointment-types').send(appointmentTypes);
+    // Verify appointment types exist
+    const typesRes = await request(app).get('/api/v1/static/appointment-types');
+    expect(typesRes.status).toBe(200);
+    expect(Array.isArray(typesRes.body)).toBe(true);
+    expect(typesRes.body.length).toBeGreaterThan(0);
 
     // Insert dog breeds
     const breeds = [
@@ -122,12 +105,6 @@ describe('API Endpoints', () => {
       await request(app).delete('/api/v1/customers');
       await request(app).delete('/api/v1/services');
       await request(app).delete('/api/v1/dog-breeds');
-      
-      // Delete static data last
-      await request(app).delete('/api/v1/static/appointment-types');
-      await request(app).delete('/api/v1/static/appointment-statuses');
-      await request(app).delete('/api/v1/static/custom-colors');
-      await request(app).delete('/api/v1/static/dog-sizes');
     } catch (error) {
       throw new Error(`Failed to clean up test data: ${error}`);
     }
