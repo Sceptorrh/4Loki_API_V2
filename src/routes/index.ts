@@ -6,7 +6,6 @@ import invoiceRoutes from './invoiceRoutes';
 import serviceRoutes from './serviceRoutes';
 import dogPictureRoutes from './dogPictureRoutes';
 import additionalHourRoutes from './additionalHourRoutes';
-import digiBTWRoutes from './digiBTWRoutes';
 import exportLogRoutes from './exportLogRoutes';
 import travelTimeRoutes from './travelTimeRoutes';
 import staticRoutes from './staticRoutes';
@@ -23,9 +22,8 @@ export const setupRoutes = (app: Express) => {
   app.use(`${apiPrefix}/services`, serviceRoutes);
   app.use(`${apiPrefix}/dog-pictures`, dogPictureRoutes);
   app.use(`${apiPrefix}/additional-hours`, additionalHourRoutes);
-  app.use(`${apiPrefix}/digi-btw`, digiBTWRoutes);
   app.use(`${apiPrefix}/export-logs`, exportLogRoutes);
-  app.use(`${apiPrefix}/travel-times`, travelTimeRoutes);
+  app.use(`${apiPrefix}/travel-time`, travelTimeRoutes);
   app.use(`${apiPrefix}/static`, staticRoutes);
   app.use(`${apiPrefix}/dropdowns`, dropdownRoutes);
   app.use(`${apiPrefix}/dog-breeds`, dogBreedRoutes);

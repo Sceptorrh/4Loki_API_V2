@@ -133,43 +133,6 @@ const swaggerOptions = {
           },
           required: ['Naam']
         },
-        DigiBTW_Expenses: {
-          type: 'object',
-          properties: {
-            Id: { type: 'integer', description: 'The unique identifier', example: 1 },
-            Status: { type: 'string', maxLength: 50, description: 'Status', example: 'PROCESSED' },
-            Date: { type: 'string', format: 'date', description: 'Date', example: '2024-03-07' },
-            InvoiceNumber: { type: 'string', maxLength: 50, description: 'Invoice number', example: 'EXP-2024-001' },
-            PriceIncBTW: { type: 'number', format: 'decimal', description: 'Price including VAT', example: 121.00 },
-            PriceExlBTW: { type: 'number', format: 'decimal', description: 'Price excluding VAT', example: 100.00 },
-            BTW: { type: 'number', format: 'decimal', description: 'VAT amount', example: 21.00 },
-            Relation: { type: 'string', maxLength: 50, description: 'Relation', example: 'Supplier A' },
-            Description: { type: 'string', maxLength: 500, description: 'Description', example: 'Monthly supplies' },
-            Notes: { type: 'string', maxLength: 500, description: 'Notes', example: 'Regular order' },
-            CustomerId: { type: 'integer', description: 'Customer ID', example: 42 },
-            CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' }
-          }
-        },
-        DigiBTW_Invoices: {
-          type: 'object',
-          properties: {
-            Id: { type: 'integer', format: 'int64', description: 'The unique identifier', example: 1 },
-            Status: { type: 'string', maxLength: 50, description: 'Status', example: 'PAID' },
-            Date: { type: 'string', format: 'date', description: 'Date', example: '2024-03-07' },
-            IncBTW: { type: 'number', format: 'decimal', description: 'Amount including VAT', example: 121.00 },
-            ExcBTW: { type: 'number', format: 'decimal', description: 'Amount excluding VAT', example: 100.00 },
-            BTW: { type: 'number', format: 'decimal', description: 'VAT amount', example: 21.00 },
-            CustomerName: { type: 'string', maxLength: 100, description: 'Customer name', example: 'John Doe' },
-            CustomerContactName: { type: 'string', maxLength: 100, description: 'Contact name', example: 'John Doe' },
-            Email: { type: 'string', maxLength: 100, format: 'email', description: 'Email address', example: 'john.doe@example.com' },
-            PhoneNumber: { type: 'string', maxLength: 100, description: 'Phone number', example: '+31612345678' },
-            Description: { type: 'string', maxLength: 500, description: 'Description', example: 'Dog grooming services' },
-            InvoiceNumber: { type: 'string', maxLength: 50, description: 'Invoice number', example: 'INV-2024-001' },
-            Reminders: { type: 'integer', format: 'int8', description: 'Number of reminders', example: 0 },
-            Reference: { type: 'string', maxLength: 100, description: 'Reference', example: 'REF-2024-001' },
-            CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' }
-          }
-        },
         Dog: {
           type: 'object',
           properties: {

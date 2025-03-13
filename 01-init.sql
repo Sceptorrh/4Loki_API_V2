@@ -290,48 +290,15 @@ CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1951 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `TravelTime` (
-  `Type` text NOT NULL,
-  `DateTime` datetime NOT NULL,
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Value` int(11) NOT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10402 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `DigiBTW_Expenses` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Status` varchar(50) DEFAULT NULL,
-  `Date` date DEFAULT NULL,
-  `InvoiceNumber` varchar(50) DEFAULT NULL,
-  `PriceIncBTW` decimal(20,6) DEFAULT NULL,
-  `PriceExlBTW` decimal(20,6) DEFAULT NULL,
-  `BTW` decimal(20,6) DEFAULT NULL,
-  `Relation` varchar(50) DEFAULT NULL,
-  `Description` varchar(500) DEFAULT NULL,
-  `Notes` varchar(500) DEFAULT NULL,
-  `CustomerId` int(11) DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT NULL,
+  `AppointmentId` int(11) DEFAULT NULL,
+  `TravelTimeTypeId` int(11) DEFAULT NULL,
+  `Duration` int(11) DEFAULT NULL,
+  `OwnerId` int(11) DEFAULT NULL,
   PRIMARY KEY (`Id`),
-  KEY `CustomerId` (`CustomerId`)
-) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
-
-CREATE TABLE IF NOT EXISTS `DigiBTW_Invoices` (
-  `Id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `Status` varchar(50) DEFAULT NULL,
-  `Date` date DEFAULT NULL,
-  `IncBTW` decimal(20,6) DEFAULT NULL,
-  `ExcBTW` decimal(20,6) DEFAULT NULL,
-  `BTW` decimal(20,6) DEFAULT NULL,
-  `CustomerName` varchar(100) DEFAULT NULL,
-  `CustomerContactName` varchar(100) DEFAULT NULL,
-  `Email` varchar(100) DEFAULT NULL,
-  `PhoneNumber` varchar(100) DEFAULT NULL,
-  `Description` varchar(500) DEFAULT NULL,
-  `InvoiceNumber` varchar(50) DEFAULT NULL,
-  `Reminders` tinyint(4) DEFAULT NULL,
-  `Reference` varchar(100) DEFAULT NULL,
-  `CreatedOn` datetime NOT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=551 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+  KEY `AppointmentId` (`AppointmentId`),
+  KEY `TravelTimeTypeId` (`TravelTimeTypeId`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Create the stored procedure
 DELIMITER //
@@ -442,11 +409,6 @@ ALTER TABLE `ServiceAppointmentDog`
   FOREIGN KEY (`AppointmentDogId`) REFERENCES `AppointmentDog` (`Id`) ON DELETE CASCADE,
   ADD CONSTRAINT `ServiceAppointmentDog_ibfk_2` 
   FOREIGN KEY (`ServiceId`) REFERENCES `Service` (`Id`);
-
-ALTER TABLE `DigiBTW_Expenses`
-  DROP FOREIGN KEY IF EXISTS `CustomerId`,
-  ADD CONSTRAINT `CustomerId` 
-  FOREIGN KEY (`CustomerId`) REFERENCES `Customer` (`Id`);
 
 -- Insert initial static data
 INSERT IGNORE INTO `Statics_CustomColor` (`Color`, `Order`, `Hex`, `Legend`) VALUES

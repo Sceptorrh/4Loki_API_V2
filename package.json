@@ -8,11 +8,7 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "test": "jest --verbose --detectOpenHandles --forceExit --no-cache",
-    "test:with-db": "powershell ./scripts/run-tests.ps1",
-    "test:setup-db": "docker-compose -f docker-compose.test.yml up -d",
-    "test:teardown-db": "docker-compose -f docker-compose.test.yml down",
-    "test:env": "cross-env DB_HOST=127.0.0.1 DB_USER=root DB_PASSWORD=root DB_DATABASE=4Loki_db NODE_ENV=test jest --verbose --detectOpenHandles --forceExit --no-cache"
+    "test": "powershell ./scripts/run-tests.ps1"
   },
   "dependencies": {
     "@types/compression": "^1.7.5",

@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
-import pool from '../config/database';
-import { startServer, closeServer } from '../server';
+import pool from '@/config/database';
+import { startServer, closeServer } from '@/server';
 
 // Load environment variables from .env.test if it exists
 config({ path: '.env.test' });

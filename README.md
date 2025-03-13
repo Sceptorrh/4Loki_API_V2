@@ -149,13 +149,6 @@ To use the Swagger UI:
 - `PUT /api/v1/additional-hours/:id` - Update additional hour
 - `DELETE /api/v1/additional-hours/:id` - Delete additional hour
 
-### DigiBTW
-- `GET /api/v1/digi-btw` - Get all DigiBTW records
-- `GET /api/v1/digi-btw/:id` - Get DigiBTW record by ID
-- `POST /api/v1/digi-btw` - Create new DigiBTW record
-- `PUT /api/v1/digi-btw/:id` - Update DigiBTW record
-- `DELETE /api/v1/digi-btw/:id` - Delete DigiBTW record
-
 ### Export Logs
 - `GET /api/v1/export-logs` - Get all export logs
 - `GET /api/v1/export-logs/:id` - Get export log by ID

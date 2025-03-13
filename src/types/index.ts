@@ -101,21 +101,6 @@ export interface AdditionalHour {
   IsSkippedExport: boolean;
 }
 
-export interface DigiBTWExpense {
-  Id: number;
-  Status: string;
-  Date: Date;
-  InvoiceNumber: string;
-  PriceIncBTW: number;
-  PriceExlBTW: number;
-  BTW: number;
-  Relation: string;
-  Description: string;
-  Notes: string;
-  CustomerId: number;
-  CreatedOn: Date;
-}
-
 export interface ExportLog {
   Id: number;
   IssuedOn: Date;

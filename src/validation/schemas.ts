@@ -80,19 +80,6 @@ export const additionalHourSchema = z.object({
   IsSkippedExport: z.boolean().optional(),
 });
 
-export const digiBTWExpenseSchema = z.object({
-  Status: z.string().min(1, 'Status is required'),
-  Date: z.string().datetime(),
-  InvoiceNumber: z.string().min(1, 'Invoice number is required'),
-  PriceIncBTW: z.number().min(0),
-  PriceExlBTW: z.number().min(0),
-  BTW: z.number().min(0),
-  Relation: z.string().min(1, 'Relation is required'),
-  Description: z.string().min(1, 'Description is required'),
-  Notes: z.string().optional(),
-  CustomerId: z.number().int().positive(),
-});
-
 export const exportLogSchema = z.object({
   IssuedOn: z.string().datetime(),
   ForMonthDate: z.string().datetime(),

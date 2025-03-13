@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import { RouteHandler } from '../utils/routeHandler';
-import { validate } from '../middleware/validate';
-import { travelTimeSchema } from '../schemas/travelTimeSchema';
 
 const router = Router();
 const handler = new RouteHandler('TravelTime');
@@ -77,7 +75,7 @@ router.get('/:id', handler.getById.bind(handler));
  *       500:
  *         description: Server error
  */
-router.post('/', validate(travelTimeSchema), handler.create.bind(handler));
+router.post('/', handler.create.bind(handler));
 
 /**
  * @swagger
@@ -112,7 +110,7 @@ router.post('/', validate(travelTimeSchema), handler.create.bind(handler));
  *       500:
  *         description: Server error
  */
-router.put('/:id', validate(travelTimeSchema), handler.update.bind(handler));
+router.put('/:id', handler.update.bind(handler));
 
 /**
  * @swagger

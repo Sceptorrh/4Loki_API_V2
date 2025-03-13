@@ -1,91 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="43" failures="0" errors="0" time="6.698">
-  <testsuite name="API Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-12T11:46:20" time="6.586" tests="43">
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/custom-colors should insert custom colors first" time="0.099">
+<testsuites name="jest tests" tests="43" failures="0" errors="0" time="8.111">
+  <testsuite name="API Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-13T13:50:58" time="8.015" tests="43">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/custom-colors should insert custom colors first" time="0.158">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/appointment-statuses should then insert appointment statuses" time="0.082">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/appointment-statuses should then insert appointment statuses" time="0.142">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/appointment-types should insert appointment types" time="0.022">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/appointment-types should insert appointment types" time="0.037">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/btw-percentages should insert BTW percentages" time="0.019">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/btw-percentages should insert BTW percentages" time="0.026">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/hour-types should insert hour types" time="0.041">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/hour-types should insert hour types" time="0.059">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/import-export-types should insert import/export types" time="0.026">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/import-export-types should insert import/export types" time="0.033">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/invoice-categories should insert invoice categories" time="0.02">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/invoice-categories should insert invoice categories" time="0.027">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/payment-types should insert payment types" time="0.017">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/payment-types should insert payment types" time="0.021">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/travel-time-types should insert travel time types" time="0.017">
+    <testcase classname="API Endpoints › Static Table Endpoints › Insert Static Data" name="POST /api/v1/static/travel-time-types should insert travel time types" time="0.027">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/appointment-statuses should return appointment statuses" time="0.012">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/appointment-statuses should return appointment statuses" time="0.019">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/appointment-types should return appointment types" time="0.013">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/appointment-types should return appointment types" time="0.019">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/btw-percentages should return BTW percentages" time="0.014">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/btw-percentages should return BTW percentages" time="0.017">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/custom-colors should return custom colors" time="0.012">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/custom-colors should return custom colors" time="0.015">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/dog-sizes should return dog sizes" time="0.011">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/dog-sizes should return dog sizes" time="0.014">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/hour-types should return hour types" time="0.014">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/hour-types should return hour types" time="0.015">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/import-export-types should return import/export types" time="0.012">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/import-export-types should return import/export types" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/invoice-categories should return invoice categories" time="0.012">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/invoice-categories should return invoice categories" time="0.014">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/payment-types should return payment types" time="0.013">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/payment-types should return payment types" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/travel-time-types should return travel time types" time="0.011">
+    <testcase classname="API Endpoints › Static Table Endpoints" name="GET /api/v1/static/travel-time-types should return travel time types" time="0.013">
     </testcase>
-    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/customers should insert customers" time="0.158">
+    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/customers should insert customers" time="0.215">
     </testcase>
-    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/dogs should insert dogs and connect them to customers" time="0.253">
+    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/dogs should insert dogs and connect them to customers" time="0.35">
     </testcase>
-    <testcase classname="API Endpoints › Dog Breed Data" name="POST /api/v1/dog-breeds should insert dog breeds" time="0.176">
+    <testcase classname="API Endpoints › Dog Breed Data" name="POST /api/v1/dog-breeds should insert dog breeds" time="0.269">
     </testcase>
-    <testcase classname="API Endpoints › Dog Breed Data" name="GET /api/v1/dog-breeds should return all dog breeds" time="0.012">
+    <testcase classname="API Endpoints › Dog Breed Data" name="GET /api/v1/dog-breeds should return all dog breeds" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Service Data" name="POST /api/v1/services should insert services" time="0.07">
+    <testcase classname="API Endpoints › Service Data" name="POST /api/v1/services should insert services" time="0.097">
     </testcase>
-    <testcase classname="API Endpoints › Service Data" name="GET /api/v1/services should return all services" time="0.013">
+    <testcase classname="API Endpoints › Service Data" name="GET /api/v1/services should return all services" time="0.015">
     </testcase>
-    <testcase classname="API Endpoints › Appointment Data" name="POST /api/v1/appointments should insert appointments" time="0.079">
+    <testcase classname="API Endpoints › Appointment Data" name="POST /api/v1/appointments should insert appointments" time="0.094">
     </testcase>
-    <testcase classname="API Endpoints › Appointment Data" name="GET /api/v1/appointments should return all appointments" time="0.012">
+    <testcase classname="API Endpoints › Appointment Data" name="GET /api/v1/appointments should return all appointments" time="0.013">
     </testcase>
-    <testcase classname="API Endpoints › Appointment Data" name="GET /api/v1/appointments/status/:statusId should return appointments by status" time="0.012">
+    <testcase classname="API Endpoints › Appointment Data" name="GET /api/v1/appointments/status/:statusId should return appointments by status" time="0.015">
     </testcase>
-    <testcase classname="API Endpoints › Dog Picture Data" name="POST /api/v1/dog-pictures should insert dog pictures" time="0.059">
+    <testcase classname="API Endpoints › Dog Picture Data" name="POST /api/v1/dog-pictures should insert dog pictures" time="0.071">
     </testcase>
-    <testcase classname="API Endpoints › Dog Picture Data" name="GET /api/v1/dog-pictures should return all dog pictures" time="0.013">
+    <testcase classname="API Endpoints › Dog Picture Data" name="GET /api/v1/dog-pictures should return all dog pictures" time="0.014">
     </testcase>
-    <testcase classname="API Endpoints › GET /api/v1/health" name="GET /api/v1/health should return 200 OK" time="0.01">
+    <testcase classname="API Endpoints › GET /api/v1/health" name="GET /api/v1/health should return 200 OK" time="0.013">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/dogbreeds should return dog breeds" time="0.011">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/dogbreeds should return dog breeds" time="0.013">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/customers should return customers with dogs" time="0.013">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/customers should return customers with dogs" time="0.014">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/paymenttypes should return payment types" time="0.011">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/paymenttypes should return payment types" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/btwpercentages should return BTW percentages" time="0.011">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/btwpercentages should return BTW percentages" time="0.015">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/hourtypes should return hour types" time="0.013">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/hourtypes should return hour types" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table should return customer table data" time="0.024">
+    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table should return customer table data" time="0.035">
     </testcase>
-    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table?search=test should handle customer search" time="0.025">
+    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table?search=test should handle customer search" time="0.034">
     </testcase>
-    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table should return dog table data" time="0.026">
+    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table should return dog table data" time="0.041">
     </testcase>
-    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table?search=test should handle dog search" time="0.026">
+    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table?search=test should handle dog search" time="0.035">
     </testcase>
-    <testcase classname="API Endpoints › API Documentation" name="GET /api-docs/ should serve Swagger UI" time="0.015">
+    <testcase classname="API Endpoints › API Documentation" name="GET /api-docs/ should serve Swagger UI" time="0.023">
     </testcase>
-    <testcase classname="API Endpoints › API Documentation" name="GET /api-spec.json should serve OpenAPI spec" time="0.017">
+    <testcase classname="API Endpoints › API Documentation" name="GET /api-spec.json should serve OpenAPI spec" time="0.032">
     </testcase>
-    <testcase classname="API Endpoints › API Documentation" name="GET /api-docs/custom-swagger.js should serve custom Swagger JS" time="0.01">
+    <testcase classname="API Endpoints › API Documentation" name="GET /api-docs/custom-swagger.js should serve custom Swagger JS" time="0.02">
     </testcase>
   </testsuite>
 </testsuites>
