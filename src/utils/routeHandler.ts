@@ -50,8 +50,11 @@ export class RouteHandler {
         await this.validationSchema.parseAsync(req.body);
       }
 
-      const fields = Object.keys(req.body);
-      const values = Object.values(req.body);
+      // Remove Id, CreatedOn, and UpdatedOn from request body if present
+      const { Id, CreatedOn, UpdatedOn, ...validData } = req.body;
+      
+      const fields = Object.keys(validData);
+      const values = Object.values(validData);
       const placeholders = fields.map(() => '?').join(', ');
       
       // Escape column names with backticks
@@ -104,10 +107,13 @@ export class RouteHandler {
         await this.validationSchema.parseAsync(req.body);
       }
 
-      const fields = Object.keys(req.body)
+      // Remove Id, CreatedOn, and UpdatedOn from request body if present
+      const { Id, CreatedOn, UpdatedOn, ...validData } = req.body;
+
+      const fields = Object.keys(validData)
         .map(field => `${field} = ?`)
         .join(', ');
-      const values = [...Object.values(req.body), req.params.id];
+      const values = [...Object.values(validData), req.params.id];
       
       const [result] = await pool.query(
         `UPDATE ${this.tableName} SET ${fields} WHERE Id = ?`,
@@ -118,8 +124,14 @@ export class RouteHandler {
         throw new AppError('Record not found', 404);
       }
       
+      // Get date fields for this table from configuration
+      const dateFields = getDateFields(this.tableName);
+      
+      // Only add date conversion if there are date fields
+      const dateConversion = dateFields.length > 0 ? `, ${convertDateFieldsToUTC(dateFields)}` : '';
+      
       const [updatedRecord] = await pool.query(
-        `SELECT * FROM ${this.tableName} WHERE Id = ?`,
+        `SELECT *${dateConversion} FROM ${this.tableName} WHERE Id = ?`,
         [req.params.id]
       );
       

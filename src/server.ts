@@ -90,18 +90,36 @@ app.get('/api-docs/custom-swagger.js', (req, res) => {
   `);
 });
 
-// Serve Swagger UI static files
-app.use('/api-docs', express.static(path.join(__dirname, '../node_modules/swagger-ui-dist')));
+// Make swagger spec available as JSON
+app.get('/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
 
-// Swagger documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  swaggerOptions: {
-    persistAuthorization: true,
-  },
-  customCss: '.swagger-ui .topbar { display: none } .swagger-ui .download-url-wrapper { display: flex !important }',
+// Debug endpoint to check the Swagger spec
+app.get('/debug-swagger', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  const spec = swaggerSpec as any;
+  const debugInfo = {
+    paths: Object.keys(spec.paths || {}),
+    tags: spec.tags,
+    components: {
+      schemas: Object.keys(spec.components?.schemas || {})
+    }
+  };
+  res.send(debugInfo);
+});
+
+// Remove all the custom Swagger UI setup and use the standard approach
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
+  explorer: true,
   customSiteTitle: "4Loki API Documentation",
-  customfavIcon: "/favicon.ico",
-  customJs: '/api-docs/custom-swagger.js'
+  swaggerOptions: {
+    docExpansion: 'list',
+    persistAuthorization: true,
+    displayRequestDuration: true
+  }
 }));
 
 // Add endpoint to download OpenAPI spec

@@ -9,10 +9,8 @@ interface Customer {
   Contactpersoon: string;
   Emailadres: string;
   Telefoonnummer: string;
-  Adres: string;
-  Postcode: string;
-  Stad: string;
-  Land: string;
+  Notities?: string;
+  IsAllowContactShare?: string;
 }
 
 interface Dog {
@@ -69,10 +67,7 @@ describe('Appointment API Endpoints', () => {
       Contactpersoon: 'Test Contact',
       Emailadres: 'test@example.com',
       Telefoonnummer: '0612345678',
-      Adres: 'Test Street 1',
-      Postcode: '1234AB',
-      Stad: 'Test City',
-      Land: 'Netherlands'
+      IsAllowContactShare: 'YES'
     };
 
     const customerRes = await request(app)

@@ -5,13 +5,6 @@ export const customerSchema = z.object({
   Contactpersoon: z.string().min(1, 'Contact person is required'),
   Emailadres: z.string().email('Invalid email address'),
   Telefoonnummer: z.string().min(1, 'Phone number is required'),
-  Adres: z.string().min(1, 'Address is required'),
-  Postcode: z.string().min(1, 'Postal code is required'),
-  Stad: z.string().min(1, 'City is required'),
-  Land: z.string().min(1, 'Country is required'),
-  KvKnummer: z.string().optional(),
-  Btwnummer: z.string().optional(),
-  IBAN: z.string().optional(),
   Notities: z.string().optional(),
   IsAllowContactShare: z.string().optional(),
 });
@@ -81,7 +74,7 @@ export const exportLogSchema = z.object({
 
 export const travelTimeSchema = z.object({
   AppointmentId: z.number().int().positive(),
-  TravelTimeTypeId: z.number().int().positive(),
+  TravelTimeTypeId: z.string().min(1, 'Travel time type is required'),
   Duration: z.number().int().min(0)
 });
 

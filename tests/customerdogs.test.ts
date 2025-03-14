@@ -9,10 +9,8 @@ interface Customer {
   Contactpersoon: string;
   Emailadres: string;
   Telefoonnummer: string;
-  Adres: string;
-  Postcode: string;
-  Stad: string;
-  Land: string;
+  Notities?: string;
+  IsAllowContactShare?: string;
 }
 
 describe('API Endpoints', () => {
@@ -30,41 +28,29 @@ describe('API Endpoints', () => {
           Naam: 'John Doe',
           Contactpersoon: 'John Doe',
           Emailadres: 'john.doe@example.com',
-          Telefoonnummer: '0612345678',
-          Adres: 'Street 1',
-          Postcode: '1234AB',
-          Stad: 'Amsterdam',
-          Land: 'Netherlands'
+          Telefoonnummer: '123456789',
+          IsAllowContactShare: 'YES'
         },
         {
           Naam: 'Jane Smith',
           Contactpersoon: 'Jane Smith',
           Emailadres: 'jane.smith@example.com',
-          Telefoonnummer: '0687654321',
-          Adres: 'Street 2',
-          Postcode: '5678CD',
-          Stad: 'Rotterdam',
-          Land: 'Netherlands'
+          Telefoonnummer: '987654321',
+          IsAllowContactShare: 'YES'
         },
         {
           Naam: 'Alice Johnson',
           Contactpersoon: 'Alice Johnson',
           Emailadres: 'alice.j@example.com',
-          Telefoonnummer: '0611223344',
-          Adres: 'Street 3',
-          Postcode: '9012EF',
-          Stad: 'Utrecht',
-          Land: 'Netherlands'
+          Telefoonnummer: '555666777',
+          IsAllowContactShare: 'NO'
         },
         {
-          Naam: 'Bob Wilson',
-          Contactpersoon: 'Bob Wilson',
+          Naam: 'Bob Williams',
+          Contactpersoon: 'Bob Williams',
           Emailadres: 'bob.w@example.com',
-          Telefoonnummer: '0644556677',
-          Adres: 'Street 4',
-          Postcode: '3456GH',
-          Stad: 'Den Haag',
-          Land: 'Netherlands'
+          Telefoonnummer: '111222333',
+          IsAllowContactShare: 'YES'
         }
       ];
 
@@ -87,7 +73,7 @@ describe('API Endpoints', () => {
         johnDoeId: insertedCustomers[0].Id!,
         janeSmithId: insertedCustomers[1].Id!,
         aliceJohnsonId: insertedCustomers[2].Id!,
-        bobWilsonId: insertedCustomers[3].Id!
+        bobWilliamsId: insertedCustomers[3].Id!
       };
 
       // Verify customers were inserted
@@ -109,7 +95,7 @@ describe('API Endpoints', () => {
       expect(customerIds).toBeDefined();
       expect(customerIds.johnDoeId).toBeDefined();
       expect(customerIds.janeSmithId).toBeDefined();
-      expect(customerIds.bobWilsonId).toBeDefined();
+      expect(customerIds.bobWilliamsId).toBeDefined();
       
       // Verify dog sizes exist
       const dogSizesRes = await request(app).get('/api/v1/static/dog-sizes');
@@ -146,7 +132,7 @@ describe('API Endpoints', () => {
           DogBreeds: [dogBreedIds[1], dogBreedIds[7]] // German Shepherd and Rottweiler
         },
         {
-          CustomerId: customerIds.bobWilsonId,
+          CustomerId: customerIds.bobWilliamsId,
           Name: 'Bella',
           Birthday: '2022-03-10',
           Allergies: 'Grain',
@@ -155,7 +141,7 @@ describe('API Endpoints', () => {
           DogBreeds: [dogBreedIds[11]] // Chihuahua
         },
         {
-          CustomerId: customerIds.bobWilsonId,
+          CustomerId: customerIds.bobWilliamsId,
           Name: 'Rocky',
           Birthday: '2021-11-20',
           ServiceNote: 'Regular trimming needed',
@@ -163,7 +149,7 @@ describe('API Endpoints', () => {
           DogBreeds: [dogBreedIds[10], dogBreedIds[6]] // Boxer and Beagle
         },
         {
-          CustomerId: customerIds.bobWilsonId,
+          CustomerId: customerIds.bobWilliamsId,
           Name: 'Daisy',
           Birthday: '2020-08-15',
           ServiceNote: 'Long coat',

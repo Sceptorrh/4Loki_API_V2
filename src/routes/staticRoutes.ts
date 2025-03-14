@@ -828,8 +828,6 @@ router.get('/dog-breeds/:id', async (req, res, next) => {
  *                     type: boolean
  *                   StandardDuration:
  *                     type: integer
- *                   OwnerId:
- *                     type: integer
  */
 router.get('/services', async (req, res, next) => {
   try {

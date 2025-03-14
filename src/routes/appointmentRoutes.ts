@@ -127,7 +127,7 @@ router.get('/:id/complete', getCompleteAppointment);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Appointment'
+ *             $ref: '#/components/schemas/AppointmentInput'
  *     responses:
  *       201:
  *         description: Created appointment
@@ -152,35 +152,14 @@ router.post('/', validate(appointmentSchema), handler.create.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               appointment:
- *                 $ref: '#/components/schemas/Appointment'
- *               appointmentDogs:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     DogId:
- *                       type: integer
- *                       description: Dog ID
- *                     Note:
- *                       type: string
- *                       description: Notes for this dog
- *                     services:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           ServiceId:
- *                             type: string
- *                             description: Service ID
- *                           Price:
- *                             type: number
- *                             description: Service price
+ *             $ref: '#/components/schemas/CompleteAppointmentInput'
  *     responses:
  *       201:
  *         description: Created appointment with details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CompleteAppointment'
  *       400:
  *         description: Invalid input
  *       500:
@@ -206,7 +185,7 @@ router.post('/complete', validate(completeAppointmentSchema), createCompleteAppo
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Appointment'
+ *             $ref: '#/components/schemas/AppointmentInput'
  *     responses:
  *       200:
  *         description: Updated appointment
@@ -240,35 +219,14 @@ router.put('/:id', validate(appointmentSchema), handler.update.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               appointment:
- *                 $ref: '#/components/schemas/Appointment'
- *               appointmentDogs:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     DogId:
- *                       type: integer
- *                       description: Dog ID
- *                     Note:
- *                       type: string
- *                       description: Notes for this dog
- *                     services:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           ServiceId:
- *                             type: string
- *                             description: Service ID
- *                           Price:
- *                             type: number
- *                             description: Service price
+ *             $ref: '#/components/schemas/CompleteAppointmentInput'
  *     responses:
  *       200:
  *         description: Updated appointment
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CompleteAppointment'
  *       404:
  *         description: Appointment not found
  *       400:

@@ -4,19 +4,10 @@ export interface Customer {
   Contactpersoon: string;
   Emailadres: string;
   Telefoonnummer: string;
-  Adres: string;
-  Postcode: string;
-  Stad: string;
-  Land: string;
-  KvKnummer: string;
-  Btwnummer: string;
-  IBAN: string;
   Notities: string;
-  OwnerId: number;
   CreatedOn: Date;
   UpdatedOn: Date;
   IsExported: boolean;
-  HasChanged: boolean;
   IsAllowContactShare: string;
 }
 
@@ -27,7 +18,6 @@ export interface Dog {
   Birthday: Date;
   Allergies: string;
   ServiceNote: string;
-  OwnerId: number;
   CreatedOn: Date;
   UpdatedOn: Date;
   DogSizeId: string;
@@ -48,12 +38,11 @@ export interface Appointment {
   ActualDuration: number;
   CustomerId: number;
   AppointmentStatusId: string;
+  AppointmentTypeId: string;
+  Note: string;
   CreatedOn: Date;
   UpdatedOn: Date;
   TipAmount: number;
-  AppointmentTypeId: string;
-  Owner: number;
-  Note: string;
   ReasonForCancellation: string;
 }
 
@@ -67,19 +56,20 @@ export interface Invoice {
   Referentie: string;
   Factuurdatum: Date;
   Vervaldatum: Date;
-  OwnerId: number;
   IsIncludeInExport: boolean;
   CustomCustomerId: number;
   IsPaid: boolean;
+  CreatedOn: Date;
+  UpdatedOn: Date;
 }
 
 export interface Service {
-  Id: number;
+  Id: string;
   Name: string;
   StandardPrice: number;
-  IsPrice0Allowed: boolean;
+  IsPriceAllowed: boolean;
   StandardDuration: number;
-  OwnerId: number;
+  Order: number;
 }
 
 export interface AdditionalHour {
@@ -93,23 +83,64 @@ export interface AdditionalHour {
   IsShowOnPlanning: boolean;
   Description: string;
   IsExported: boolean;
-  OwnerId: number;
   InvoiceId: number;
-  IsSkippedExport: boolean;
+  CreatedOn: Date;
+  UpdatedOn: Date;
 }
 
 export interface ExportLog {
   Id: number;
   IssuedOn: Date;
   ForMonthDate: Date;
-  OwnerId: number;
   IsSuccesfull: boolean;
   IsDummy: boolean;
+  CreatedOn: Date;
+  UpdatedOn: Date;
 }
 
 export interface TravelTime {
   Id: number;
-  Type: string;
-  DateTime: Date;
-  Value: number;
+  AppointmentId: number;
+  TravelTimeTypeId: string;
+  Duration: number;
+  CreatedOn: Date;
+  UpdatedOn: Date;
+}
+
+export interface AppointmentDog {
+  Id: number;
+  AppointmentId: number;
+  DogId: number;
+  Note: string;
+  CreatedOn: Date;
+  UpdatedOn: Date;
+}
+
+export interface DogDogbreed {
+  Id: number;
+  DogId: number;
+  DogBreedId: string;
+  CreatedOn: Date;
+  UpdatedOn: Date;
+}
+
+export interface InvoiceLine {
+  Id: number;
+  InvoiceId: number;
+  Omschrijving: string;
+  Aantal: number;
+  BTWpercentageId: string;
+  Bedragexcl_btw: number;
+  Categorie: string;
+  CreatedOn: Date;
+  UpdatedOn: Date;
+}
+
+export interface ServiceAppointmentDog {
+  Id: number;
+  ServiceId: string;
+  AppointmentDogId: number;
+  Price: number;
+  CreatedOn: Date;
+  UpdatedOn: Date;
 } 

@@ -56,7 +56,7 @@ router.get('/:id', handler.getById.bind(handler));
  * /api/export-logs:
  *   post:
  *     summary: Create a new export log
- *     tags: [ExportLog]
+ *     tags: [Export Logs]
  *     requestBody:
  *       required: true
  *       content:
@@ -65,15 +65,13 @@ router.get('/:id', handler.getById.bind(handler));
  *             $ref: '#/components/schemas/ExportLogInput'
  *     responses:
  *       201:
- *         description: Export log created successfully
+ *         description: Created export log
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ExportLog'
  *       400:
- *         description: Invalid input data
- *       500:
- *         description: Server error
+ *         description: Invalid input
  */
 router.post('/', handler.create.bind(handler));
 
@@ -82,14 +80,14 @@ router.post('/', handler.create.bind(handler));
  * /api/export-logs/{id}:
  *   put:
  *     summary: Update an export log
- *     tags: [ExportLog]
+ *     tags: [Export Logs]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *         description: The export log ID
+ *           type: integer
+ *         description: Export Log ID
  *     requestBody:
  *       required: true
  *       content:
@@ -98,17 +96,15 @@ router.post('/', handler.create.bind(handler));
  *             $ref: '#/components/schemas/ExportLogInput'
  *     responses:
  *       200:
- *         description: Export log updated successfully
+ *         description: Updated export log
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ExportLog'
- *       400:
- *         description: Invalid input data
  *       404:
  *         description: Export log not found
- *       500:
- *         description: Server error
+ *       400:
+ *         description: Invalid input
  */
 router.put('/:id', handler.update.bind(handler));
 

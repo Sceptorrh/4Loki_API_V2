@@ -117,7 +117,7 @@ router.get('/:id', handler.getById.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Customer'
+ *             $ref: '#/components/schemas/CustomerInput'
  *     responses:
  *       201:
  *         description: Created customer
@@ -148,7 +148,7 @@ router.post('/', validate(customerSchema), handler.create.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Customer'
+ *             $ref: '#/components/schemas/CustomerInput'
  *     responses:
  *       200:
  *         description: Updated customer

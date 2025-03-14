@@ -143,7 +143,7 @@ router.get('/:id', async (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Dog'
+ *             $ref: '#/components/schemas/DogInput'
  *     responses:
  *       201:
  *         description: Created dog
@@ -242,7 +242,7 @@ router.post('/', validate(dogSchema), async (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Dog'
+ *             $ref: '#/components/schemas/DogInput'
  *     responses:
  *       200:
  *         description: Updated dog
@@ -263,7 +263,7 @@ router.put('/:id', validate(dogSchema), async (req, res, next) => {
     await connection.beginTransaction();
     
     // Extract dogBreeds from request body
-    const { DogBreeds, ...dogData } = req.body;
+    const { DogBreeds, Id, CreatedOn, UpdatedOn, ...dogData } = req.body;
     
     // Check if dog exists
     const [checkResult] = await connection.query<RowDataPacket[]>(
@@ -281,7 +281,7 @@ router.put('/:id', validate(dogSchema), async (req, res, next) => {
       .join(', ');
     
     await connection.query(
-      `UPDATE Dog SET ${fields}, UpdatedOn = NOW() WHERE Id = ?`,
+      `UPDATE Dog SET ${fields} WHERE Id = ?`,
       [...Object.values(dogData), id]
     );
     

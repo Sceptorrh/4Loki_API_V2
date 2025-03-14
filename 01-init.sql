@@ -109,19 +109,11 @@ CREATE TABLE IF NOT EXISTS `Customer` (
   `Contactpersoon` varchar(255) DEFAULT NULL,
   `Emailadres` varchar(255) DEFAULT NULL,
   `Telefoonnummer` varchar(50) DEFAULT NULL,
-  `Adres` varchar(100) DEFAULT NULL,
-  `Postcode` varchar(50) DEFAULT NULL,
-  `Stad` varchar(50) DEFAULT NULL,
-  `Land` varchar(50) DEFAULT NULL,
-  `KvKnummer` varchar(50) DEFAULT NULL,
-  `Btwnummer` varchar(50) DEFAULT NULL,
-  `IBAN` varchar(50) DEFAULT NULL,
   `Notities` text DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT NULL,
-  `UpdatedOn` datetime DEFAULT NULL,
   `IsExported` tinyint(1) DEFAULT NULL,
-  `HasChanged` tinyint(1) DEFAULT NULL,
   `IsAllowContactShare` varchar(10) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   UNIQUE KEY `customer_naam_unique` (`Naam`)
 ) ENGINE=InnoDB AUTO_INCREMENT=256 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -133,9 +125,9 @@ CREATE TABLE IF NOT EXISTS `Dog` (
   `Birthday` date DEFAULT NULL,
   `Allergies` text DEFAULT NULL,
   `ServiceNote` text DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT NULL,
-  `UpdatedOn` datetime DEFAULT NULL,
   `DogSizeId` varchar(50) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `DogSizeId` (`DogSizeId`),
   KEY `CustomerId` (`CustomerId`)
@@ -150,10 +142,10 @@ CREATE TABLE IF NOT EXISTS `Appointment` (
   `ActualDuration` int(11) DEFAULT NULL,
   `CustomerId` int(11) DEFAULT NULL,
   `AppointmentStatusId` varchar(50) DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT NULL,
-  `UpdatedOn` datetime DEFAULT NULL,
   `AppointmentTypeId` varchar(50) DEFAULT NULL,
   `Note` text DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `CustomerId` (`CustomerId`),
   KEY `AppointmentStatusId` (`AppointmentStatusId`),
@@ -167,6 +159,8 @@ CREATE TABLE IF NOT EXISTS `AppointmentDog` (
   `AppointmentId` int(11) NOT NULL,
   `DogId` int(11) NOT NULL,
   `Note` text DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `DogId` (`DogId`),
   KEY `AppointmentId` (`AppointmentId`)
@@ -183,6 +177,8 @@ CREATE TABLE IF NOT EXISTS `Invoice` (
   `Factuurdatum` date DEFAULT NULL,
   `Vervaldatum` date DEFAULT NULL,
   `CustomCustomerId` int(11) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `AppointmentId` (`AppointmentId`),
   KEY `CustomCustomerId` (`CustomCustomerId`),
@@ -201,6 +197,8 @@ CREATE TABLE IF NOT EXISTS `AdditionalHour` (
   `Description` text DEFAULT NULL,
   `IsExported` tinyint(1) DEFAULT NULL,
   `InvoiceId` int(11) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `InvoiceId` (`InvoiceId`),
   KEY `HourTypeId` (`HourTypeId`)
@@ -210,6 +208,8 @@ CREATE TABLE IF NOT EXISTS `DogDogbreed` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `DogId` int(11) NOT NULL,
   `DogBreedId` varchar(50) NOT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `DogBreedId` (`DogBreedId`),
   KEY `DogId` (`DogId`)
@@ -221,6 +221,8 @@ CREATE TABLE IF NOT EXISTS `ExportLog` (
   `ForMonthDate` date DEFAULT NULL,
   `IsSuccesfull` tinyint(1) DEFAULT NULL,
   `IsDummy` tinyint(1) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -232,6 +234,8 @@ CREATE TABLE IF NOT EXISTS `InvoiceLine` (
   `BTWpercentageId` varchar(50) DEFAULT NULL,
   `Bedragexcl_btw` decimal(10,2) DEFAULT NULL,
   `Categorie` varchar(255) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `InvoiceId` (`InvoiceId`),
   KEY `BTWpercentageId` (`BTWpercentageId`)
@@ -242,6 +246,8 @@ CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
   `ServiceId` varchar(50) NOT NULL,
   `AppointmentDogId` int(11) NOT NULL,
   `Price` DECIMAL(10,2) DEFAULT 0.00,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `ServiceId` (`ServiceId`),
   KEY `AppointmentDogId` (`AppointmentDogId`)
@@ -252,6 +258,8 @@ CREATE TABLE IF NOT EXISTS `TravelTime` (
   `AppointmentId` int(11) DEFAULT NULL,
   `TravelTimeTypeId` varchar(50) DEFAULT NULL,
   `Duration` int(11) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
   KEY `AppointmentId` (`AppointmentId`),
   KEY `TravelTimeTypeId` (`TravelTimeTypeId`)

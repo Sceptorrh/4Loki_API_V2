@@ -62,7 +62,7 @@ router.get('/:id', handler.getById.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Invoice'
+ *             $ref: '#/components/schemas/InvoiceInput'
  *     responses:
  *       201:
  *         description: Created invoice
@@ -93,7 +93,7 @@ router.post('/', validate(invoiceSchema), handler.create.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Invoice'
+ *             $ref: '#/components/schemas/InvoiceInput'
  *     responses:
  *       200:
  *         description: Updated invoice

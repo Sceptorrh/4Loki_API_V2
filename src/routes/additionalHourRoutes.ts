@@ -60,7 +60,7 @@ router.get('/:id', handler.getById.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AdditionalHour'
+ *             $ref: '#/components/schemas/AdditionalHourInput'
  *     responses:
  *       201:
  *         description: Created additional hour
@@ -91,7 +91,7 @@ router.post('/', validate(additionalHourSchema), handler.create.bind(handler));
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AdditionalHour'
+ *             $ref: '#/components/schemas/AdditionalHourInput'
  *     responses:
  *       200:
  *         description: Updated additional hour
