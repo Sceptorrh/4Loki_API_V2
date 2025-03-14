@@ -25,6 +25,18 @@ services:
       retries: 3
       start_period: 40s
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:3000/api/v1
+    depends_on:
+      - api
+    restart: unless-stopped
+
   db:
     image: ghcr.io/sceptorrh/4loki_db:latest
     ports:

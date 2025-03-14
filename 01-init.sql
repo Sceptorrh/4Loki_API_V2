@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS `Customer` (
   `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
-  UNIQUE KEY `customer_naam_unique` (`Naam`)
+  UNIQUE KEY `customer_naam_unique` (`Naam`),
+  UNIQUE KEY `customer_telefoonnummer_unique` (`Telefoonnummer`),
+  UNIQUE KEY `customer_contactpersoon_unique` (`Contactpersoon`)
 ) ENGINE=InnoDB AUTO_INCREMENT=256 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `Dog` (

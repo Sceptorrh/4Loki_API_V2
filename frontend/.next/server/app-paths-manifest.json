@@ -1,0 +1,9 @@
+{
+  "/dogs/page": "app/dogs/page.js",
+  "/page": "app/page.js",
+  "/customers/page": "app/customers/page.js",
+  "/dogs/new/page": "app/dogs/new/page.js",
+  "/dogs/[id]/page": "app/dogs/[id]/page.js",
+  "/dogs/[id]/edit/page": "app/dogs/[id]/edit/page.js",
+  "/appointments/page": "app/appointments/page.js"
+}

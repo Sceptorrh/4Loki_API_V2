@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const customerSchema = z.object({
   Naam: z.string().min(1, 'Name is required'),
   Contactpersoon: z.string().min(1, 'Contact person is required'),
-  Emailadres: z.string().email('Invalid email address'),
+  Emailadres: z.string().email('Invalid email address').optional(),
   Telefoonnummer: z.string().min(1, 'Phone number is required'),
   Notities: z.string().optional(),
   IsAllowContactShare: z.string().optional(),
