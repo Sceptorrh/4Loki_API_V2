@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { app } from '../src/server';
+import { dogSizeIds, appointmentStatusIds, appointmentTypeIds } from '../src/static/data';
 
 // Define interfaces for test data
 interface Customer {
@@ -33,16 +34,17 @@ interface Appointment {
   DateEnd: string;
   ActualDuration: number;
   AppointmentStatusId: string;
-  AppointmentTypeId: number;
+  AppointmentTypeId: string;
   Note?: string;
 }
 
 interface Service {
-  Id?: number;
-  Label: string;
+  Id: string;
+  Name: string;
+  StandardPrice?: number;
+  IsPriceAllowed?: boolean;
+  StandardDuration?: number;
   Order: number;
-  Is_Active: boolean;
-  OwnerId: number;
 }
 
 describe('API Endpoints', () => {
@@ -51,47 +53,6 @@ describe('API Endpoints', () => {
   let serviceIds: { [key: string]: number };
   let appointmentIds: { [key: string]: number };
   
-  // Verify static data exists before all other tests
-  beforeAll(async () => {
-    // Verify custom colors exist
-    const colorsRes = await request(app).get('/api/v1/static/custom-colors');
-    expect(colorsRes.status).toBe(200);
-    expect(Array.isArray(colorsRes.body)).toBe(true);
-    expect(colorsRes.body.length).toBeGreaterThan(0);
-
-    // Verify appointment statuses exist
-    const statusesRes = await request(app).get('/api/v1/static/appointment-statuses');
-    expect(statusesRes.status).toBe(200);
-    expect(Array.isArray(statusesRes.body)).toBe(true);
-    expect(statusesRes.body.length).toBeGreaterThan(0);
-
-    // Verify dog sizes exist
-    const sizesRes = await request(app).get('/api/v1/static/dog-sizes');
-    expect(sizesRes.status).toBe(200);
-    expect(Array.isArray(sizesRes.body)).toBe(true);
-    expect(sizesRes.body.length).toBeGreaterThan(0);
-
-    // Verify appointment types exist
-    const typesRes = await request(app).get('/api/v1/static/appointment-types');
-    expect(typesRes.status).toBe(200);
-    expect(Array.isArray(typesRes.body)).toBe(true);
-    expect(typesRes.body.length).toBeGreaterThan(0);
-
-    // Insert dog breeds
-    const breeds = [
-      { Name: 'Labrador Retriever', OwnerId: 1 },
-      { Name: 'German Shepherd', OwnerId: 1 },
-      { Name: 'Golden Retriever', OwnerId: 1 },
-      { Name: 'French Bulldog', OwnerId: 1 },
-      { Name: 'Poodle', OwnerId: 1 }
-    ];
-
-    await request(app).delete('/api/v1/dog-breeds');
-    for (const breed of breeds) {
-      await request(app).post('/api/v1/dog-breeds').send(breed);
-    }
-  });
-
   // Clean up after all tests
   afterAll(async () => {
     try {
@@ -101,7 +62,6 @@ describe('API Endpoints', () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       await request(app).delete('/api/v1/dogs');
       await request(app).delete('/api/v1/customers');
-      await request(app).delete('/api/v1/dog-breeds');
     } catch (error) {
       throw new Error(`Failed to clean up test data: ${error}`);
     }
@@ -200,7 +160,7 @@ describe('API Endpoints', () => {
       const dogSizesRes = await request(app).get('/api/v1/static/dog-sizes');
       expect(dogSizesRes.status).toBe(200);
       expect(Array.isArray(dogSizesRes.body)).toBe(true);
-      expect(dogSizesRes.body.length).toBe(4);
+      expect(dogSizesRes.body.length).toBe(dogSizeIds.length);
 
       // Create dogs for specific customers
       const dogs = [
@@ -210,7 +170,7 @@ describe('API Endpoints', () => {
           Birthday: '2020-01-01',
           Allergies: 'None',
           ServiceNote: 'Regular grooming needed',
-          DogSizeId: 'L'
+          DogSizeId: dogSizeIds[0] // Use L size from static data
         },
         {
           CustomerId: customerIds.johnDoeId,
@@ -218,14 +178,14 @@ describe('API Endpoints', () => {
           Birthday: '2021-02-15',
           Allergies: 'Chicken',
           ServiceNote: 'Sensitive skin',
-          DogSizeId: 'M'
+          DogSizeId: dogSizeIds[1] // Use M size from static data
         },
         {
           CustomerId: customerIds.janeSmithId,
           Name: 'Charlie',
           Birthday: '2019-06-30',
           ServiceNote: 'Very friendly',
-          DogSizeId: 'L'
+          DogSizeId: dogSizeIds[0] // Use L size from static data
         },
         {
           CustomerId: customerIds.bobWilsonId,
@@ -233,21 +193,21 @@ describe('API Endpoints', () => {
           Birthday: '2022-03-10',
           Allergies: 'Grain',
           ServiceNote: 'Short coat',
-          DogSizeId: 'S'
+          DogSizeId: dogSizeIds[2] // Use S size from static data
         },
         {
           CustomerId: customerIds.bobWilsonId,
           Name: 'Rocky',
           Birthday: '2021-11-20',
           ServiceNote: 'Regular trimming needed',
-          DogSizeId: 'M'
+          DogSizeId: dogSizeIds[1] // Use M size from static data
         },
         {
           CustomerId: customerIds.bobWilsonId,
           Name: 'Daisy',
           Birthday: '2020-08-15',
           ServiceNote: 'Long coat',
-          DogSizeId: 'L'
+          DogSizeId: dogSizeIds[0] // Use L size from static data
         }
       ];
 
@@ -274,67 +234,12 @@ describe('API Endpoints', () => {
       expect(Array.isArray(checkDogsRes.body)).toBe(true);
       expect(checkDogsRes.body.length).toBe(6);
 
-      // Debug: Log all dogs to verify their data
-      console.log('All dogs:', JSON.stringify(checkDogsRes.body, null, 2));
-
       // Verify dog search works using the table endpoint
-      console.log('Attempting to search for dog "Max"...');
       const dogSearchRes = await request(app).get('/api/v1/dogs/table?search=max');
-      console.log('Search response:', JSON.stringify(dogSearchRes.body, null, 2));
       expect(dogSearchRes.status).toBe(200);
       expect(Array.isArray(dogSearchRes.body)).toBe(true);
       expect(dogSearchRes.body.length).toBe(1);
       expect(dogSearchRes.body[0].Name).toBe('Max');
-    });
-  });
-
-  // Dog Breed Tests
-  describe('Dog Breed Data', () => {
-    it('POST /api/v1/dog-breeds should insert dog breeds', async () => {
-      console.log('Attempting to delete existing dog breeds...');
-      const deleteResponse = await request(app)
-        .delete('/api/v1/dog-breeds')
-        .expect(200);
-      console.log('Delete response:', deleteResponse.status, deleteResponse.body);
-
-      const breeds = [
-        { Name: 'Labrador Retriever', OwnerId: 1 },
-        { Name: 'German Shepherd', OwnerId: 1 },
-        { Name: 'Golden Retriever', OwnerId: 1 },
-        { Name: 'French Bulldog', OwnerId: 1 },
-        { Name: 'Poodle', OwnerId: 1 }
-      ];
-
-      // Insert each breed individually
-      for (const breed of breeds) {
-        console.log('Attempting to insert dog breed:', breed);
-        const response = await request(app)
-          .post('/api/v1/dog-breeds')
-          .send(breed)
-          .expect(201);
-        console.log('Insert response:', response.status, response.body);
-      }
-
-      console.log('Verifying inserted breeds...');
-      const verifyResponse = await request(app)
-        .get('/api/v1/dropdowns/dogbreeds')
-        .expect(200);
-      console.log('Verify response:', verifyResponse.status, verifyResponse.body);
-      expect(verifyResponse.body).toBeInstanceOf(Array);
-      expect(verifyResponse.body.length).toBe(5);
-
-      // Verify each breed was inserted correctly
-      for (const expectedBreed of breeds) {
-        const foundBreed = verifyResponse.body.find((b: { name: string }) => b.name === expectedBreed.Name);
-        expect(foundBreed).toBeDefined();
-      }
-    });
-
-    it('GET /api/v1/dog-breeds should return all dog breeds', async () => {
-      const res = await request(app).get('/api/v1/dog-breeds');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(5);
     });
   });
 
@@ -353,8 +258,8 @@ describe('API Endpoints', () => {
           TimeEnd: '11:00',
           DateEnd: '2024-03-20',
           ActualDuration: 60,
-          AppointmentStatusId: 'Pln',
-          AppointmentTypeId: 3,
+          AppointmentStatusId: appointmentStatusIds[4], // Use 'Pln' from static data
+          AppointmentTypeId: appointmentTypeIds[2], // Use 'Grooming' from static data
           Note: 'First appointment'
         },
         {
@@ -364,19 +269,19 @@ describe('API Endpoints', () => {
           TimeEnd: '15:30',
           DateEnd: '2024-03-21',
           ActualDuration: 90,
-          AppointmentStatusId: 'Pln',
-          AppointmentTypeId: 2,
+          AppointmentStatusId: appointmentStatusIds[4], // Use 'Pln' from static data
+          AppointmentTypeId: appointmentTypeIds[1], // Use 'Absent' from static data
           Note: 'Second appointment'
         },
         {
           CustomerId: customerIds.bobWilsonId,
           Date: '2024-03-22',
-          TimeStart: '09:30',
-          TimeEnd: '10:30',
+          TimeStart: '09:00',
+          TimeEnd: '10:00',
           DateEnd: '2024-03-22',
           ActualDuration: 60,
-          AppointmentStatusId: 'Pln',
-          AppointmentTypeId: 1,
+          AppointmentStatusId: appointmentStatusIds[4], // Use 'Pln' from static data
+          AppointmentTypeId: appointmentTypeIds[0], // Use 'DogWalking' from static data
           Note: 'Third appointment'
         }
       ];
@@ -417,7 +322,7 @@ describe('API Endpoints', () => {
     });
 
     it('GET /api/v1/appointments/status/:statusId should return appointments by status', async () => {
-      const res = await request(app).get('/api/v1/appointments/status/Pln');
+      const res = await request(app).get(`/api/v1/appointments/status/${appointmentStatusIds[4]}`); // Use 'Pln' from static data
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body.length).toBe(3);

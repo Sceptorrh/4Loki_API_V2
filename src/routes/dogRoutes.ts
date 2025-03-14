@@ -116,12 +116,10 @@ router.get('/:id', handler.getById.bind(handler));
  *         description: Invalid input
  */
 router.post('/', validate(dogSchema), async (req, res, next) => {
-  console.log('Received POST request to /dogs');
   // Sanitize input data
   if (req.body.Birthday) {
     req.body.Birthday = req.body.Birthday.trim();
   }
-  console.log('Request body:', req.body);
   try {
     await handler.create(req, res);
   } catch (error) {

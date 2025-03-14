@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
+    "dev:test": "cross-env NODE_ENV=test npm run setup-test-db && cross-env NODE_ENV=test nodemon src/index.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "setup-test-db": "node scripts/setup-test-db.js",

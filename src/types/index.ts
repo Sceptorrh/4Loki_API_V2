@@ -45,7 +45,7 @@ export interface Appointment {
   CreatedOn: Date;
   UpdatedOn: Date;
   TipAmount: number;
-  AppointmentTypeId: number;
+  AppointmentTypeId: string;
   Owner: number;
   Note: string;
   ReasonForCancellation: string;

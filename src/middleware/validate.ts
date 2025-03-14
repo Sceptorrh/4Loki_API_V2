@@ -5,11 +5,8 @@ import { AppError } from './errorHandler';
 export const validate = (schema: AnyZodObject) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      console.log('Validating request body:', JSON.stringify(req.body, null, 2));
       if (req.body.Birthday) {
-        console.log('Birthday value:', req.body.Birthday);
-        console.log('Birthday length:', req.body.Birthday.length);
-        console.log('Birthday char codes:', [...req.body.Birthday].map(c => c.charCodeAt(0)));
+        req.body.Birthday = req.body.Birthday.trim();
       }
       await schema.parseAsync(req.body);
       next();

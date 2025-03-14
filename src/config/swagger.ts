@@ -75,7 +75,7 @@ const swaggerOptions = {
             CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' },
             UpdatedOn: { type: 'string', format: 'date-time', description: 'Last update timestamp', example: '2024-03-07T10:00:00Z' },
             TipAmount: { type: 'number', format: 'decimal', description: 'Tip amount', example: 5.00 },
-            AppointmentTypeId: { type: 'integer', description: 'Type of appointment', example: 1 },
+            AppointmentTypeId: { type: 'string', description: 'Type of appointment', example: 'Grooming' },
             Owner: { type: 'integer', description: 'Owner ID', example: 1 },
             Note: { type: 'string', description: 'Appointment notes', example: 'Regular grooming session' },
             ReasonForCancellation: { type: 'string', description: 'Cancellation reason', example: null }
@@ -411,24 +411,12 @@ const swaggerOptions = {
         },
         DogBreed: {
           type: 'object',
+          required: ['Id', 'Name', 'OwnerId'],
           properties: {
-            Id: { 
-              type: 'integer', 
-              description: 'The unique identifier for the dog breed',
-              example: 1
-            },
-            Name: { 
-              type: 'string', 
-              description: 'Name of the breed',
-              example: 'Golden Retriever'
-            },
-            OwnerId: {
-              type: 'integer',
-              description: 'Owner ID',
-              example: 1
-            }
-          },
-          required: ['Name']
+            Id: { type: 'string', example: 'german_shepherd' },
+            Name: { type: 'string', example: 'German Shepherd' },
+            OwnerId: { type: 'integer', example: 11 }
+          }
         }
       },
       securitySchemes: {

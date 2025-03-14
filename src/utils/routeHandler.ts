@@ -46,9 +46,7 @@ export class RouteHandler {
 
   async create(req: Request, res: Response) {
     try {
-      console.log('RouteHandler.create called for table:', this.tableName);
       if (this.validationSchema) {
-        console.log('Validating request body:', req.body);
         await this.validationSchema.parseAsync(req.body);
       }
 
@@ -60,12 +58,9 @@ export class RouteHandler {
       const escapedFields = fields.map(field => `\`${field}\``).join(', ');
       
       const query = `INSERT INTO ${this.tableName} (${escapedFields}) VALUES (${placeholders})`;
-      console.log('Executing query:', query);
-      console.log('With values:', values);
       
       try {
         const [result] = await pool.query(query, values);
-        console.log('Insert result:', result);
         
         // Get date fields for this table from configuration
         const dateFields = getDateFields(this.tableName);
@@ -85,12 +80,11 @@ export class RouteHandler {
         
         res.status(201).json(Array.isArray(newRecord) ? newRecord[0] : newRecord);
       } catch (sqlError) {
-        console.error('SQL Error details:');
-        console.error('Error code:', (sqlError as any).code);
-        console.error('Error number:', (sqlError as any).errno);
-        console.error('SQL message:', (sqlError as any).sqlMessage);
-        console.error('SQL state:', (sqlError as any).sqlState);
-        console.error('SQL:', (sqlError as any).sql);
+        console.error('SQL Error:', {
+          code: (sqlError as any).code,
+          message: (sqlError as any).sqlMessage,
+          state: (sqlError as any).sqlState
+        });
         throw new AppError(`Database error: ${(sqlError as any).sqlMessage || 'Unknown error'}`, 500);
       }
     } catch (error) {
@@ -228,7 +222,6 @@ export class RouteHandler {
   async getCustomerTable(req: Request, res: Response) {
     try {
       const searchTerm = req.query.search as string || '';
-      console.log('Search term:', searchTerm);
 
       const searchCondition = searchTerm 
         ? `WHERE LOWER(c.Contactpersoon) LIKE LOWER(?) 
@@ -261,9 +254,6 @@ export class RouteHandler {
         ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         : [];
 
-      console.log('Query:', query);
-      console.log('Search params:', searchParams);
-
       const [rows] = await pool.query(query, searchParams);
 
       if (!Array.isArray(rows)) {
@@ -271,16 +261,12 @@ export class RouteHandler {
         throw new AppError('Invalid response from database', 500);
       }
 
-      console.log('Raw rows:', rows);
-
       // Process the results to format the dogs array
       const processedRows = rows.map((row: any) => ({
         ...row,
         Dogs: row.Dogs ? row.Dogs.split(',') : [],
         DaysSinceLastAppointment: row.DaysSinceLastAppointment || null
       }));
-
-      console.log('Processed rows:', processedRows);
 
       res.json(processedRows);
     } catch (error) {
@@ -303,20 +289,12 @@ export class RouteHandler {
     try {
       // First check if the Dog table exists and has data
       const [tableCheck] = await pool.query('SELECT COUNT(*) as count FROM Dog');
-      console.log('Dog table count:', (tableCheck as any)[0].count);
-      
+
       if (!Array.isArray(tableCheck) || (tableCheck as any)[0].count === 0) {
         return res.json([]);
       }
 
-      // Debug logging for request query
-      console.log('Request query:', req.query);
-      console.log('Request query type:', typeof req.query);
-      console.log('Request query keys:', Object.keys(req.query));
-      
       const searchTerm = req.query.search as string || '';
-      console.log('Search term:', searchTerm);
-      console.log('Search term type:', typeof searchTerm);
       
       const searchCondition = searchTerm 
         ? `WHERE LOWER(d.Name) LIKE LOWER(?) OR LOWER(c.Contactpersoon) LIKE LOWER(?) OR LOWER(db.Name) LIKE LOWER(?)`
@@ -325,9 +303,6 @@ export class RouteHandler {
       const searchParams = searchTerm 
         ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
         : [];
-
-      console.log('Search condition:', searchCondition);
-      console.log('Search params:', searchParams);
 
       const query = `
         SELECT 
@@ -340,18 +315,14 @@ export class RouteHandler {
         LEFT JOIN Customer c ON d.CustomerId = c.Id
         LEFT JOIN Statics_DogSize ds ON d.DogSizeId = ds.Id
         LEFT JOIN DogDogbreed ddb ON d.Id = ddb.DogId
-        LEFT JOIN Dogbreed db ON ddb.DogBreedId = db.Id
+        LEFT JOIN Statics_Dogbreed db ON ddb.DogBreedId = db.Id
         ${searchCondition}
         GROUP BY d.Id, d.Name, c.Contactpersoon, ds.Label
         ORDER BY d.Name
         LIMIT 1000
       `;
 
-      console.log('Executing query:', query);
-      console.log('With params:', searchParams);
-
       const [rows] = await pool.query(query, searchParams);
-      console.log('Raw query results:', rows);
 
       if (!Array.isArray(rows)) {
         console.log('Query did not return an array');
@@ -364,7 +335,6 @@ export class RouteHandler {
         Breeds: row.Breeds ? row.Breeds.split(',') : []
       }));
 
-      console.log('Processed rows:', processedRows);
       res.json(processedRows);
     } catch (error) {
       console.error('Error in getDogTable:', error);

@@ -22,8 +22,7 @@ export const dogSchema = z.object({
   Birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Birthday must be in YYYY-MM-DD format'),
   Allergies: z.string().optional(),
   ServiceNote: z.string().optional(),
-  DogSizeId: z.string().min(1, 'Dog size is required'),
-  OwnerId: z.number().int().positive().optional()
+  DogSizeId: z.string().min(1, 'Dog size is required')
 });
 
 export const appointmentSchema = z.object({
@@ -34,10 +33,8 @@ export const appointmentSchema = z.object({
   ActualDuration: z.number().int().min(0),
   CustomerId: z.number().int().positive(),
   AppointmentStatusId: z.string().min(1, 'Appointment status is required'),
-  TipAmount: z.number().min(0).optional(),
-  AppointmentTypeId: z.number().int().positive(),
-  Note: z.string().optional(),
-  ReasonForCancellation: z.string().optional(),
+  AppointmentTypeId: z.string().min(1),
+  Note: z.string().optional()
 });
 
 export const invoiceSchema = z.object({
@@ -46,46 +43,49 @@ export const invoiceSchema = z.object({
   PaymentTypeId: z.string().min(1, 'Payment type is required'),
   Factuurnummer: z.string().min(1, 'Invoice number is required'),
   Referentie: z.string().optional(),
-  Factuurdatum: z.string().datetime(),
-  Vervaldatum: z.string().datetime(),
+  Factuurdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  Vervaldatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   CustomCustomerId: z.number().int().positive().optional(),
-  IsPaid: z.boolean().optional(),
+  IsExported: z.boolean().optional()
 });
 
 export const serviceSchema = z.object({
-  Label: z.string().min(1, 'Label is required'),
-  Order: z.number().int().min(0),
-  Is_Active: z.boolean(),
-  OwnerId: z.number().int().min(1)
+  Id: z.string().min(1, 'ID is required'),
+  Name: z.string().min(1, 'Name is required'),
+  StandardPrice: z.number().optional(),
+  IsPriceAllowed: z.boolean().optional(),
+  StandardDuration: z.number().int().optional(),
+  Order: z.number().int().min(0)
 });
 
 export const additionalHourSchema = z.object({
   HourTypeId: z.string().min(1, 'Hour type is required'),
   Duration: z.number().int().min(1),
-  Date: z.string().datetime(),
-  DateEnd: z.string().datetime(),
+  Date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  DateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   StartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
   EndTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
   IsShowOnPlanning: z.boolean(),
   Description: z.string().optional(),
   InvoiceId: z.number().int().positive().optional(),
-  IsSkippedExport: z.boolean().optional(),
+  IsExported: z.boolean().optional()
 });
 
 export const exportLogSchema = z.object({
   IssuedOn: z.string().datetime(),
-  ForMonthDate: z.string().datetime(),
+  ForMonthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   IsSuccesfull: z.boolean(),
   IsDummy: z.boolean(),
 });
 
 export const travelTimeSchema = z.object({
-  Type: z.string().min(1, 'Type is required'),
-  DateTime: z.string().datetime(),
-  Value: z.number().int().min(0),
+  AppointmentId: z.number().int().positive(),
+  TravelTimeTypeId: z.number().int().positive(),
+  Duration: z.number().int().min(0)
 });
 
 export const dogBreedSchema = z.object({
+  Id: z.string().min(1, 'ID is required'),
   Name: z.string().min(1, 'Name is required'),
-  OwnerId: z.number().int().positive().optional()
+  Order: z.number().int().min(0)
 }); 

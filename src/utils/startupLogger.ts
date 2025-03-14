@@ -11,6 +11,7 @@ export async function logStartupStatus() {
     console.log(`🚀 API starting in ${process.env.NODE_ENV || 'development'} mode`);
     console.log(`📡 Server running on port ${process.env.PORT || 3000}`);
     console.log(`🔌 Database host: ${process.env.DB_HOST || 'localhost'}`);
+    console.log(`🔌 Database port: ${process.env.DB_PORT || '3306'}`);
     console.log(`📊 Database name: ${process.env.DB_NAME || '4Loki_db'}`);
 
     return true;

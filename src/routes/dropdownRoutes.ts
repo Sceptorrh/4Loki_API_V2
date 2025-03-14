@@ -28,20 +28,16 @@ const router = Router();
  *                 type: object
  *                 properties:
  *                   id:
- *                     type: integer
+ *                     type: string
  *                   name:
  *                     type: string
  */
 router.get('/dogbreeds', async (req, res, next) => {
   try {
-    const [rows] = await pool.query('SELECT Id as id, Name as name FROM Dogbreed ORDER BY name');
-    if (!Array.isArray(rows)) {
-      return res.json([]); // Return empty array for invalid response
-    }
+    const [rows] = await pool.query('SELECT Id as id, Name as name FROM Statics_Dogbreed ORDER BY name');
     res.json(rows);
   } catch (error) {
-    console.error('Error fetching dog breeds:', error);
-    next(new AppError('Error fetching dog breeds', 500));
+    next(error);
   }
 });
 
@@ -120,7 +116,7 @@ router.get('/customers', async (req, res) => {
  *                 type: object
  *                 properties:
  *                   id:
- *                     type: integer
+ *                     type: string
  *                   label:
  *                     type: string
  */
@@ -150,7 +146,7 @@ router.get('/paymenttypes', async (req, res) => {
  *                 type: object
  *                 properties:
  *                   id:
- *                     type: integer
+ *                     type: string
  *                   label:
  *                     type: string
  *                   amount:
@@ -165,38 +161,6 @@ router.get('/btwpercentages', async (req, res, next) => {
     res.json(rows);
   } catch (error) {
     next(new AppError('Error fetching BTW percentages', 500));
-  }
-});
-
-/**
- * @swagger
- * /dropdowns/invoicecategories:
- *   get:
- *     summary: Get invoice categories for dropdown
- *     tags: [Dropdowns]
- *     responses:
- *       200:
- *         description: List of invoice categories
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   label:
- *                     type: string
- *                   knab:
- *                     type: string
- */
-router.get('/invoicecategories', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT Id as id, Label as label, Knab as knab FROM Statics_InvoiceCategory ORDER BY label');
-    res.json(rows);
-  } catch (error) {
-    throw new AppError('Error fetching invoice categories', 500);
   }
 });
 
@@ -217,7 +181,7 @@ router.get('/invoicecategories', async (req, res) => {
  *                 type: object
  *                 properties:
  *                   id:
- *                     type: integer
+ *                     type: string
  *                   label:
  *                     type: string
  *                   defaulttext:

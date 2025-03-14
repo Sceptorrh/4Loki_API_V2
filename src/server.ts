@@ -15,8 +15,6 @@ import { logger } from './utils/logger';
 import appointmentRoutes from './routes/appointmentRoutes';
 import customerRoutes from './routes/customerRoutes';
 import dogRoutes from './routes/dogRoutes';
-import serviceRoutes from './routes/serviceRoutes';
-import dogBreedRoutes from './routes/dogBreedRoutes';
 import dropdownRoutes from './routes/dropdownRoutes';
 import staticRoutes from './routes/staticRoutes';
 import { NextFunction, Request, Response } from 'express';

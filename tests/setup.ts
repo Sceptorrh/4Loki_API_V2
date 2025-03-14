@@ -1,6 +1,7 @@
 import { config } from 'dotenv';
 import pool from '../src/config/database';
 import { startServer, closeServer } from '../src/server';
+import { logStartupStatus } from '../src/utils/startupLogger';
 
 // Load environment variables from .env.test if it exists
 config({ path: '.env.test' });
@@ -12,6 +13,9 @@ jest.setTimeout(5000);
 beforeAll(async () => {
   console.log('Setting up test environment...');
   try {
+    // Log detailed connection info
+    await logStartupStatus();
+    
     // Test database connection
     const connection = await pool.getConnection();
     console.log('Database connection successful');

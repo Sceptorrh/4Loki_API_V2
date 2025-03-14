@@ -1,83 +1,38 @@
-import {
-    AppointmentStatus,
-    AppointmentType,
-    BTWPercentage,
-    CustomColor,
-    DogSize,
-    HourType,
-    ImportExportType,
-    PaymentType,
-    TravelTimeType,
-    Service
-} from './types';
+// Only keeping IDs for reference of what exists in the database
+export const appointmentStatusIds: string[] = ['Can', 'Exp', 'Inv', 'NotExp', 'Pln'];
 
-export const appointmentStatuses: AppointmentStatus[] = [
-    { Id: 'Can', Label: 'Geannuleerd', Order: 3, Is_Active: true, Color: 'Cancelled' },
-    { Id: 'Exp', Label: 'Geexporteerd', Order: 7, Is_Active: true, Color: 'Exported' },
-    { Id: 'Inv', Label: 'Gefactureerd', Order: 5, Is_Active: true, Color: 'Invoiced' },
-    { Id: 'NotExp', Label: 'NotExported', Order: 8, Is_Active: true, Color: 'NotExported' },
-    { Id: 'Pln', Label: 'Gepland', Order: 2, Is_Active: true, Color: 'Planned' }
-];
+export const appointmentTypeIds: string[] = ['DogWalking', 'Absent', 'Grooming'];
 
-export const appointmentTypes: AppointmentType[] = [
-    { Id: 1, Label: 'DogWalking', Order: 2, Is_Active: true, LabelDutch: 'Uitlaatservice' },
-    { Id: 2, Label: 'Absent', Order: 3, Is_Active: true, LabelDutch: 'Afwezigheid' },
-    { Id: 3, Label: 'Grooming', Order: 1, Is_Active: true, LabelDutch: 'Trimmen' }
-];
+export const btwPercentageIds: string[] = ['21', '0'];
 
-export const btwPercentages: BTWPercentage[] = [
-    { Id: 1, Label: '21%', Amount: 21 },
-    { Id: 2, Label: '0%', Amount: 0 }
-];
+export const customColorIds: string[] = ['Cancelled', 'Exported', 'Invoiced', 'NotExported', 'OtherHours', 'Planned'];
 
-export const customColors: CustomColor[] = [
-    { Color: 'Cancelled', Order: 4, Hex: '#a80808', Legend: 'Geannuleerd' },
-    { Color: 'Exported', Order: 3, Hex: '#74ed86', Legend: 'Geexporteerd' },
-    { Color: 'Invoiced', Order: 2, Hex: '#4973de', Legend: 'Gefactureerd' },
-    { Color: 'NotExported', Order: 6, Hex: '#b5cc8d', Legend: 'Niet geexporteerd' },
-    { Color: 'OtherHours', Order: 5, Hex: '#57c2bb', Legend: 'Andere uren' },
-    { Color: 'Planned', Order: 1, Hex: '#a9abb0', Legend: 'Geplanned' }
-];
+export const dogSizeIds: string[] = ['L', 'M', 'S', 'X'];
 
-export const dogSizes: DogSize[] = [
-    { Id: 'L', Label: 'Large', Order: 3, Is_Active: true },
-    { Id: 'M', Label: 'Middle', Order: 2, Is_Active: true },
-    { Id: 'S', Label: 'Small', Order: 1, Is_Active: true },
-    { Id: 'X', Label: 'ExtraLarge', Order: 4, Is_Active: true }
-];
+export const hourTypeIds: string[] = ['Adm', 'App', 'Cur', 'Fac', 'Ink', 'Reis', 'sch', 'Stage', 'Vak', 'Zk'];
 
-export const hourTypes: HourType[] = [
-    { Id: 'Adm', Label: 'Administratie', Order: 1, Is_Active: true, DefaultText: 'Administratie', IsExport: true },
-    { Id: 'App', Label: 'Afspraak', Order: 10, Is_Active: true, DefaultText: null, IsExport: false },
-    { Id: 'Cur', Label: 'Cursus', Order: 3, Is_Active: true, DefaultText: 'Cursus gevolgd', IsExport: true },
-    { Id: 'Fac', Label: 'Factuur', Order: 5, Is_Active: true, DefaultText: null, IsExport: true },
-    { Id: 'Ink', Label: 'Inkopen', Order: 2, Is_Active: true, DefaultText: 'Inkopen gedaan', IsExport: true },
-    { Id: 'Reis', Label: 'Reistijd', Order: 6, Is_Active: true, DefaultText: 'Reistijd', IsExport: true },
-    { Id: 'sch', Label: 'Schoonmaken', Order: 4, Is_Active: true, DefaultText: 'Trimsalon schoongemaakt', IsExport: true },
-    { Id: 'Stage', Label: 'Stage trimsalon', Order: 7, Is_Active: true, DefaultText: 'Stage trimsalon', IsExport: true },
-    { Id: 'Vak', Label: 'Vakantie', Order: 8, Is_Active: true, DefaultText: 'Vakantie', IsExport: false },
-    { Id: 'Zk', Label: 'Ziek', Order: 9, Is_Active: true, DefaultText: 'Ziek', IsExport: false }
-];
+export const importExportTypeIds: string[] = ['Hour', 'Invoice', 'Purchase', 'Relation'];
 
-export const importExportTypes: ImportExportType[] = [
-    { Id: 'Hour', Label: 'Hour' },
-    { Id: 'Invoice', Label: 'Invoice' },
-    { Id: 'Purchase', Label: 'Purchase' },
-    { Id: 'Relation', Label: 'Relation' }
-];
+export const paymentTypeIds: string[] = ['BT', 'Csh'];
 
-export const paymentTypes: PaymentType[] = [
-    { Id: 'BT', Label: 'Bank', Order: 3, Is_Active: true, LabelDutch: null },
-    { Id: 'Csh', Label: 'Cash', Order: 2, Is_Active: true, LabelDutch: null }
-];
+export const travelTimeTypeIds: string[] = ['HomeWork', 'WorkHome'];
 
-export const travelTimeTypes: TravelTimeType[] = [
-    { Id: 1, Label: 'HomeWork', Order: 1, Is_Active: true },
-    { Id: 2, Label: 'WorkHome', Order: 2, Is_Active: true }
-];
+export const serviceIds: string[] = ['trimmen', 'nagels_knippen', 'puppy_beurt'];
 
-export const services: Service[] = [
-    { Id: 'trimmen', Name: 'Trimmen', StandardPrice: 60.0, IsPriceAllowed: false, StandardDuration: 120, OwnerId: 11 },
-    { Id: 'nagels_knippen', Name: 'Nagels knippen', StandardPrice: 15.0, IsPriceAllowed: false, StandardDuration: 30, OwnerId: 11 },
-    { Id: 'puppy_beurt', Name: 'Puppy beurt', StandardPrice: 0.0, IsPriceAllowed: true, StandardDuration: 0, OwnerId: 11 }
+export const dogBreedIds: string[] = [
+    'labrador',
+    'german_shepherd',
+    'golden_retriever',
+    'french_bulldog',
+    'bulldog',
+    'poodle',
+    'beagle',
+    'rottweiler',
+    'dachshund',
+    'yorkshire_terrier',
+    'boxer',
+    'chihuahua',
+    'husky',
+    'corgi',
+    'great_dane'
 ]; 
