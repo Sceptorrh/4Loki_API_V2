@@ -1,10 +1,6 @@
 // Only keeping IDs for reference of what exists in the database
 export const appointmentStatusIds: string[] = ['Can', 'Exp', 'Inv', 'NotExp', 'Pln'];
 
-export const appointmentTypeIds: string[] = ['DogWalking', 'Absent', 'Grooming'];
-
-export const btwPercentageIds: string[] = ['21', '0'];
-
 export const customColorIds: string[] = ['Cancelled', 'Exported', 'Invoiced', 'NotExported', 'OtherHours', 'Planned'];
 
 export const dogSizeIds: string[] = ['L', 'M', 'S', 'X'];
@@ -13,9 +9,7 @@ export const hourTypeIds: string[] = ['Adm', 'App', 'Cur', 'Fac', 'Ink', 'Reis',
 
 export const importExportTypeIds: string[] = ['Hour', 'Invoice', 'Purchase', 'Relation'];
 
-export const paymentTypeIds: string[] = ['BT', 'Csh'];
-
-export const travelTimeTypeIds: string[] = ['HomeWork', 'WorkHome'];
+// export const travelTimeTypeIds: string[] = ['HomeWork', 'WorkHome'];
 
 export const serviceIds: string[] = ['trimmen', 'nagels_knippen', 'puppy_beurt'];
 

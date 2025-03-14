@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { app } from '../src/server';
-import { dogSizeIds, dogBreedIds, appointmentStatusIds, appointmentTypeIds } from '../src/static/data';
+import { dogSizeIds, dogBreedIds, appointmentStatusIds } from '../src/static/data';
 
 // Define interfaces for test data
 interface Customer {
@@ -33,7 +33,6 @@ interface Appointment {
   ActualDuration: number;
   CustomerId: number;
   AppointmentStatusId: string;
-  AppointmentTypeId: string;
   Note?: string;
 }
 
@@ -144,7 +143,6 @@ describe('Appointment API Endpoints', () => {
         ActualDuration: 90,
         CustomerId: customerId,
         AppointmentStatusId: appointmentStatusIds[0], // SCHEDULED
-        AppointmentTypeId: appointmentTypeIds[0], // Regular
         Note: 'Test appointment'
       };
 
@@ -192,7 +190,6 @@ describe('Appointment API Endpoints', () => {
         ActualDuration: 90,
         CustomerId: customerId,
         AppointmentStatusId: appointmentStatusIds[1], // CONFIRMED
-        AppointmentTypeId: appointmentTypeIds[0],
         Note: 'Updated test appointment'
       };
 
@@ -235,7 +232,6 @@ describe('Appointment API Endpoints', () => {
         ActualDuration: 60,
         CustomerId: customerId,
         AppointmentStatusId: appointmentStatusIds[0], // Planned
-        AppointmentTypeId: appointmentTypeIds[0], // DogWalking
         Note: 'Test appointment for customer'
       };
 
@@ -271,7 +267,6 @@ describe('Appointment API Endpoints', () => {
           ActualDuration: 120,
           CustomerId: customerId,
           AppointmentStatusId: appointmentStatusIds[0], // SCHEDULED
-          AppointmentTypeId: appointmentTypeIds[0], // Regular
           Note: 'Complete test appointment'
         },
         appointmentDogs: [
@@ -366,7 +361,6 @@ describe('Appointment API Endpoints', () => {
           ActualDuration: 120,
           CustomerId: customerId,
           AppointmentStatusId: appointmentStatusIds[1], // CONFIRMED
-          AppointmentTypeId: appointmentTypeIds[0], // Regular
           Note: 'Updated complete test appointment'
         },
         appointmentDogs: [

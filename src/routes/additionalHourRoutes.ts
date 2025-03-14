@@ -160,29 +160,4 @@ router.delete('/:id', handler.delete.bind(handler));
  */
 router.get('/date-range', handler.getByDateRange.bind(handler));
 
-/**
- * @swagger
- * /additional-hours/invoice/{invoiceId}:
- *   get:
- *     summary: Get additional hours by invoice ID
- *     tags: [Additional Hours]
- *     parameters:
- *       - in: path
- *         name: invoiceId
- *         required: true
- *         schema:
- *           type: integer
- *         description: Invoice ID
- *     responses:
- *       200:
- *         description: List of additional hours for the invoice
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/AdditionalHour'
- */
-router.get('/invoice/:invoiceId', handler.getByAppointmentId.bind(handler));
-
 export default router; 

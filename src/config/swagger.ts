@@ -37,10 +37,6 @@ const swaggerOptions = {
         description: 'Appointment management endpoints'
       },
       {
-        name: 'Invoices',
-        description: 'Invoice management endpoints'
-      },
-      {
         name: 'Services',
         description: 'Service management endpoints'
       }
@@ -54,13 +50,8 @@ const swaggerOptions = {
             HourTypeId: { type: 'string', maxLength: 20, description: 'The type of additional hour', example: 'OVERTIME' },
             Duration: { type: 'integer', description: 'Duration in minutes', example: 60 },
             Date: { type: 'string', format: 'date', description: 'Start date of the additional hour', example: '2024-03-07' },
-            DateEnd: { type: 'string', format: 'date', description: 'End date of the additional hour', example: '2024-03-07' },
-            StartTime: { type: 'string', format: 'time', description: 'Start time', example: '09:00' },
-            EndTime: { type: 'string', format: 'time', description: 'End time', example: '10:00' },
-            IsShowOnPlanning: { type: 'boolean', description: 'Whether to show on planning', example: true },
             Description: { type: 'string', description: 'Description of the additional hour', example: 'Extra grooming time' },
             IsExported: { type: 'boolean', description: 'Whether the record has been exported', example: false },
-            InvoiceId: { type: 'integer', description: 'Associated invoice ID', example: 101 },
             CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' },
             UpdatedOn: { type: 'string', format: 'date-time', description: 'Last update timestamp', example: '2024-03-07T10:00:00Z' }
           },
@@ -77,12 +68,13 @@ const swaggerOptions = {
             ActualDuration: { type: 'integer', description: 'Actual duration in minutes', example: 90 },
             CustomerId: { type: 'integer', description: 'Customer ID', example: 42 },
             AppointmentStatusId: { type: 'string', description: 'Status ID', example: 'Pln' },
-            AppointmentTypeId: { type: 'string', description: 'Type of appointment', example: 'Grooming' },
             Note: { type: 'string', description: 'Appointment notes', example: 'Regular grooming session' },
+            SerialNumber: { type: 'integer', description: 'Serial number', example: 20240001 },
+            IsPaidInCash: { type: 'boolean', description: 'Whether payment was made in cash', example: false },
             CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' },
             UpdatedOn: { type: 'string', format: 'date-time', description: 'Last update timestamp', example: '2024-03-07T10:00:00Z' }
           },
-          required: ['Date', 'CustomerId', 'AppointmentStatusId', 'AppointmentTypeId']
+          required: ['Date', 'CustomerId', 'AppointmentStatusId']
         },
         AppointmentDog: {
           type: 'object',
@@ -210,61 +202,6 @@ const swaggerOptions = {
             }
           }
         },
-        Invoice: {
-          type: 'object',
-          properties: {
-            Id: { type: 'integer', description: 'The unique identifier', example: 1001 },
-            AppointmentId: { type: 'integer', description: 'Appointment ID', example: 1 },
-            SerialNumber: { type: 'integer', description: 'Serial number', example: 20240001 },
-            IsExported: { type: 'boolean', description: 'Export status', example: false },
-            PaymentTypeId: { type: 'string', description: 'Payment type', example: 'BANK' },
-            Factuurnummer: { type: 'string', description: 'Invoice number', example: 'INV-2024-001' },
-            Referentie: { type: 'string', description: 'Reference', example: 'REF-2024-001' },
-            Factuurdatum: { type: 'string', format: 'date', description: 'Invoice date', example: '2024-03-07' },
-            Vervaldatum: { type: 'string', format: 'date', description: 'Due date', example: '2024-04-06' },
-            CustomCustomerId: { type: 'integer', description: 'Custom customer ID', example: 42 },
-            CreatedOn: { 
-              type: 'string', 
-              format: 'date-time', 
-              description: 'Creation timestamp', 
-              example: '2024-03-07T10:00:00Z' 
-            },
-            UpdatedOn: { 
-              type: 'string', 
-              format: 'date-time', 
-              description: 'Last update timestamp', 
-              example: '2024-03-07T10:00:00Z' 
-            },
-            IsIncludeInExport: { type: 'boolean', description: 'Include in export flag', example: true },
-            IsPaid: { type: 'boolean', description: 'Payment status', example: false }
-          }
-        },
-        InvoiceLine: {
-          type: 'object',
-          properties: {
-            Id: { type: 'integer', description: 'The unique identifier', example: 1 },
-            InvoiceId: { type: 'integer', description: 'Invoice ID', example: 1001 },
-            Omschrijving: { type: 'string', description: 'Description', example: 'Dog grooming service - Medium size' },
-            Aantal: { type: 'integer', description: 'Quantity', example: 1 },
-            BTWpercentageId: { type: 'integer', description: 'VAT percentage ID', example: 1 },
-            Bedragexcl_btw: { type: 'number', format: 'decimal', description: 'Amount excluding VAT', example: 50.00 },
-            Categorie: { type: 'string', description: 'Category', example: 'GROOMING' },
-            CreatedOn: { 
-              type: 'string', 
-              format: 'date-time', 
-              description: 'Creation timestamp', 
-              example: '2024-03-07T10:00:00Z' 
-            },
-            UpdatedOn: { 
-              type: 'string', 
-              format: 'date-time', 
-              description: 'Last update timestamp', 
-              example: '2024-03-07T10:00:00Z' 
-            },
-            InvoiceCategoryId: { type: 'integer', description: 'Invoice category ID', example: 1 }
-          },
-          required: ['InvoiceId']
-        },
         Service: {
           type: 'object',
           properties: {
@@ -303,23 +240,11 @@ const swaggerOptions = {
           type: 'object',
           properties: {
             Id: { type: 'integer', description: 'The unique identifier', example: 1 },
-            AppointmentId: { type: 'integer', description: 'Appointment ID', example: 1 },
-            TravelTimeTypeId: { type: 'string', description: 'Travel time type ID', example: 'HomeWork' },
+            IsHomeToWork: { type: 'boolean', description: 'Whether travel is from home to work', example: true },
             Duration: { type: 'integer', description: 'Duration in minutes', example: 30 },
-            CreatedOn: { 
-              type: 'string', 
-              format: 'date-time', 
-              description: 'Creation timestamp', 
-              example: '2024-03-07T10:00:00Z' 
-            },
-            UpdatedOn: { 
-              type: 'string', 
-              format: 'date-time', 
-              description: 'Last update timestamp', 
-              example: '2024-03-07T10:00:00Z' 
-            }
+            CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' }
           },
-          required: ['AppointmentId', 'TravelTimeTypeId', 'Duration']
+          required: ['IsHomeToWork', 'Duration']
         },
         // Static tables
         Statics_AppointmentStatus: {
@@ -329,26 +254,6 @@ const swaggerOptions = {
             Label: { type: 'string', description: 'Status label', example: 'Gepland' },
             Order: { type: 'integer', description: 'Display order', example: 2 },
             Color: { type: 'string', description: 'Status color', example: 'Planned' }
-          },
-          required: ['Id']
-        },
-        Statics_AppointmentType: {
-          type: 'object',
-          properties: {
-            Id: { type: 'string', description: 'Type identifier', example: 'Grooming' },
-            Label: { type: 'string', description: 'Type label', example: 'Grooming' },
-            Order: { type: 'integer', description: 'Display order', example: 1 },
-            LabelDutch: { type: 'string', description: 'Dutch label', example: 'Trimmen' }
-          },
-          required: ['Id']
-        },
-        Statics_BTWpercentage: {
-          type: 'object',
-          properties: {
-            Id: { type: 'string', description: 'VAT identifier', example: '21' },
-            Label: { type: 'string', description: 'VAT label', example: '21%' },
-            Amount: { type: 'integer', description: 'VAT percentage', example: 21 },
-            Order: { type: 'integer', description: 'Display order', example: 1 }
           },
           required: ['Id']
         },
@@ -400,16 +305,6 @@ const swaggerOptions = {
             Is_Active: { type: 'boolean', description: 'Active status', example: true },
             Knab: { type: 'string', description: 'Knab reference', example: 'SERV' }
           }
-        },
-        Statics_PaymentType: {
-          type: 'object',
-          properties: {
-            Id: { type: 'string', description: 'Payment type identifier', example: 'BT' },
-            Label: { type: 'string', description: 'Type label', example: 'Bank' },
-            Order: { type: 'integer', description: 'Display order', example: 3 },
-            LabelDutch: { type: 'string', description: 'Dutch label', example: null }
-          },
-          required: ['Id']
         },
         Statics_TravelTimeType: {
           type: 'object',
@@ -542,10 +437,11 @@ const swaggerOptions = {
                 ActualDuration: { type: 'integer', description: 'Actual duration in minutes', example: 90 },
                 CustomerId: { type: 'integer', description: 'Customer ID', example: 42 },
                 AppointmentStatusId: { type: 'string', description: 'Status ID', example: 'Pln' },
-                AppointmentTypeId: { type: 'string', description: 'Type of appointment', example: 'Grooming' },
-                Note: { type: 'string', description: 'Appointment notes', example: 'Regular grooming session' }
+                Note: { type: 'string', description: 'Appointment notes', example: 'Regular grooming session' },
+                SerialNumber: { type: 'integer', description: 'Serial number', example: 20240001 },
+                IsPaidInCash: { type: 'boolean', description: 'Whether payment was made in cash', example: false }
               },
-              required: ['Date', 'CustomerId', 'AppointmentStatusId', 'AppointmentTypeId']
+              required: ['Date', 'CustomerId', 'AppointmentStatusId']
             },
             appointmentDogs: {
               type: 'array',
@@ -569,7 +465,7 @@ const swaggerOptions = {
                       properties: {
                         ServiceId: {
                           type: 'string',
-                          description: 'Service ID from Statics_Service table',
+                          description: 'Service ID',
                           example: 'trimmen'
                         },
                         Price: {
@@ -579,7 +475,7 @@ const swaggerOptions = {
                           example: 60.00
                         }
                       },
-                      required: ['ServiceId', 'Price']
+                      required: ['ServiceId']
                     }
                   }
                 },
@@ -596,13 +492,8 @@ const swaggerOptions = {
             HourTypeId: { type: 'string', maxLength: 20, description: 'The type of additional hour', example: 'Adm' },
             Duration: { type: 'integer', description: 'Duration in minutes', example: 60 },
             Date: { type: 'string', format: 'date', description: 'Start date of the additional hour', example: '2024-03-07' },
-            DateEnd: { type: 'string', format: 'date', description: 'End date of the additional hour', example: '2024-03-07' },
-            StartTime: { type: 'string', format: 'time', description: 'Start time', example: '09:00' },
-            EndTime: { type: 'string', format: 'time', description: 'End time', example: '10:00' },
-            IsShowOnPlanning: { type: 'boolean', description: 'Whether to show on planning', example: true },
             Description: { type: 'string', description: 'Description of the additional hour', example: 'Extra grooming time' },
-            IsExported: { type: 'boolean', description: 'Whether the record has been exported', example: false },
-            InvoiceId: { type: 'integer', description: 'Associated invoice ID', example: 101 }
+            IsExported: { type: 'boolean', description: 'Whether the record has been exported', example: false }
           },
           required: ['HourTypeId', 'Duration', 'Date']
         },
@@ -616,10 +507,11 @@ const swaggerOptions = {
             ActualDuration: { type: 'integer', description: 'Actual duration in minutes', example: 90 },
             CustomerId: { type: 'integer', description: 'Customer ID', example: 42 },
             AppointmentStatusId: { type: 'string', description: 'Status ID', example: 'Pln' },
-            AppointmentTypeId: { type: 'string', description: 'Type of appointment', example: 'Grooming' },
-            Note: { type: 'string', description: 'Appointment notes', example: 'Regular grooming session' }
+            Note: { type: 'string', description: 'Appointment notes', example: 'Regular grooming session' },
+            SerialNumber: { type: 'integer', description: 'Serial number', example: 20240001 },
+            IsPaidInCash: { type: 'boolean', description: 'Whether payment was made in cash', example: false }
           },
-          required: ['Date', 'CustomerId', 'AppointmentStatusId', 'AppointmentTypeId']
+          required: ['Date', 'CustomerId', 'AppointmentStatusId']
         },
         AppointmentDogInput: {
           type: 'object',
@@ -691,35 +583,6 @@ const swaggerOptions = {
           },
           required: ['IssuedOn', 'ForMonthDate']
         },
-        InvoiceInput: {
-          type: 'object',
-          properties: {
-            AppointmentId: { type: 'integer', description: 'Appointment ID', example: 1 },
-            SerialNumber: { type: 'integer', description: 'Serial number', example: 20240001 },
-            IsExported: { type: 'boolean', description: 'Export status', example: false },
-            PaymentTypeId: { type: 'string', description: 'Payment type', example: 'BT' },
-            Factuurnummer: { type: 'string', description: 'Invoice number', example: 'INV-2024-001' },
-            Referentie: { type: 'string', description: 'Reference', example: 'REF-2024-001' },
-            Factuurdatum: { type: 'string', format: 'date', description: 'Invoice date', example: '2024-03-07' },
-            Vervaldatum: { type: 'string', format: 'date', description: 'Due date', example: '2024-04-06' },
-            CustomCustomerId: { type: 'integer', description: 'Custom customer ID', example: 42 },
-            IsIncludeInExport: { type: 'boolean', description: 'Include in export flag', example: true },
-            IsPaid: { type: 'boolean', description: 'Payment status', example: false }
-          },
-          required: ['AppointmentId', 'PaymentTypeId', 'Factuurnummer', 'Factuurdatum']
-        },
-        InvoiceLineInput: {
-          type: 'object',
-          properties: {
-            InvoiceId: { type: 'integer', description: 'Invoice ID', example: 1001 },
-            Omschrijving: { type: 'string', description: 'Description', example: 'Dog grooming service - Medium size' },
-            Aantal: { type: 'integer', description: 'Quantity', example: 1 },
-            BTWpercentageId: { type: 'string', description: 'VAT percentage ID', example: '21' },
-            Bedragexcl_btw: { type: 'number', format: 'decimal', description: 'Amount excluding VAT', example: 50.00 },
-            Categorie: { type: 'string', description: 'Category', example: 'GROOMING' }
-          },
-          required: ['InvoiceId', 'Omschrijving', 'Aantal', 'BTWpercentageId', 'Bedragexcl_btw']
-        },
         ServiceAppointmentDogInput: {
           type: 'object',
           properties: {
@@ -732,11 +595,10 @@ const swaggerOptions = {
         TravelTimeInput: {
           type: 'object',
           properties: {
-            AppointmentId: { type: 'integer', description: 'Appointment ID', example: 1 },
-            TravelTimeTypeId: { type: 'string', description: 'Travel time type ID', example: 'HomeWork' },
+            IsHomeToWork: { type: 'boolean', description: 'Whether travel is from home to work', example: true },
             Duration: { type: 'integer', description: 'Duration in minutes', example: 30 }
           },
-          required: ['AppointmentId', 'TravelTimeTypeId', 'Duration']
+          required: ['IsHomeToWork', 'Duration']
         }
       },
       securitySchemes: {

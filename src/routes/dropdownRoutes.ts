@@ -101,71 +101,6 @@ router.get('/customers', async (req, res) => {
 
 /**
  * @swagger
- * /dropdowns/paymenttypes:
- *   get:
- *     summary: Get payment types for dropdown
- *     tags: [Dropdowns]
- *     responses:
- *       200:
- *         description: List of payment types
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   label:
- *                     type: string
- */
-router.get('/paymenttypes', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT Id as id, Label as label FROM Statics_PaymentType ORDER BY label');
-    res.json(rows);
-  } catch (error) {
-    throw new AppError('Error fetching payment types', 500);
-  }
-});
-
-/**
- * @swagger
- * /dropdowns/btwpercentages:
- *   get:
- *     summary: Get BTW percentages for dropdown
- *     tags: [Dropdowns]
- *     responses:
- *       200:
- *         description: List of BTW percentages
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   label:
- *                     type: string
- *                   amount:
- *                     type: number
- */
-router.get('/btwpercentages', async (req, res, next) => {
-  try {
-    const [rows] = await pool.query('SELECT Id as id, Label as label, Amount as amount FROM Statics_BTWpercentage ORDER BY amount');
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return res.json([]); // Return empty array instead of error for no results
-    }
-    res.json(rows);
-  } catch (error) {
-    next(new AppError('Error fetching BTW percentages', 500));
-  }
-});
-
-/**
- * @swagger
  * /dropdowns/hourtypes:
  *   get:
  *     summary: Get hour types for dropdown
@@ -200,36 +135,6 @@ router.get('/hourtypes', async (req, res) => {
 
 /**
  * @swagger
- * /dropdowns/custominvoices:
- *   get:
- *     summary: Get custom invoices for dropdown
- *     tags: [Dropdowns]
- *     responses:
- *       200:
- *         description: List of custom invoices
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   referentie:
- *                     type: string
- */
-router.get('/custominvoices', async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT Id as id, Referentie as referentie FROM Invoice WHERE AppointmentId IS NULL ORDER BY Referentie');
-    res.json(rows);
-  } catch (error) {
-    throw new AppError('Error fetching custom invoices', 500);
-  }
-});
-
-/**
- * @swagger
  * /dropdowns/customcolors:
  *   get:
  *     summary: Get custom colors for dropdown
@@ -257,6 +162,70 @@ router.get('/customcolors', async (req, res) => {
     res.json(rows);
   } catch (error) {
     throw new AppError('Error fetching custom colors', 500);
+  }
+});
+
+/**
+ * @swagger
+ * /dropdowns/importexporttypes:
+ *   get:
+ *     summary: Get import/export types for dropdown
+ *     tags: [Dropdowns]
+ *     responses:
+ *       200:
+ *         description: List of import/export types
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   label:
+ *                     type: string
+ */
+router.get('/importexporttypes', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT Id as id, Label as label FROM Statics_ImportExportType ORDER BY label');
+    res.json(rows);
+  } catch (error) {
+    throw new AppError('Error fetching import/export types', 500);
+  }
+});
+
+/**
+ * @swagger
+ * /dropdowns/traveldirections:
+ *   get:
+ *     summary: Get travel directions for dropdown
+ *     tags: [Dropdowns]
+ *     responses:
+ *       200:
+ *         description: List of travel directions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   value:
+ *                     type: boolean
+ *                   label:
+ *                     type: string
+ */
+router.get('/traveldirections', async (req, res) => {
+  try {
+    // Return the two possible values for IsHomeToWork
+    const directions = [
+      { value: true, label: 'Home to Work' },
+      { value: false, label: 'Work to Home' }
+    ];
+    res.json(directions);
+  } catch (error) {
+    throw new AppError('Error fetching travel directions', 500);
   }
 });
 

@@ -2,7 +2,6 @@ import { Express } from 'express';
 import customerRoutes from './customerRoutes';
 import dogRoutes from './dogRoutes';
 import appointmentRoutes from './appointmentRoutes';
-import invoiceRoutes from './invoiceRoutes';
 import travelTimeRoutes from './travelTimeRoutes';
 import staticRoutes from './staticRoutes';
 import dropdownRoutes from './dropdownRoutes';
@@ -15,7 +14,6 @@ export const setupRoutes = (app: Express) => {
   app.use(`${apiPrefix}/customers`, customerRoutes);
   app.use(`${apiPrefix}/dogs`, dogRoutes);
   app.use(`${apiPrefix}/appointments`, appointmentRoutes);
-  app.use(`${apiPrefix}/invoices`, invoiceRoutes);
   app.use(`${apiPrefix}/travel-time`, travelTimeRoutes);
   app.use(`${apiPrefix}/static`, staticRoutes);
   app.use(`${apiPrefix}/dropdowns`, dropdownRoutes);

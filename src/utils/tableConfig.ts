@@ -11,7 +11,6 @@ export const tableDateFields: TableDateFields = {
   AdditionalHour: ['Date', 'DateEnd', 'CreatedOn', 'UpdatedOn'],
   DogDogbreed: ['CreatedOn', 'UpdatedOn'],
   ExportLog: ['IssuedOn', 'ForMonthDate', 'CreatedOn', 'UpdatedOn'],
-  InvoiceLine: ['CreatedOn', 'UpdatedOn'],
   ServiceAppointmentDog: ['CreatedOn', 'UpdatedOn'],
   TravelTime: ['CreatedOn', 'UpdatedOn']
 };

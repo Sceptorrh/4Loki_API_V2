@@ -188,8 +188,8 @@ export const createCompleteAppointment = async (req: Request, res: Response) => 
     const [appointmentResult] = await connection.execute(
       `INSERT INTO Appointment (
         Date, TimeStart, TimeEnd, DateEnd, ActualDuration, 
-        CustomerId, AppointmentStatusId, AppointmentTypeId, Note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        CustomerId, AppointmentStatusId, Note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         appointment.Date,
         appointment.TimeStart,
@@ -198,7 +198,6 @@ export const createCompleteAppointment = async (req: Request, res: Response) => 
         appointment.ActualDuration,
         appointment.CustomerId,
         appointment.AppointmentStatusId,
-        appointment.AppointmentTypeId,
         appointment.Note || null
       ]
     );
@@ -270,7 +269,7 @@ export const updateCompleteAppointment = async (req: Request, res: Response) => 
       `UPDATE Appointment SET 
         Date = ?, TimeStart = ?, TimeEnd = ?, DateEnd = ?, 
         ActualDuration = ?, CustomerId = ?, AppointmentStatusId = ?, 
-        AppointmentTypeId = ?, Note = ?
+        Note = ?
       WHERE Id = ?`,
       [
         appointment.Date,
@@ -280,7 +279,6 @@ export const updateCompleteAppointment = async (req: Request, res: Response) => 
         appointment.ActualDuration,
         appointment.CustomerId,
         appointment.AppointmentStatusId,
-        appointment.AppointmentTypeId,
         appointment.Note || null,
         appointmentId
       ]

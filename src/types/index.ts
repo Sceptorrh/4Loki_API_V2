@@ -38,29 +38,13 @@ export interface Appointment {
   ActualDuration: number;
   CustomerId: number;
   AppointmentStatusId: string;
-  AppointmentTypeId: string;
   Note: string;
+  SerialNumber: number;
+  IsPaidInCash: boolean;
   CreatedOn: Date;
   UpdatedOn: Date;
   TipAmount: number;
   ReasonForCancellation: string;
-}
-
-export interface Invoice {
-  Id: number;
-  AppointmentId: number;
-  SerialNumber: number;
-  IsExported: boolean;
-  PaymentTypeId: string;
-  Factuurnummer: string;
-  Referentie: string;
-  Factuurdatum: Date;
-  Vervaldatum: Date;
-  IsIncludeInExport: boolean;
-  CustomCustomerId: number;
-  IsPaid: boolean;
-  CreatedOn: Date;
-  UpdatedOn: Date;
 }
 
 export interface Service {
@@ -77,13 +61,8 @@ export interface AdditionalHour {
   HourTypeId: string;
   Duration: number;
   Date: Date;
-  DateEnd: Date;
-  StartTime: string;
-  EndTime: string;
-  IsShowOnPlanning: boolean;
   Description: string;
   IsExported: boolean;
-  InvoiceId: number;
   CreatedOn: Date;
   UpdatedOn: Date;
 }
@@ -100,11 +79,9 @@ export interface ExportLog {
 
 export interface TravelTime {
   Id: number;
-  AppointmentId: number;
-  TravelTimeTypeId: string;
+  IsHomeToWork: boolean;
   Duration: number;
   CreatedOn: Date;
-  UpdatedOn: Date;
 }
 
 export interface AppointmentDog {
@@ -120,18 +97,6 @@ export interface DogDogbreed {
   Id: number;
   DogId: number;
   DogBreedId: string;
-  CreatedOn: Date;
-  UpdatedOn: Date;
-}
-
-export interface InvoiceLine {
-  Id: number;
-  InvoiceId: number;
-  Omschrijving: string;
-  Aantal: number;
-  BTWpercentageId: string;
-  Bedragexcl_btw: number;
-  Categorie: string;
   CreatedOn: Date;
   UpdatedOn: Date;
 }

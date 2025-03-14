@@ -315,18 +315,6 @@ describe('API Endpoints', () => {
       expect(Array.isArray(res.body)).toBe(true);
     });
 
-    it('GET /api/v1/dropdowns/paymenttypes should return payment types', async () => {
-      const res = await request(app).get('/api/v1/dropdowns/paymenttypes');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('GET /api/v1/dropdowns/btwpercentages should return BTW percentages', async () => {
-      const res = await request(app).get('/api/v1/dropdowns/btwpercentages');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-    });
-
     it('GET /api/v1/dropdowns/hourtypes should return hour types', async () => {
       const res = await request(app).get('/api/v1/dropdowns/hourtypes');
       expect(res.status).toBe(200);

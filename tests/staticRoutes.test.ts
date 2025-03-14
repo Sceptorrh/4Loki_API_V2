@@ -2,16 +2,12 @@ import request from 'supertest';
 import { app } from '../src/server';
 import { 
   appointmentStatusIds, 
-  appointmentTypeIds, 
-  btwPercentageIds, 
   customColorIds, 
   dogSizeIds, 
   hourTypeIds, 
   importExportTypeIds, 
-  paymentTypeIds, 
-  travelTimeTypeIds, 
-  serviceIds, 
-  dogBreedIds 
+  serviceIds,
+  dogBreedIds
 } from '../src/static/data';
 
 // Set a longer timeout for all tests
@@ -56,86 +52,6 @@ describe('Static Routes API Endpoints', () => {
       // Use supertest's .expect() method to check for 404 status
       await request(app)
         .get(`/api/v1/static/appointment-statuses/${nonExistentId}`)
-        .expect(404);
-    });
-  });
-
-  // Appointment Types
-  describe('Appointment Types', () => {
-    it('GET /api/v1/static/appointment-types should return all appointment types', async () => {
-      const res = await request(app).get('/api/v1/static/appointment-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      
-      // Verify the number of records matches the expected count
-      expect(res.body.length).toBe(appointmentTypeIds.length);
-      
-      // Check structure of returned data
-      const firstItem = res.body[0];
-      expect(firstItem).toHaveProperty('id');
-      expect(firstItem).toHaveProperty('label');
-      expect(firstItem).toHaveProperty('order');
-    });
-
-    it('GET /api/v1/static/appointment-types/:id should return a specific appointment type for all valid IDs', async () => {
-      // Test all valid IDs from static data
-      for (const validId of appointmentTypeIds) {
-        const res = await request(app).get(`/api/v1/static/appointment-types/${validId}`);
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('id', validId);
-        expect(res.body).toHaveProperty('label');
-        expect(res.body).toHaveProperty('order');
-      }
-    });
-
-    it('GET /api/v1/static/appointment-types/:id should return 404 for invalid ID', async () => {
-      // Use a non-existent ID
-      const nonExistentId = 'NonExistentType';
-      expect(appointmentTypeIds).not.toContain(nonExistentId);
-      
-      // Use supertest's .expect() method to check for 404 status
-      await request(app)
-        .get(`/api/v1/static/appointment-types/${nonExistentId}`)
-        .expect(404);
-    });
-  });
-
-  // BTW Percentages
-  describe('BTW Percentages', () => {
-    it('GET /api/v1/static/btw-percentages should return all BTW percentages', async () => {
-      const res = await request(app).get('/api/v1/static/btw-percentages');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      
-      // Verify the number of records matches the expected count
-      expect(res.body.length).toBe(btwPercentageIds.length);
-      
-      // Check structure of returned data
-      const firstItem = res.body[0];
-      expect(firstItem).toHaveProperty('id');
-      expect(firstItem).toHaveProperty('label');
-      expect(firstItem).toHaveProperty('amount');
-    });
-
-    it('GET /api/v1/static/btw-percentages/:id should return a specific BTW percentage for all valid IDs', async () => {
-      // Test all valid IDs from static data
-      for (const validId of btwPercentageIds) {
-        const res = await request(app).get(`/api/v1/static/btw-percentages/${validId}`);
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('id', validId);
-        expect(res.body).toHaveProperty('label');
-        expect(res.body).toHaveProperty('amount');
-      }
-    });
-
-    it('GET /api/v1/static/btw-percentages/:id should return 404 for invalid ID', async () => {
-      // Use a non-existent ID
-      const nonExistentId = '99';
-      expect(btwPercentageIds).not.toContain(nonExistentId);
-      
-      // Use supertest's .expect() method to check for 404 status
-      await request(app)
-        .get(`/api/v1/static/btw-percentages/${nonExistentId}`)
         .expect(404);
     });
   });
@@ -302,82 +218,6 @@ describe('Static Routes API Endpoints', () => {
     });
   });
 
-  // Payment Types
-  describe('Payment Types', () => {
-    it('GET /api/v1/static/payment-types should return all payment types', async () => {
-      const res = await request(app).get('/api/v1/static/payment-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      
-      // Verify the number of records matches the expected count
-      expect(res.body.length).toBe(paymentTypeIds.length);
-      
-      // Check structure of returned data
-      const firstItem = res.body[0];
-      expect(firstItem).toHaveProperty('id');
-      expect(firstItem).toHaveProperty('label');
-    });
-
-    it('GET /api/v1/static/payment-types/:id should return a specific payment type for all valid IDs', async () => {
-      // Test all valid IDs from static data
-      for (const validId of paymentTypeIds) {
-        const res = await request(app).get(`/api/v1/static/payment-types/${validId}`);
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('id', validId);
-        expect(res.body).toHaveProperty('label');
-      }
-    });
-
-    it('GET /api/v1/static/payment-types/:id should return 404 for invalid ID', async () => {
-      // Use a non-existent ID
-      const nonExistentId = 'NonExistentPaymentType';
-      expect(paymentTypeIds).not.toContain(nonExistentId);
-      
-      // Use supertest's .expect() method to check for 404 status
-      await request(app)
-        .get(`/api/v1/static/payment-types/${nonExistentId}`)
-        .expect(404);
-    });
-  });
-
-  // Travel Time Types
-  describe('Travel Time Types', () => {
-    it('GET /api/v1/static/travel-time-types should return all travel time types', async () => {
-      const res = await request(app).get('/api/v1/static/travel-time-types');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      
-      // Verify the number of records matches the expected count
-      expect(res.body.length).toBe(travelTimeTypeIds.length);
-      
-      // Check structure of returned data
-      const firstItem = res.body[0];
-      expect(firstItem).toHaveProperty('id');
-      expect(firstItem).toHaveProperty('label');
-    });
-
-    it('GET /api/v1/static/travel-time-types/:id should return a specific travel time type for all valid IDs', async () => {
-      // Test all valid IDs from static data
-      for (const validId of travelTimeTypeIds) {
-        const res = await request(app).get(`/api/v1/static/travel-time-types/${validId}`);
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('id', validId);
-        expect(res.body).toHaveProperty('label');
-      }
-    });
-
-    it('GET /api/v1/static/travel-time-types/:id should return 404 for invalid ID', async () => {
-      // Use a non-existent ID
-      const nonExistentId = 'NonExistentTravelType';
-      expect(travelTimeTypeIds).not.toContain(nonExistentId);
-      
-      // Use supertest's .expect() method to check for 404 status
-      await request(app)
-        .get(`/api/v1/static/travel-time-types/${nonExistentId}`)
-        .expect(404);
-    });
-  });
-
   // Dog Breeds
   describe('Dog Breeds', () => {
     it('GET /api/v1/static/dog-breeds should return all dog breeds', async () => {
@@ -466,14 +306,10 @@ describe('Static Routes API Endpoints', () => {
       // Define the mapping between data arrays and API endpoints
       const dataMapping = [
         { data: appointmentStatusIds, endpoint: '/api/v1/static/appointment-statuses', idField: 'id' },
-        { data: appointmentTypeIds, endpoint: '/api/v1/static/appointment-types', idField: 'id' },
-        { data: btwPercentageIds, endpoint: '/api/v1/static/btw-percentages', idField: 'id' },
         { data: customColorIds, endpoint: '/api/v1/static/custom-colors', idField: 'color' },
         { data: dogSizeIds, endpoint: '/api/v1/static/dog-sizes', idField: 'id' },
         { data: hourTypeIds, endpoint: '/api/v1/static/hour-types', idField: 'id' },
         { data: importExportTypeIds, endpoint: '/api/v1/static/import-export-types', idField: 'id' },
-        { data: paymentTypeIds, endpoint: '/api/v1/static/payment-types', idField: 'id' },
-        { data: travelTimeTypeIds, endpoint: '/api/v1/static/travel-time-types', idField: 'id' },
         { data: serviceIds, endpoint: '/api/v1/static/services', idField: 'Id' },
         { data: dogBreedIds, endpoint: '/api/v1/static/dog-breeds', idField: 'Id' }
       ];

@@ -27,20 +27,9 @@ export const appointmentSchema = z.object({
   ActualDuration: z.number().int().min(0),
   CustomerId: z.number().int().positive(),
   AppointmentStatusId: z.string().min(1, 'Appointment status is required'),
-  AppointmentTypeId: z.string().min(1),
-  Note: z.string().optional()
-});
-
-export const invoiceSchema = z.object({
-  AppointmentId: z.number().int().positive(),
-  SerialNumber: z.number().int().positive(),
-  PaymentTypeId: z.string().min(1, 'Payment type is required'),
-  Factuurnummer: z.string().min(1, 'Invoice number is required'),
-  Referentie: z.string().optional(),
-  Factuurdatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  Vervaldatum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  CustomCustomerId: z.number().int().positive().optional(),
-  IsExported: z.boolean().optional()
+  Note: z.string().optional(),
+  SerialNumber: z.number().int().positive().optional(),
+  IsPaidInCash: z.boolean().optional()
 });
 
 export const serviceSchema = z.object({
@@ -56,12 +45,7 @@ export const additionalHourSchema = z.object({
   HourTypeId: z.string().min(1, 'Hour type is required'),
   Duration: z.number().int().min(1),
   Date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  DateEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  StartTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
-  EndTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
-  IsShowOnPlanning: z.boolean(),
   Description: z.string().optional(),
-  InvoiceId: z.number().int().positive().optional(),
   IsExported: z.boolean().optional()
 });
 
@@ -73,8 +57,7 @@ export const exportLogSchema = z.object({
 });
 
 export const travelTimeSchema = z.object({
-  AppointmentId: z.number().int().positive(),
-  TravelTimeTypeId: z.string().min(1, 'Travel time type is required'),
+  IsHomeToWork: z.boolean(),
   Duration: z.number().int().min(0)
 });
 
