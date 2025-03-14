@@ -31,6 +31,12 @@ export interface Dog {
   CreatedOn: Date;
   UpdatedOn: Date;
   DogSizeId: string;
+  DogBreeds?: DogBreed[];
+}
+
+export interface DogBreed {
+  Id: string;
+  Name: string;
 }
 
 export interface Appointment {

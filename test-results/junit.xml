@@ -1,111 +1,133 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="52" failures="0" errors="0" time="7.314">
-  <testsuite name="Static Routes API Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-14T08:59:39" time="5.144" tests="34">
-    <testcase classname="Static Routes API Endpoints › Appointment Statuses" name="GET /api/v1/static/appointment-statuses should return all appointment statuses" time="0.061">
+<testsuites name="jest tests" tests="61" failures="0" errors="0" time="8.579">
+  <testsuite name="Static Routes API Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-14T10:11:24" time="5.293" tests="34">
+    <testcase classname="Static Routes API Endpoints › Appointment Statuses" name="GET /api/v1/static/appointment-statuses should return all appointment statuses" time="0.192">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Appointment Statuses" name="GET /api/v1/static/appointment-statuses/:id should return a specific appointment status for all valid IDs" time="0.062">
+    <testcase classname="Static Routes API Endpoints › Appointment Statuses" name="GET /api/v1/static/appointment-statuses/:id should return a specific appointment status for all valid IDs" time="0.142">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Appointment Statuses" name="GET /api/v1/static/appointment-statuses/:id should return 404 for invalid ID" time="0.041">
+    <testcase classname="Static Routes API Endpoints › Appointment Statuses" name="GET /api/v1/static/appointment-statuses/:id should return 404 for invalid ID" time="0.074">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Appointment Types" name="GET /api/v1/static/appointment-types should return all appointment types" time="0.012">
+    <testcase classname="Static Routes API Endpoints › Appointment Types" name="GET /api/v1/static/appointment-types should return all appointment types" time="0.027">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Appointment Types" name="GET /api/v1/static/appointment-types/:id should return a specific appointment type for all valid IDs" time="0.038">
+    <testcase classname="Static Routes API Endpoints › Appointment Types" name="GET /api/v1/static/appointment-types/:id should return a specific appointment type for all valid IDs" time="0.064">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Appointment Types" name="GET /api/v1/static/appointment-types/:id should return 404 for invalid ID" time="0.019">
+    <testcase classname="Static Routes API Endpoints › Appointment Types" name="GET /api/v1/static/appointment-types/:id should return 404 for invalid ID" time="0.029">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › BTW Percentages" name="GET /api/v1/static/btw-percentages should return all BTW percentages" time="0.013">
+    <testcase classname="Static Routes API Endpoints › BTW Percentages" name="GET /api/v1/static/btw-percentages should return all BTW percentages" time="0.022">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › BTW Percentages" name="GET /api/v1/static/btw-percentages/:id should return a specific BTW percentage for all valid IDs" time="0.023">
+    <testcase classname="Static Routes API Endpoints › BTW Percentages" name="GET /api/v1/static/btw-percentages/:id should return a specific BTW percentage for all valid IDs" time="0.036">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › BTW Percentages" name="GET /api/v1/static/btw-percentages/:id should return 404 for invalid ID" time="0.022">
+    <testcase classname="Static Routes API Endpoints › BTW Percentages" name="GET /api/v1/static/btw-percentages/:id should return 404 for invalid ID" time="0.027">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Custom Colors" name="GET /api/v1/static/custom-colors should return all custom colors" time="0.012">
+    <testcase classname="Static Routes API Endpoints › Custom Colors" name="GET /api/v1/static/custom-colors should return all custom colors" time="0.02">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Custom Colors" name="GET /api/v1/static/custom-colors/:color should return a specific custom color for all valid colors" time="0.068">
+    <testcase classname="Static Routes API Endpoints › Custom Colors" name="GET /api/v1/static/custom-colors/:color should return a specific custom color for all valid colors" time="0.098">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Custom Colors" name="GET /api/v1/static/custom-colors/:color should return 404 for invalid color" time="0.018">
+    <testcase classname="Static Routes API Endpoints › Custom Colors" name="GET /api/v1/static/custom-colors/:color should return 404 for invalid color" time="0.022">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Dog Sizes" name="GET /api/v1/static/dog-sizes should return all dog sizes" time="0.011">
+    <testcase classname="Static Routes API Endpoints › Dog Sizes" name="GET /api/v1/static/dog-sizes should return all dog sizes" time="0.019">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Dog Sizes" name="GET /api/v1/static/dog-sizes/:id should return a specific dog size for all valid IDs" time="0.045">
+    <testcase classname="Static Routes API Endpoints › Dog Sizes" name="GET /api/v1/static/dog-sizes/:id should return a specific dog size for all valid IDs" time="0.066">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Dog Sizes" name="GET /api/v1/static/dog-sizes/:id should return 404 for invalid ID" time="0.018">
+    <testcase classname="Static Routes API Endpoints › Dog Sizes" name="GET /api/v1/static/dog-sizes/:id should return 404 for invalid ID" time="0.026">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Hour Types" name="GET /api/v1/static/hour-types should return all hour types" time="0.012">
+    <testcase classname="Static Routes API Endpoints › Hour Types" name="GET /api/v1/static/hour-types should return all hour types" time="0.018">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Hour Types" name="GET /api/v1/static/hour-types/:id should return a specific hour type for all valid IDs" time="0.105">
+    <testcase classname="Static Routes API Endpoints › Hour Types" name="GET /api/v1/static/hour-types/:id should return a specific hour type for all valid IDs" time="0.157">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Hour Types" name="GET /api/v1/static/hour-types/:id should return 404 for invalid ID" time="0.017">
+    <testcase classname="Static Routes API Endpoints › Hour Types" name="GET /api/v1/static/hour-types/:id should return 404 for invalid ID" time="0.029">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Import/Export Types" name="GET /api/v1/static/import-export-types should return all import/export types" time="0.013">
+    <testcase classname="Static Routes API Endpoints › Import/Export Types" name="GET /api/v1/static/import-export-types should return all import/export types" time="0.018">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Import/Export Types" name="GET /api/v1/static/import-export-types/:id should return a specific import/export type for all valid IDs" time="0.045">
+    <testcase classname="Static Routes API Endpoints › Import/Export Types" name="GET /api/v1/static/import-export-types/:id should return a specific import/export type for all valid IDs" time="0.065">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Import/Export Types" name="GET /api/v1/static/import-export-types/:id should return 404 for invalid ID" time="0.02">
+    <testcase classname="Static Routes API Endpoints › Import/Export Types" name="GET /api/v1/static/import-export-types/:id should return 404 for invalid ID" time="0.022">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Payment Types" name="GET /api/v1/static/payment-types should return all payment types" time="0.013">
+    <testcase classname="Static Routes API Endpoints › Payment Types" name="GET /api/v1/static/payment-types should return all payment types" time="0.016">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Payment Types" name="GET /api/v1/static/payment-types/:id should return a specific payment type for all valid IDs" time="0.025">
+    <testcase classname="Static Routes API Endpoints › Payment Types" name="GET /api/v1/static/payment-types/:id should return a specific payment type for all valid IDs" time="0.028">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Payment Types" name="GET /api/v1/static/payment-types/:id should return 404 for invalid ID" time="0.019">
+    <testcase classname="Static Routes API Endpoints › Payment Types" name="GET /api/v1/static/payment-types/:id should return 404 for invalid ID" time="0.026">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Travel Time Types" name="GET /api/v1/static/travel-time-types should return all travel time types" time="0.011">
+    <testcase classname="Static Routes API Endpoints › Travel Time Types" name="GET /api/v1/static/travel-time-types should return all travel time types" time="0.015">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Travel Time Types" name="GET /api/v1/static/travel-time-types/:id should return a specific travel time type for all valid IDs" time="0.023">
+    <testcase classname="Static Routes API Endpoints › Travel Time Types" name="GET /api/v1/static/travel-time-types/:id should return a specific travel time type for all valid IDs" time="0.03">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Travel Time Types" name="GET /api/v1/static/travel-time-types/:id should return 404 for invalid ID" time="0.018">
+    <testcase classname="Static Routes API Endpoints › Travel Time Types" name="GET /api/v1/static/travel-time-types/:id should return 404 for invalid ID" time="0.024">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Dog Breeds" name="GET /api/v1/static/dog-breeds should return all dog breeds" time="0.011">
+    <testcase classname="Static Routes API Endpoints › Dog Breeds" name="GET /api/v1/static/dog-breeds should return all dog breeds" time="0.016">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Dog Breeds" name="GET /api/v1/static/dog-breeds/:id should return a specific dog breed for all valid IDs" time="0.174">
+    <testcase classname="Static Routes API Endpoints › Dog Breeds" name="GET /api/v1/static/dog-breeds/:id should return a specific dog breed for all valid IDs" time="0.218">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Dog Breeds" name="GET /api/v1/static/dog-breeds/:id should return 404 for invalid ID" time="0.018">
+    <testcase classname="Static Routes API Endpoints › Dog Breeds" name="GET /api/v1/static/dog-breeds/:id should return 404 for invalid ID" time="0.023">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Services" name="GET /api/v1/static/services should return all services" time="0.013">
+    <testcase classname="Static Routes API Endpoints › Services" name="GET /api/v1/static/services should return all services" time="0.015">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Services" name="GET /api/v1/static/services/:id should return a specific service for all valid IDs" time="0.036">
+    <testcase classname="Static Routes API Endpoints › Services" name="GET /api/v1/static/services/:id should return a specific service for all valid IDs" time="0.04">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Services" name="GET /api/v1/static/services/:id should return 404 for invalid ID" time="0.018">
+    <testcase classname="Static Routes API Endpoints › Services" name="GET /api/v1/static/services/:id should return 404 for invalid ID" time="0.021">
     </testcase>
-    <testcase classname="Static Routes API Endpoints › Comprehensive Static Data Verification" name="should verify all static data counts match between data.ts and database" time="0.119">
+    <testcase classname="Static Routes API Endpoints › Comprehensive Static Data Verification" name="should verify all static data counts match between data.ts and database" time="0.143">
     </testcase>
   </testsuite>
-  <testsuite name="API Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-14T08:59:44" time="2.073" tests="18">
-    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/customers should insert customers" time="0.108">
+  <testsuite name="API Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-14T10:11:29" time="1.468" tests="14">
+    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/customers should insert customers" time="0.158">
     </testcase>
-    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/dogs should insert dogs and connect them to customers" time="0.134">
+    <testcase classname="API Endpoints › Customer and Dog Data" name="POST /api/v1/dogs should insert dogs and connect them to customers" time="0.247">
     </testcase>
-    <testcase classname="API Endpoints › Appointment Data" name="POST /api/v1/appointments should insert appointments" time="0.057">
+    <testcase classname="API Endpoints › Customer and Dog Data" name="PUT /api/v1/dogs/:id should update a dog with new breeds" time="0.061">
     </testcase>
-    <testcase classname="API Endpoints › Appointment Data" name="GET /api/v1/appointments should return all appointments" time="0.011">
+    <testcase classname="API Endpoints › Customer and Dog Data" name="GET /api/v1/dogs/:id should return a dog with its breeds" time="0.033">
     </testcase>
-    <testcase classname="API Endpoints › Appointment Data" name="GET /api/v1/appointments/status/:statusId should return appointments by status" time="0.013">
+    <testcase classname="API Endpoints › Customer and Dog Data" name="DELETE /api/v1/dogs/:id should delete a dog and its associated breeds" time="0.09">
     </testcase>
-    <testcase classname="API Endpoints › GET /api/v1/health" name="GET /api/v1/health should return 200 OK" time="0.008">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/dogbreeds should return dog breeds" time="0.017">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/dogbreeds should return dog breeds" time="0.012">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/customers should return customers with dogs" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/customers should return customers with dogs" time="0.014">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/paymenttypes should return payment types" time="0.015">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/paymenttypes should return payment types" time="0.01">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/btwpercentages should return BTW percentages" time="0.013">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/btwpercentages should return BTW percentages" time="0.011">
+    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/hourtypes should return hour types" time="0.014">
     </testcase>
-    <testcase classname="API Endpoints › Dropdown Endpoints" name="GET /api/v1/dropdowns/hourtypes should return hour types" time="0.013">
+    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table should return customer table data" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table should return customer table data" time="0.011">
+    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table?search=test should handle customer search" time="0.014">
     </testcase>
-    <testcase classname="API Endpoints › Customer Endpoints" name="GET /api/v1/customers/table?search=test should handle customer search" time="0.012">
+    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table should return dog table data" time="0.017">
     </testcase>
-    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table should return dog table data" time="0.014">
+    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table?search=test should handle dog search" time="0.016">
     </testcase>
-    <testcase classname="API Endpoints › Dog Endpoints" name="GET /api/v1/dogs/table?search=test should handle dog search" time="0.013">
+  </testsuite>
+  <testsuite name="Appointment API Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-14T10:11:30" time="1.055" tests="9">
+    <testcase classname="Appointment API Endpoints › Basic Appointment Operations" name="POST /api/v1/appointments should create a new appointment" time="0.02">
     </testcase>
-    <testcase classname="API Endpoints › API Documentation" name="GET /api-docs/ should serve Swagger UI" time="0.016">
+    <testcase classname="Appointment API Endpoints › Basic Appointment Operations" name="GET /api/v1/appointments should return all appointments" time="0.015">
     </testcase>
-    <testcase classname="API Endpoints › API Documentation" name="GET /api-spec.json should serve OpenAPI spec" time="0.021">
+    <testcase classname="Appointment API Endpoints › Basic Appointment Operations" name="GET /api/v1/appointments/:id should return a specific appointment" time="0.017">
     </testcase>
-    <testcase classname="API Endpoints › API Documentation" name="GET /api-docs/custom-swagger.js should serve custom Swagger JS" time="0.009">
+    <testcase classname="Appointment API Endpoints › Basic Appointment Operations" name="PUT /api/v1/appointments/:id should update an appointment" time="0.035">
+    </testcase>
+    <testcase classname="Appointment API Endpoints › Basic Appointment Operations" name="GET /api/v1/appointments/date-range should return appointments in a date range" time="0.015">
+    </testcase>
+    <testcase classname="Appointment API Endpoints › Basic Appointment Operations" name="GET /api/v1/appointments/customer/:customerId should return customer appointments" time="0.039">
+    </testcase>
+    <testcase classname="Appointment API Endpoints › Complete Appointment Operations" name="POST /api/v1/appointments/complete should create a complete appointment with dogs and services" time="0.054">
+    </testcase>
+    <testcase classname="Appointment API Endpoints › Complete Appointment Operations" name="GET /api/v1/appointments/:id/complete should return a complete appointment" time="0.031">
+    </testcase>
+    <testcase classname="Appointment API Endpoints › Complete Appointment Operations" name="PUT /api/v1/appointments/:id/complete should update a complete appointment" time="0.062">
+    </testcase>
+  </testsuite>
+  <testsuite name="Generic Endpoints" errors="0" failures="0" skipped="0" timestamp="2025-03-14T10:11:31" time="0.649" tests="4">
+    <testcase classname="Generic Endpoints › GET /api/v1/health" name="GET /api/v1/health should return 200 OK" time="0.019">
+    </testcase>
+    <testcase classname="Generic Endpoints › API Documentation" name="GET /api-docs/ should serve Swagger UI" time="0.025">
+    </testcase>
+    <testcase classname="Generic Endpoints › API Documentation" name="GET /api-spec.json should serve OpenAPI spec" time="0.021">
+    </testcase>
+    <testcase classname="Generic Endpoints › API Documentation" name="GET /api-docs/custom-swagger.js should serve custom Swagger JS" time="0.016">
     </testcase>
   </testsuite>
 </testsuites>

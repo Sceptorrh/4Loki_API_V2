@@ -145,7 +145,16 @@ const swaggerOptions = {
             OwnerId: { type: 'integer', description: 'Owner ID', example: 1 },
             CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' },
             UpdatedOn: { type: 'string', format: 'date-time', description: 'Last update timestamp', example: '2024-03-07T10:00:00Z' },
-            DogSizeId: { type: 'string', description: 'Size category of the dog', example: 'MEDIUM' }
+            DogSizeId: { type: 'string', description: 'Size category of the dog', example: 'MEDIUM' },
+            DogBreeds: { 
+              type: 'array', 
+              description: 'List of dog breed IDs', 
+              items: { 
+                type: 'string',
+                description: 'Dog breed ID',
+                example: 'LABRADOR'
+              }
+            }
           },
           required: ['CustomerId', 'Name']
         },
@@ -417,6 +426,50 @@ const swaggerOptions = {
             Name: { type: 'string', example: 'German Shepherd' },
             OwnerId: { type: 'integer', example: 11 }
           }
+        },
+        CompleteAppointment: {
+          type: 'object',
+          properties: {
+            appointment: {
+              $ref: '#/components/schemas/Appointment'
+            },
+            appointmentDogs: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  DogId: {
+                    type: 'integer',
+                    description: 'Dog ID'
+                  },
+                  Note: {
+                    type: 'string',
+                    description: 'Notes for this dog'
+                  },
+                  services: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        ServiceId: {
+                          type: 'string',
+                          description: 'Service ID'
+                        },
+                        Price: {
+                          type: 'number',
+                          format: 'decimal',
+                          description: 'Service price'
+                        }
+                      },
+                      required: ['ServiceId', 'Price']
+                    }
+                  }
+                },
+                required: ['DogId', 'services']
+              }
+            }
+          },
+          required: ['appointment', 'appointmentDogs']
         }
       },
       securitySchemes: {

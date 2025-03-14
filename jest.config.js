@@ -6,7 +6,14 @@ module.exports = {
   verbose: true,
   forceExit: true,
   detectOpenHandles: true,
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  globalSetup: '<rootDir>/tests/globalSetup.ts',
+  globalTeardown: '<rootDir>/tests/globalTeardown.ts',
+  // Custom sequencer to control the order of test files
+  // See tests/customSequencer.js for the exact order
+  testSequencer: '<rootDir>/tests/customSequencer.js',
+  // Ensure tests run sequentially (one at a time)
+  // This works with the custom sequencer to maintain the specified order
+  maxWorkers: 1,
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json'
@@ -17,7 +24,6 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   testTimeout: 30000,
-  maxWorkers: 1,
   reporters: [
     'default',
     ['jest-junit', {

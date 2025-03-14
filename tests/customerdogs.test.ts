@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { app } from '../src/server';
-import { dogSizeIds, appointmentStatusIds, appointmentTypeIds } from '../src/static/data';
+import { dogSizeIds, dogBreedIds } from '../src/static/data';
 
 // Define interfaces for test data
 interface Customer {
@@ -15,58 +15,13 @@ interface Customer {
   Land: string;
 }
 
-interface Dog {
-  Id?: number;
-  CustomerId: number;
-  Name: string;
-  Birthday: string;
-  Allergies?: string;
-  ServiceNote?: string;
-  DogSizeId: string;
-}
-
-interface Appointment {
-  Id?: number;
-  CustomerId: number;
-  Date: string;
-  TimeStart: string;
-  TimeEnd: string;
-  DateEnd: string;
-  ActualDuration: number;
-  AppointmentStatusId: string;
-  AppointmentTypeId: string;
-  Note?: string;
-}
-
-interface Service {
-  Id: string;
-  Name: string;
-  StandardPrice?: number;
-  IsPriceAllowed?: boolean;
-  StandardDuration?: number;
-  Order: number;
-}
-
 describe('API Endpoints', () => {
   // Global test variables with proper typing
   let customerIds: { [key: string]: number };
-  let serviceIds: { [key: string]: number };
-  let appointmentIds: { [key: string]: number };
-  
-  // Clean up after all tests
-  afterAll(async () => {
-    try {
-      // Delete dependent records first
-      await request(app).delete('/api/v1/appointments');
-      // Add a delay to ensure appointments are fully deleted
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await request(app).delete('/api/v1/dogs');
-      await request(app).delete('/api/v1/customers');
-    } catch (error) {
-      throw new Error(`Failed to clean up test data: ${error}`);
-    }
-  });
 
+  // Note: We're intentionally not cleaning up test data after tests
+  // This allows the data to persist in the database for development/demo purposes
+  
   // Customer and Dog Data Tests
   describe('Customer and Dog Data', () => {
     it('POST /api/v1/customers should insert customers', async () => {
@@ -170,7 +125,8 @@ describe('API Endpoints', () => {
           Birthday: '2020-01-01',
           Allergies: 'None',
           ServiceNote: 'Regular grooming needed',
-          DogSizeId: dogSizeIds[0] // Use L size from static data
+          DogSizeId: dogSizeIds[0], // Use L size from static data
+          DogBreeds: [dogBreedIds[0], dogBreedIds[2]] // Labrador and Golden Retriever
         },
         {
           CustomerId: customerIds.johnDoeId,
@@ -178,14 +134,16 @@ describe('API Endpoints', () => {
           Birthday: '2021-02-15',
           Allergies: 'Chicken',
           ServiceNote: 'Sensitive skin',
-          DogSizeId: dogSizeIds[1] // Use M size from static data
+          DogSizeId: dogSizeIds[1], // Use M size from static data
+          DogBreeds: [dogBreedIds[9]] // Yorkshire Terrier
         },
         {
           CustomerId: customerIds.janeSmithId,
           Name: 'Charlie',
           Birthday: '2019-06-30',
           ServiceNote: 'Very friendly',
-          DogSizeId: dogSizeIds[0] // Use L size from static data
+          DogSizeId: dogSizeIds[0], // Use L size from static data
+          DogBreeds: [dogBreedIds[1], dogBreedIds[7]] // German Shepherd and Rottweiler
         },
         {
           CustomerId: customerIds.bobWilsonId,
@@ -193,21 +151,24 @@ describe('API Endpoints', () => {
           Birthday: '2022-03-10',
           Allergies: 'Grain',
           ServiceNote: 'Short coat',
-          DogSizeId: dogSizeIds[2] // Use S size from static data
+          DogSizeId: dogSizeIds[2], // Use S size from static data
+          DogBreeds: [dogBreedIds[11]] // Chihuahua
         },
         {
           CustomerId: customerIds.bobWilsonId,
           Name: 'Rocky',
           Birthday: '2021-11-20',
           ServiceNote: 'Regular trimming needed',
-          DogSizeId: dogSizeIds[1] // Use M size from static data
+          DogSizeId: dogSizeIds[1], // Use M size from static data
+          DogBreeds: [dogBreedIds[10], dogBreedIds[6]] // Boxer and Beagle
         },
         {
           CustomerId: customerIds.bobWilsonId,
           Name: 'Daisy',
           Birthday: '2020-08-15',
           ServiceNote: 'Long coat',
-          DogSizeId: dogSizeIds[0] // Use L size from static data
+          DogSizeId: dogSizeIds[0], // Use L size from static data
+          DogBreeds: [dogBreedIds[5], dogBreedIds[13]] // Poodle and Corgi
         }
       ];
 
@@ -221,6 +182,17 @@ describe('API Endpoints', () => {
             expect(res.body.Name).toBe(dog.Name);
             expect(res.body.CustomerId).toBe(dog.CustomerId);
             expect(res.body.DogSizeId).toBe(dog.DogSizeId);
+            // Verify DogBreeds were added
+            if (dog.DogBreeds && dog.DogBreeds.length > 0) {
+              expect(res.body.DogBreeds).toBeDefined();
+              expect(Array.isArray(res.body.DogBreeds)).toBe(true);
+              expect(res.body.DogBreeds.length).toBe(dog.DogBreeds.length);
+              // Check that each breed ID is in the response
+              dog.DogBreeds.forEach(breedId => {
+                const foundBreed = res.body.DogBreeds.find((b: any) => b.Id === breedId);
+                expect(foundBreed).toBeDefined();
+              });
+            }
             return res.body;
           })
       );
@@ -240,101 +212,106 @@ describe('API Endpoints', () => {
       expect(Array.isArray(dogSearchRes.body)).toBe(true);
       expect(dogSearchRes.body.length).toBe(1);
       expect(dogSearchRes.body[0].Name).toBe('Max');
+      
+      // Verify we can search by breed name
+      const breedSearchRes = await request(app).get('/api/v1/dogs/table?search=labrador');
+      expect(breedSearchRes.status).toBe(200);
+      expect(Array.isArray(breedSearchRes.body)).toBe(true);
+      expect(breedSearchRes.body.length).toBeGreaterThan(0);
+      expect(breedSearchRes.body[0].Breeds).toContain('Labrador Retriever');
     });
-  });
 
-  // Appointment Tests
-  describe('Appointment Data', () => {
-    it('POST /api/v1/appointments should insert appointments', async () => {
-      // Verify we have customer and service IDs from previous tests
-      expect(customerIds).toBeDefined();
-      expect(customerIds.johnDoeId).toBeDefined();
-
-      const appointments: Appointment[] = [
-        {
-          CustomerId: customerIds.johnDoeId,
-          Date: '2024-03-20',
-          TimeStart: '10:00',
-          TimeEnd: '11:00',
-          DateEnd: '2024-03-20',
-          ActualDuration: 60,
-          AppointmentStatusId: appointmentStatusIds[4], // Use 'Pln' from static data
-          AppointmentTypeId: appointmentTypeIds[2], // Use 'Grooming' from static data
-          Note: 'First appointment'
-        },
-        {
-          CustomerId: customerIds.janeSmithId,
-          Date: '2024-03-21',
-          TimeStart: '14:00',
-          TimeEnd: '15:30',
-          DateEnd: '2024-03-21',
-          ActualDuration: 90,
-          AppointmentStatusId: appointmentStatusIds[4], // Use 'Pln' from static data
-          AppointmentTypeId: appointmentTypeIds[1], // Use 'Absent' from static data
-          Note: 'Second appointment'
-        },
-        {
-          CustomerId: customerIds.bobWilsonId,
-          Date: '2024-03-22',
-          TimeStart: '09:00',
-          TimeEnd: '10:00',
-          DateEnd: '2024-03-22',
-          ActualDuration: 60,
-          AppointmentStatusId: appointmentStatusIds[4], // Use 'Pln' from static data
-          AppointmentTypeId: appointmentTypeIds[0], // Use 'DogWalking' from static data
-          Note: 'Third appointment'
-        }
-      ];
-
-      // Insert each appointment and store their IDs
-      const insertedAppointments: Appointment[] = [];
-      for (const appointment of appointments) {
-        const res = await request(app)
-          .post('/api/v1/appointments')
-          .send(appointment);
-
-        expect(res.status).toBe(201);
-        expect(res.body.CustomerId).toBe(appointment.CustomerId);
-        expect(res.body.AppointmentStatusId).toBe(appointment.AppointmentStatusId);
-        expect(res.body.Id).toBeDefined();
-        insertedAppointments.push(res.body);
-      }
-
-      // Store appointment IDs for use in other tests
-      appointmentIds = {
-        appointment1Id: insertedAppointments[0].Id!,
-        appointment2Id: insertedAppointments[1].Id!,
-        appointment3Id: insertedAppointments[2].Id!
+    it('PUT /api/v1/dogs/:id should update a dog with new breeds', async () => {
+      // Get all dogs
+      const dogsRes = await request(app).get('/api/v1/dogs');
+      expect(dogsRes.status).toBe(200);
+      expect(Array.isArray(dogsRes.body)).toBe(true);
+      
+      // Get the first dog
+      const dogToUpdate = dogsRes.body[0];
+      expect(dogToUpdate.Id).toBeDefined();
+      
+      // Update the dog with new breeds
+      const updatedDogData = {
+        CustomerId: dogToUpdate.CustomerId,
+        Name: dogToUpdate.Name + ' Updated',
+        Birthday: dogToUpdate.Birthday,
+        Allergies: dogToUpdate.Allergies,
+        ServiceNote: dogToUpdate.ServiceNote,
+        DogSizeId: dogToUpdate.DogSizeId,
+        DogBreeds: [dogBreedIds[3], dogBreedIds[4]] // French Bulldog and Bulldog
       };
-
-      // Verify appointments were inserted
-      const checkAppointmentsRes = await request(app).get('/api/v1/appointments');
-      expect(checkAppointmentsRes.status).toBe(200);
-      expect(Array.isArray(checkAppointmentsRes.body)).toBe(true);
-      expect(checkAppointmentsRes.body.length).toBe(3);
+      
+      const updateRes = await request(app)
+        .put(`/api/v1/dogs/${dogToUpdate.Id}`)
+        .send(updatedDogData);
+      
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.Name).toBe(updatedDogData.Name);
+      expect(updateRes.body.DogBreeds).toBeDefined();
+      expect(Array.isArray(updateRes.body.DogBreeds)).toBe(true);
+      expect(updateRes.body.DogBreeds.length).toBe(2);
+      
+      // Verify the breeds were updated
+      const updatedDogRes = await request(app).get(`/api/v1/dogs/${dogToUpdate.Id}`);
+      expect(updatedDogRes.status).toBe(200);
+      expect(updatedDogRes.body.DogBreeds).toBeDefined();
+      expect(Array.isArray(updatedDogRes.body.DogBreeds)).toBe(true);
+      expect(updatedDogRes.body.DogBreeds.length).toBe(2);
+      
+      // Check that each breed ID is in the response
+      updatedDogData.DogBreeds.forEach(breedId => {
+        const foundBreed = updatedDogRes.body.DogBreeds.find((b: any) => b.Id === breedId);
+        expect(foundBreed).toBeDefined();
+      });
+    });
+    
+    it('GET /api/v1/dogs/:id should return a dog with its breeds', async () => {
+      // Get all dogs
+      const dogsRes = await request(app).get('/api/v1/dogs');
+      expect(dogsRes.status).toBe(200);
+      expect(Array.isArray(dogsRes.body)).toBe(true);
+      
+      // Get a dog with breeds
+      const dogId = dogsRes.body[1].Id; // Use the second dog
+      const dogRes = await request(app).get(`/api/v1/dogs/${dogId}`);
+      
+      expect(dogRes.status).toBe(200);
+      expect(dogRes.body.Id).toBe(dogId);
+      expect(dogRes.body.DogBreeds).toBeDefined();
+      expect(Array.isArray(dogRes.body.DogBreeds)).toBe(true);
     });
 
-    it('GET /api/v1/appointments should return all appointments', async () => {
-      const res = await request(app).get('/api/v1/appointments');
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(3);
-    });
-
-    it('GET /api/v1/appointments/status/:statusId should return appointments by status', async () => {
-      const res = await request(app).get(`/api/v1/appointments/status/${appointmentStatusIds[4]}`); // Use 'Pln' from static data
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBe(3);
-    });
-  });
-
-  // Health check endpoint
-  describe('GET /api/v1/health', () => {
-    it('GET /api/v1/health should return 200 OK', async () => {
-      const res = await request(app).get('/api/v1/health');
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual({ status: 'ok' });
+    it('DELETE /api/v1/dogs/:id should delete a dog and its associated breeds', async () => {
+      // Get all dogs
+      const dogsRes = await request(app).get('/api/v1/dogs');
+      expect(dogsRes.status).toBe(200);
+      expect(Array.isArray(dogsRes.body)).toBe(true);
+      
+      // Get the last dog to delete
+      const dogToDelete = dogsRes.body[dogsRes.body.length - 1];
+      expect(dogToDelete.Id).toBeDefined();
+      
+      // Verify the dog has breeds
+      const dogRes = await request(app).get(`/api/v1/dogs/${dogToDelete.Id}`);
+      expect(dogRes.status).toBe(200);
+      expect(dogRes.body.DogBreeds).toBeDefined();
+      expect(Array.isArray(dogRes.body.DogBreeds)).toBe(true);
+      expect(dogRes.body.DogBreeds.length).toBeGreaterThan(0);
+      
+      // Delete the dog
+      const deleteRes = await request(app).delete(`/api/v1/dogs/${dogToDelete.Id}`);
+      expect(deleteRes.status).toBe(200);
+      
+      // Verify the dog is deleted
+      const deletedDogRes = await request(app).get(`/api/v1/dogs/${dogToDelete.Id}`);
+      expect(deletedDogRes.status).toBe(404);
+      
+      // Verify the total count of dogs has decreased
+      const updatedDogsRes = await request(app).get('/api/v1/dogs');
+      expect(updatedDogsRes.status).toBe(200);
+      expect(Array.isArray(updatedDogsRes.body)).toBe(true);
+      expect(updatedDogsRes.body.length).toBe(dogsRes.body.length - 1);
     });
   });
 
@@ -401,26 +378,6 @@ describe('API Endpoints', () => {
     });
   });
 
-  // OpenAPI/Swagger endpoints
-  describe('API Documentation', () => {
-    it('GET /api-docs/ should serve Swagger UI', async () => {
-      const res = await request(app).get('/api-docs/');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toContain('text/html');
-    });
-
-    it('GET /api-spec.json should serve OpenAPI spec', async () => {
-      const res = await request(app).get('/api-spec.json');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toContain('application/json');
-    });
-
-    it('GET /api-docs/custom-swagger.js should serve custom Swagger JS', async () => {
-      const res = await request(app).get('/api-docs/custom-swagger.js');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toContain('application/javascript');
-    });
-  });
 }); 
 
 

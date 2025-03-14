@@ -241,6 +241,7 @@ CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `ServiceId` varchar(50) NOT NULL,
   `AppointmentDogId` int(11) NOT NULL,
+  `Price` DECIMAL(10,2) DEFAULT 0.00,
   PRIMARY KEY (`Id`),
   KEY `ServiceId` (`ServiceId`),
   KEY `AppointmentDogId` (`AppointmentDogId`)
@@ -354,7 +355,7 @@ ALTER TABLE `Invoice` ADD CONSTRAINT `Invoice_ibfk_3` FOREIGN KEY (`PaymentTypeI
 ALTER TABLE `AdditionalHour` ADD CONSTRAINT `AdditionalHour_ibfk_1` FOREIGN KEY (`InvoiceId`) REFERENCES `Invoice` (`Id`);
 ALTER TABLE `AdditionalHour` ADD CONSTRAINT `AdditionalHour_ibfk_2` FOREIGN KEY (`HourTypeId`) REFERENCES `Statics_HourType` (`Id`);
 ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_1` FOREIGN KEY (`DogBreedId`) REFERENCES `Statics_Dogbreed` (`Id`);
-ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_2` FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`);
+ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_2` FOREIGN KEY (`DogId`) REFERENCES `Dog` (`Id`) ON DELETE CASCADE;
 ALTER TABLE `InvoiceLine` ADD CONSTRAINT `InvoiceLine_ibfk_1` FOREIGN KEY (`InvoiceId`) REFERENCES `Invoice` (`Id`);
 ALTER TABLE `InvoiceLine` ADD CONSTRAINT `InvoiceLine_ibfk_2` FOREIGN KEY (`BTWpercentageId`) REFERENCES `Statics_BTWpercentage` (`Id`);
 ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_1` FOREIGN KEY (`ServiceId`) REFERENCES `Statics_Service` (`Id`);

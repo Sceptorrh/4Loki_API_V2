@@ -1,7 +1,5 @@
 import { config } from 'dotenv';
-import pool from '../src/config/database';
-import { startServer, closeServer } from '../src/server';
-import { logStartupStatus } from '../src/utils/startupLogger';
+import { startServer } from '../src/server';
 
 // Load environment variables from .env.test if it exists
 config({ path: '.env.test' });
@@ -9,36 +7,21 @@ config({ path: '.env.test' });
 // Increase test timeout
 jest.setTimeout(5000);
 
-// Global setup before all tests
+// Setup before all tests in each file
 beforeAll(async () => {
-  console.log('Setting up test environment...');
-  try {
-    // Log detailed connection info
-    await logStartupStatus();
-    
-    // Test database connection
-    const connection = await pool.getConnection();
-    console.log('Database connection successful');
-    connection.release();
-  } catch (error) {
-    console.error('Failed to connect to database:', error);
-    throw error;
-  }
+  console.log('Setting up test file environment...');
+  
+  // No need to initialize database connection here as it's handled in globalSetup
+  
+  // Start server for this test file if needed
+  // The server is started for each test file but database is initialized only once
+  await startServer();
 });
 
-// Global teardown after all tests
+// Teardown after all tests in each file
 afterAll(async () => {
-  console.log('Cleaning up test environment...');
-  try {
-    // Close server first
-    await closeServer();
-    console.log('Server closed.');
-    
-    // Then close database connection
-    await pool.end();
-    console.log('Database connection closed.');
-  } catch (error) {
-    console.error('Error during cleanup:', error);
-    throw error; // Re-throw to make Jest aware of the error
-  }
+  console.log('Cleaning up test file environment...');
+  
+  // No need to close server or database here as it's handled in globalTeardown
+  // Individual test files don't need to worry about cleanup
 }); 

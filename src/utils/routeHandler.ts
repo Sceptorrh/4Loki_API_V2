@@ -157,7 +157,7 @@ export class RouteHandler {
       // First check if the customer exists
       const [customer] = await pool.query(
         'SELECT Id FROM Customer WHERE Id = ?',
-        [req.params.id]
+        [req.params.customerId]
       );
 
       if (!Array.isArray(customer) || customer.length === 0) {
@@ -167,7 +167,7 @@ export class RouteHandler {
       // Then get the dogs
       const [rows] = await pool.query(
         `SELECT * FROM ${this.tableName} WHERE CustomerId = ?`,
-        [req.params.id]
+        [req.params.customerId]
       );
 
       if (!Array.isArray(rows)) {
@@ -176,7 +176,7 @@ export class RouteHandler {
 
       res.json(rows);
     } catch (error) {
-      console.error(`Error fetching ${this.tableName} for customer ${req.params.id}:`, error);
+      console.error(`Error fetching ${this.tableName} for customer ${req.params.customerId}:`, error);
       if (error instanceof AppError) throw error;
       throw new AppError(`Error fetching ${this.tableName} records`, 500);
     }

@@ -219,3 +219,30 @@ Logs are stored in:
 3. Commit your changes
 4. Push to the branch
 5. Create a new Pull Request 
+
+## Testing
+
+The project uses Jest for testing. Tests are configured to run sequentially in a specific order to optimize database usage.
+
+### Running Tests
+
+```bash
+# Run tests sequentially (default)
+npm test
+
+# Run tests in parallel (faster but may cause database conflicts)
+npm run test:parallel
+```
+
+### Test Execution Order
+
+Tests are executed in the following order:
+
+1. `staticRoutes.test.ts` - Tests for static data routes
+2. `endpoints.test.ts` - Tests for dynamic API endpoints
+
+This order is defined in `tests/customSequencer.js` and can be modified by updating the `testOrder` array in that file.
+
+### Test Database
+
+The test database is initialized only once before all tests run, using the global setup in `tests/globalSetup.ts`. This prevents the database from being initialized multiple times when running tests sequentially. 

@@ -10,7 +10,8 @@
     "build": "tsc",
     "lint": "eslint . --ext .ts",
     "setup-test-db": "node scripts/setup-test-db.js",
-    "test": "npm run setup-test-db && jest --verbose --detectOpenHandles --forceExit --no-cache"
+    "test": "jest --verbose --detectOpenHandles --forceExit --no-cache --runInBand",
+    "test:parallel": "jest --verbose --detectOpenHandles --forceExit --no-cache"
   },
   "dependencies": {
     "@types/compression": "^1.7.5",

@@ -22,7 +22,8 @@ export const dogSchema = z.object({
   Birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Birthday must be in YYYY-MM-DD format'),
   Allergies: z.string().optional(),
   ServiceNote: z.string().optional(),
-  DogSizeId: z.string().min(1, 'Dog size is required')
+  DogSizeId: z.string().min(1, 'Dog size is required'),
+  DogBreeds: z.array(z.string()).optional()
 });
 
 export const appointmentSchema = z.object({
@@ -88,4 +89,32 @@ export const dogBreedSchema = z.object({
   Id: z.string().min(1, 'ID is required'),
   Name: z.string().min(1, 'Name is required'),
   Order: z.number().int().min(0)
+});
+
+export const appointmentDogSchema = z.object({
+  AppointmentId: z.number().int().positive(),
+  DogId: z.number().int().positive(),
+  Note: z.string().optional()
+});
+
+export const serviceAppointmentDogSchema = z.object({
+  AppointmentDogId: z.number().int().positive(),
+  ServiceId: z.string().min(1, 'Service ID is required'),
+  Price: z.number().min(0, 'Price must be a positive number')
+});
+
+export const completeAppointmentSchema = z.object({
+  appointment: appointmentSchema,
+  appointmentDogs: z.array(
+    z.object({
+      DogId: z.number().int().positive(),
+      Note: z.string().optional(),
+      services: z.array(
+        z.object({
+          ServiceId: z.string().min(1, 'Service ID is required'),
+          Price: z.number().min(0, 'Price must be a positive number')
+        })
+      )
+    })
+  )
 }); 

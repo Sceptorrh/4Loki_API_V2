@@ -1,8 +1,13 @@
 import { Router } from 'express';
 import { RouteHandler } from '../utils/routeHandler';
-import { appointmentSchema } from '../validation/schemas';
+import { appointmentSchema, completeAppointmentSchema } from '../validation/schemas';
 import { validate } from '../middleware/validate';
-import { getDetailedAppointment } from '../controllers/appointmentController';
+import { 
+  getCompleteAppointment,
+  createCompleteAppointment, 
+  updateCompleteAppointment, 
+  deleteCompleteAppointment 
+} from '../controllers/appointmentController';
 
 const router = Router();
 const handler = new RouteHandler('Appointment', appointmentSchema);
@@ -85,6 +90,34 @@ router.get('/:id', handler.getById.bind(handler));
 
 /**
  * @swagger
+ * /appointments/{id}/complete:
+ *   get:
+ *     summary: Get complete appointment with dogs and services
+ *     tags: [Appointments]
+ *     description: Retrieves full appointment details including dogs in the appointment and their services
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment ID
+ *     responses:
+ *       200:
+ *         description: Complete appointment information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CompleteAppointment'
+ *       404:
+ *         description: Appointment not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/complete', getCompleteAppointment);
+
+/**
+ * @swagger
  * /appointments:
  *   post:
  *     summary: Create a new appointment
@@ -106,6 +139,54 @@ router.get('/:id', handler.getById.bind(handler));
  *         description: Invalid input
  */
 router.post('/', validate(appointmentSchema), handler.create.bind(handler));
+
+/**
+ * @swagger
+ * /appointments/complete:
+ *   post:
+ *     summary: Create a complete appointment with dogs and services
+ *     tags: [Appointments]
+ *     description: Creates an appointment with associated dogs and services in a single transaction
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               appointment:
+ *                 $ref: '#/components/schemas/Appointment'
+ *               appointmentDogs:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     DogId:
+ *                       type: integer
+ *                       description: Dog ID
+ *                     Note:
+ *                       type: string
+ *                       description: Notes for this dog
+ *                     services:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           ServiceId:
+ *                             type: string
+ *                             description: Service ID
+ *                           Price:
+ *                             type: number
+ *                             description: Service price
+ *     responses:
+ *       201:
+ *         description: Created appointment with details
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Server error
+ */
+router.post('/complete', validate(completeAppointmentSchema), createCompleteAppointment);
 
 /**
  * @swagger
@@ -142,6 +223,63 @@ router.put('/:id', validate(appointmentSchema), handler.update.bind(handler));
 
 /**
  * @swagger
+ * /appointments/{id}/complete:
+ *   put:
+ *     summary: Update a complete appointment with dogs and services
+ *     tags: [Appointments]
+ *     description: Updates an appointment with associated dogs and services in a single transaction
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               appointment:
+ *                 $ref: '#/components/schemas/Appointment'
+ *               appointmentDogs:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     DogId:
+ *                       type: integer
+ *                       description: Dog ID
+ *                     Note:
+ *                       type: string
+ *                       description: Notes for this dog
+ *                     services:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           ServiceId:
+ *                             type: string
+ *                             description: Service ID
+ *                           Price:
+ *                             type: number
+ *                             description: Service price
+ *     responses:
+ *       200:
+ *         description: Updated appointment
+ *       404:
+ *         description: Appointment not found
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Server error
+ */
+router.put('/:id/complete', validate(completeAppointmentSchema), updateCompleteAppointment);
+
+/**
+ * @swagger
  * /appointments/{id}:
  *   delete:
  *     summary: Delete an appointment
@@ -160,6 +298,30 @@ router.put('/:id', validate(appointmentSchema), handler.update.bind(handler));
  *         description: Appointment not found
  */
 router.delete('/:id', handler.delete.bind(handler));
+
+/**
+ * @swagger
+ * /appointments/{id}/complete:
+ *   delete:
+ *     summary: Delete a complete appointment with all related dogs and services
+ *     tags: [Appointments]
+ *     description: Deletes an appointment and all associated dogs and services in a single transaction
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Appointment ID
+ *     responses:
+ *       200:
+ *         description: Appointment and all related records deleted
+ *       404:
+ *         description: Appointment not found
+ *       500:
+ *         description: Server error
+ */
+router.delete('/:id/complete', deleteCompleteAppointment);
 
 /**
  * @swagger
@@ -247,33 +409,5 @@ router.get('/status/:statusId', handler.getByStatus.bind(handler));
  *                 $ref: '#/components/schemas/Appointment'
  */
 router.get('/type/:typeId', handler.getByAppointmentId.bind(handler));
-
-/**
- * @swagger
- * /appointments/{id}/details:
- *   get:
- *     summary: Get detailed appointment information
- *     description: Retrieves full appointment details including customer information, all customer's dogs, dogs in the appointment, and their services
- *     tags: [Appointments]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Appointment ID
- *     responses:
- *       200:
- *         description: Detailed appointment information
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/DetailedAppointment'
- *       404:
- *         description: Appointment not found
- *       500:
- *         description: Server error
- */
-router.get('/:id/details', getDetailedAppointment);
 
 export default router; 
