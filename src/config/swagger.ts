@@ -148,7 +148,7 @@ const swaggerOptions = {
               }
             }
           },
-          required: ['CustomerId', 'Name', 'DogSizeId']
+          required: ['CustomerId', 'Name']
         },
         Dogbreed: {
           type: 'object',

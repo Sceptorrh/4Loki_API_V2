@@ -12,11 +12,16 @@ export const customerSchema = z.object({
 export const dogSchema = z.object({
   CustomerId: z.number().int().positive(),
   Name: z.string().min(1, 'Name is required'),
-  Birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Birthday must be in YYYY-MM-DD format'),
+  Birthday: z.union([
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Birthday must be in YYYY-MM-DD format'),
+    z.string().length(0).transform(() => null),
+    z.null(),
+    z.undefined().transform(() => null)
+  ]).optional().transform(val => val || null),
   Allergies: z.string().optional(),
   ServiceNote: z.string().optional(),
-  DogSizeId: z.string().min(1, 'Dog size is required'),
-  DogBreeds: z.array(z.string()).optional()
+  DogSizeId: z.string().optional().nullable(),
+  DogBreeds: z.array(z.union([z.string(), z.object({}).transform(() => '')])).optional()
 });
 
 export const appointmentSchema = z.object({

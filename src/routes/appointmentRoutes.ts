@@ -6,7 +6,8 @@ import {
   getCompleteAppointment,
   createCompleteAppointment, 
   updateCompleteAppointment, 
-  deleteCompleteAppointment 
+  deleteCompleteAppointment,
+  getAppointmentsByYearMonth
 } from '../controllers/appointmentController';
 
 const router = Router();
@@ -367,5 +368,101 @@ router.get('/status/:statusId', handler.getByStatus.bind(handler));
  *                 $ref: '#/components/schemas/Appointment'
  */
 router.get('/type/:typeId', handler.getByAppointmentId.bind(handler));
+
+/**
+ * @swagger
+ * /appointments/year/{year}/month/{month}:
+ *   get:
+ *     summary: Get appointments by year and month
+ *     tags: [Appointments]
+ *     description: Retrieves all appointments for a specific year and month with customer contact person, status details, and dogs with services
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Year (e.g. 2023)
+ *         example: 2023
+ *       - in: path
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 12
+ *         description: Month (1-12)
+ *         example: 12
+ *     responses:
+ *       200:
+ *         description: List of appointments for the specified month
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   AppointmentId:
+ *                     type: integer
+ *                     description: Unique identifier for the appointment
+ *                     example: 123
+ *                   Date:
+ *                     type: string
+ *                     format: date
+ *                     description: Date of the appointment
+ *                     example: "2023-12-15"
+ *                   TimeStart:
+ *                     type: string
+ *                     description: Start time of the appointment
+ *                     example: "14:00:00"
+ *                   TimeEnd:
+ *                     type: string
+ *                     description: End time of the appointment
+ *                     example: "15:30:00"
+ *                   ContactPerson:
+ *                     type: string
+ *                     description: Name of the customer's contact person
+ *                     example: "John Doe"
+ *                   Status:
+ *                     type: object
+ *                     description: Appointment status information
+ *                     properties:
+ *                       Id:
+ *                         type: string
+ *                         description: Status identifier
+ *                         example: "CONFIRMED"
+ *                       Label:
+ *                         type: string
+ *                         description: Human-readable status label
+ *                         example: "Confirmed"
+ *                       Color:
+ *                         type: string
+ *                         description: Hex color code for the status (for UI display)
+ *                         example: "#4CAF50"
+ *                   Dogs:
+ *                     type: array
+ *                     description: List of dogs included in this appointment
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         DogId:
+ *                           type: integer
+ *                           description: Unique identifier for the dog
+ *                           example: 456
+ *                         DogName:
+ *                           type: string
+ *                           description: Name of the dog
+ *                           example: "Rex"
+ *                         ServiceCount:
+ *                           type: integer
+ *                           description: Number of services booked for this dog
+ *                           example: 3
+ *       400:
+ *         description: Invalid year or month format
+ *       500:
+ *         description: Server error
+ */
+router.get('/year/:year/month/:month', getAppointmentsByYearMonth);
 
 export default router; 

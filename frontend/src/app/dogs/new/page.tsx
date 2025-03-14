@@ -6,6 +6,15 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Dog, DogBreed, DogSize } from '@/types';
 
+interface CustomerDropdownItem {
+  id: number;
+  contactperson: string;
+  dogs: {
+    id: number;
+    name: string;
+  }[];
+}
+
 export default function NewDogPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -16,6 +25,9 @@ export default function NewDogPage() {
   const [dogBreeds, setDogBreeds] = useState<DogBreed[]>([]);
   const [dogSizes, setDogSizes] = useState<DogSize[]>([]);
   const [selectedBreeds, setSelectedBreeds] = useState<string[]>([]);
+  const [customers, setCustomers] = useState<CustomerDropdownItem[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(customerId ? parseInt(customerId) : null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Dog>>({
     CustomerId: customerId ? Number(customerId) : undefined,
@@ -29,22 +41,30 @@ export default function NewDogPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch breeds and sizes in parallel
-        const [breedsResponse, sizesResponse] = await Promise.all([
+        // Fetch breeds, sizes, and customers in parallel
+        const [breedsResponse, sizesResponse, customersResponse] = await Promise.all([
           endpoints.dogBreeds.getAll(),
-          endpoints.dogSizes.getAll()
+          endpoints.dogSizes.getAll(),
+          endpoints.customers.getDropdown()
         ]);
         
         setDogBreeds(breedsResponse.data || []);
         setDogSizes(sizesResponse.data || []);
+        setCustomers(customersResponse.data || []);
       } catch (err) {
         console.error('Error fetching reference data:', err);
-        setError('Failed to load breed and size information. Please try again later.');
+        setError('Failed to load required data. Please try again later.');
       }
     };
 
     fetchData();
   }, []);
+
+  const handleCustomerChange = (customerId: number) => {
+    setSelectedCustomerId(customerId);
+    setFormData(prev => ({ ...prev, CustomerId: customerId }));
+    setDropdownOpen(false);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -120,6 +140,42 @@ export default function NewDogPage() {
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-6">
+                {!customerId && (
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Customer *
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        className="w-full input flex justify-between items-center"
+                      >
+                        <span>
+                          {selectedCustomerId
+                            ? customers.find(c => c.id === selectedCustomerId)?.contactperson
+                            : 'Select a customer'}
+                        </span>
+                        <span className="ml-2">▼</span>
+                      </button>
+                      {dropdownOpen && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                          {customers.map((customer) => (
+                            <button
+                              key={customer.id}
+                              type="button"
+                              onClick={() => handleCustomerChange(customer.id)}
+                              className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                            >
+                              {customer.contactperson}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label htmlFor="Name" className="block text-sm font-medium text-gray-700">
                     Name *
@@ -218,26 +274,6 @@ export default function NewDogPage() {
                     className="mt-1 input"
                   />
                 </div>
-
-                {!customerId && (
-                  <div>
-                    <label htmlFor="CustomerId" className="block text-sm font-medium text-gray-700">
-                      Customer ID *
-                    </label>
-                    <input
-                      type="number"
-                      id="CustomerId"
-                      name="CustomerId"
-                      required
-                      value={formData.CustomerId || ''}
-                      onChange={handleChange}
-                      className="mt-1 input"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Enter the ID of the customer who owns this dog
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 

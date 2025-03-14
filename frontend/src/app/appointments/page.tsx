@@ -3,39 +3,123 @@
 import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
-interface Appointment {
-  id: number;
-  date: string;
-  time: string;
-  customer_id: number;
-  customer_name?: string;
-  dog_name?: string;
-  status: string;
+interface Dog {
+  DogId: number;
+  DogName: string;
+  ServiceCount: number;
+}
+
+interface Status {
+  Id: string;
+  Label: string;
+  Color: string;
+}
+
+interface CalendarAppointment {
+  AppointmentId: number;
+  Date: string;
+  TimeStart: string;
+  TimeEnd: string;
+  ContactPerson: string;
+  Status: Status;
+  Dogs: Dog[];
 }
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const fetchAppointmentsByMonth = async (year: number, month: number) => {
+    try {
+      setLoading(true);
+      const response = await endpoints.appointments.getByYearMonth(year, month);
+      setAppointments(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching appointments:', err);
+      setError('Failed to load appointments. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        setLoading(true);
-        const response = await endpoints.appointments.getAll();
-        setAppointments(response.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching appointments:', err);
-        setError('Failed to load appointments. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
+    fetchAppointmentsByMonth(year, month);
+  }, [currentDate]);
 
-    fetchAppointments();
-  }, []);
+  const goToPreviousMonth = () => {
+    setCurrentDate(prevDate => subMonths(prevDate, 1));
+  };
+
+  const goToNextMonth = () => {
+    setCurrentDate(prevDate => addMonths(prevDate, 1));
+  };
+
+  const renderCalendar = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+    // Create a grid with 7 columns (days of the week)
+    const dayOfWeek = monthStart.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const emptyDays = Array(dayOfWeek).fill(null);
+    const calendarDays = [...emptyDays, ...days];
+
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {/* Day headers */}
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+          <div key={index} className="text-center font-semibold py-2 bg-gray-100">
+            {day}
+          </div>
+        ))}
+
+        {/* Calendar days */}
+        {calendarDays.map((day, index) => {
+          if (!day) {
+            return <div key={`empty-${index}`} className="h-40 bg-gray-50"></div>;
+          }
+
+          // Find appointments for this day
+          const dayAppointments = appointments.filter(appointment => 
+            isSameDay(new Date(appointment.Date), day)
+          );
+
+          return (
+            <div key={index} className="h-40 border border-gray-200 p-1">
+              <div className="text-right text-sm font-medium mb-1">
+                {format(day, 'd')}
+              </div>
+              
+              {dayAppointments.map(appointment => (
+                <Link 
+                  href={`/appointments/${appointment.AppointmentId}`}
+                  key={appointment.AppointmentId} 
+                  className="block mb-1 text-xs p-1.5 rounded hover:bg-opacity-90 transition-colors"
+                  style={{ backgroundColor: `${appointment.Status.Color}20`, borderLeft: `3px solid ${appointment.Status.Color}` }}
+                >
+                  <div className="font-semibold">
+                    {format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'h:mm a')} - {format(new Date(`${appointment.Date}T${appointment.TimeEnd}`), 'h:mm a')}
+                  </div>
+                  <div className="truncate">{appointment.ContactPerson}</div>
+                  <div className="truncate text-gray-600">
+                    {appointment.Dogs.map(dog => dog.DogName).join(', ')}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -44,6 +128,26 @@ export default function AppointmentsPage() {
         <Link href="/appointments/new" className="btn btn-primary">
           New Appointment
         </Link>
+      </div>
+
+      <div className="mb-6 flex justify-between items-center">
+        <button 
+          onClick={goToPreviousMonth} 
+          className="p-2 rounded-full hover:bg-gray-100"
+          aria-label="Previous month"
+        >
+          <FaChevronLeft />
+        </button>
+        <h2 className="text-xl font-semibold">
+          {format(currentDate, 'MMMM yyyy')}
+        </h2>
+        <button 
+          onClick={goToNextMonth} 
+          className="p-2 rounded-full hover:bg-gray-100"
+          aria-label="Next month"
+        >
+          <FaChevronRight />
+        </button>
       </div>
 
       {loading ? (
@@ -59,80 +163,13 @@ export default function AppointmentsPage() {
         </div>
       ) : appointments.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 mb-4">No appointments found</p>
+          <p className="text-gray-500 mb-4">No appointments found for {format(currentDate, 'MMMM yyyy')}</p>
           <Link href="/appointments/new" className="btn btn-primary">
-            Schedule your first appointment
+            Schedule an appointment
           </Link>
         </div>
       ) : (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date & Time
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Dog
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {appointments.map((appointment) => (
-                <tr key={appointment.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(appointment.date).toLocaleDateString()}
-                    </div>
-                    <div className="text-sm text-gray-500">{appointment.time}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{appointment.customer_name || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{appointment.dog_name || 'N/A'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        appointment.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : appointment.status === 'cancelled'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                    >
-                      {appointment.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      href={`/appointments/${appointment.id}`}
-                      className="text-primary-600 hover:text-primary-900 mr-4"
-                    >
-                      View
-                    </Link>
-                    <Link
-                      href={`/appointments/${appointment.id}/edit`}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      Edit
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        renderCalendar()
       )}
     </div>
   );

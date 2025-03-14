@@ -15,8 +15,10 @@ export const endpoints = {
     getAll: () => api.get('/appointments'),
     getById: (id: number) => api.get(`/appointments/${id}`),
     create: (data: any) => api.post('/appointments', data),
+    createComplete: (data: any) => api.post('/appointments/complete', data),
     update: (id: number, data: any) => api.put(`/appointments/${id}`, data),
     delete: (id: number) => api.delete(`/appointments/${id}`),
+    getByYearMonth: (year: number, month: number) => api.get(`/appointments/year/${year}/month/${month}`),
   },
   
   // Customers
@@ -27,6 +29,7 @@ export const endpoints = {
     create: (data: any) => api.post('/customers', data),
     update: (id: number, data: any) => api.put(`/customers/${id}`, data),
     delete: (id: number) => api.delete(`/customers/${id}`),
+    getDropdown: () => api.get('/dropdowns/customers'),
   },
   
   // Dogs
@@ -56,6 +59,12 @@ export const endpoints = {
   // Dog Sizes
   dogSizes: {
     getAll: () => api.get('/static/dog-sizes'),
+  },
+  
+  // Services
+  services: {
+    getAll: () => api.get('/static/services'),
+    getById: (id: string) => api.get(`/static/services/${id}`),
   },
 };
 

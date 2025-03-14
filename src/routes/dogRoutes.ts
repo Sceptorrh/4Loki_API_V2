@@ -175,10 +175,10 @@ router.post('/', validate(dogSchema), async (req, res, next) => {
       [
         dogData.CustomerId,
         dogData.Name,
-        dogData.Birthday,
+        dogData.Birthday || null,
         dogData.Allergies || null,
         dogData.ServiceNote || null,
-        dogData.DogSizeId
+        dogData.DogSizeId || null
       ]
     );
     

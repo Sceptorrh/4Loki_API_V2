@@ -395,4 +395,102 @@ export const deleteCompleteAppointment = async (req: Request, res: Response) => 
   } finally {
     connection.release();
   }
+};
+
+export const getAppointmentsByYearMonth = async (req: Request, res: Response) => {
+  const connection = await db.getConnection();
+  
+  try {
+    const { year, month } = req.params;
+    
+    // Validate year and month
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+    
+    if (isNaN(yearNum) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({ message: 'Invalid year or month format' });
+    }
+    
+    // Get all appointments for the specified month with customer contact person and status details
+    const [appointments] = await connection.execute(`
+      SELECT 
+        a.Id as AppointmentId,
+        a.Date,
+        a.TimeStart,
+        a.TimeEnd,
+        c.Contactpersoon as ContactPerson,
+        s.Label as StatusLabel,
+        s.Color as StatusColor,
+        s.Id as StatusId
+      FROM Appointment a
+      JOIN Customer c ON a.CustomerId = c.Id
+      JOIN Statics_AppointmentStatus s ON a.AppointmentStatusId = s.Id
+      WHERE YEAR(a.Date) = ? AND MONTH(a.Date) = ?
+      ORDER BY a.Date, a.TimeStart
+    `, [yearNum, monthNum]);
+    
+    // For each appointment, get the dogs with services
+    const result = [];
+    for (const appointment of (appointments as any[])) {
+      // Get dogs for this appointment
+      const [dogs] = await connection.execute(`
+        SELECT 
+          d.Id as DogId,
+          d.Name as DogName,
+          COUNT(sad.Id) as ServiceCount
+        FROM AppointmentDog ad
+        JOIN Dog d ON ad.DogId = d.Id
+        LEFT JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+        WHERE ad.AppointmentId = ?
+        GROUP BY d.Id, d.Name
+      `, [appointment.AppointmentId]);
+      
+      // Check if the color is a valid hex code, if not provide a default
+      let statusColor = appointment.StatusColor;
+      if (!statusColor || !statusColor.startsWith('#')) {
+        // Map status names to default hex colors if the database doesn't have proper hex codes
+        const colorMap: Record<string, string> = {
+          'Pln': '#3498db', // Blue for Planned
+          'Planned': '#3498db',
+          'Gepland': '#3498db',
+          'Cnf': '#2ecc71', // Green for Confirmed
+          'Confirmed': '#2ecc71',
+          'Bevestigd': '#2ecc71',
+          'Cmp': '#95a5a6', // Gray for Completed
+          'Completed': '#95a5a6',
+          'Voltooid': '#95a5a6',
+          'Cnc': '#e74c3c', // Red for Cancelled
+          'Cancelled': '#e74c3c',
+          'Geannuleerd': '#e74c3c',
+          'default': '#7f8c8d' // Default gray
+        };
+        
+        // Try to find a matching color based on status ID or label
+        statusColor = colorMap[appointment.StatusId] || 
+                      colorMap[appointment.StatusLabel] || 
+                      colorMap['default'];
+      }
+      
+      result.push({
+        AppointmentId: appointment.AppointmentId,
+        Date: appointment.Date,
+        TimeStart: appointment.TimeStart,
+        TimeEnd: appointment.TimeEnd,
+        ContactPerson: appointment.ContactPerson,
+        Status: {
+          Id: appointment.StatusId,
+          Label: appointment.StatusLabel,
+          Color: statusColor
+        },
+        Dogs: dogs
+      });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching appointments by year/month:', error);
+    res.status(500).json({ message: 'Error fetching appointments' });
+  } finally {
+    connection.release();
+  }
 }; 

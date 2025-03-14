@@ -184,16 +184,7 @@ CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
   KEY `AppointmentDogId` (`AppointmentDogId`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `TravelTime` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `IsHomeToWork` tinyint(1) DEFAULT NULL,
-  `Duration` int(11) DEFAULT NULL,
-  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Insert static data
-
 INSERT INTO `Statics_Dogbreed` (`Id`, `Name`, `Order`) VALUES
     ('labrador', 'Labrador Retriever', 1),
     ('german_shepherd', 'German Shepherd', 2),
@@ -255,12 +246,9 @@ INSERT INTO `Statics_ImportExportType` (`Id`, `Label`, `Order`) VALUES
     ('Purchase', 'Purchase', 3),
     ('Relation', 'Relation', 4);
 
--- Re-enable foreign key checks
-SET FOREIGN_KEY_CHECKS = 1;
-
 -- Add foreign key constraints
 ALTER TABLE `Statics_AppointmentStatus` ADD CONSTRAINT `Statics_AppointmentStatus_ibfk_1` FOREIGN KEY (`Color`) REFERENCES `Statics_CustomColor` (`Color`);
-ALTER TABLE `Dog` ADD CONSTRAINT `Dog_ibfk_1` FOREIGN KEY (`DogSizeId`) REFERENCES `Statics_DogSize` (`Id`);
+ALTER TABLE `Dog` ADD CONSTRAINT `Dog_ibfk_1` FOREIGN KEY (`DogSizeId`) REFERENCES `Statics_DogSize` (`Id`) ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE `Dog` ADD CONSTRAINT `Dog_ibfk_2` FOREIGN KEY (`CustomerId`) REFERENCES `Customer` (`Id`);
 ALTER TABLE `Appointment` ADD CONSTRAINT `Appointment_ibfk_1` FOREIGN KEY (`CustomerId`) REFERENCES `Customer` (`Id`);
 ALTER TABLE `Appointment` ADD CONSTRAINT `Appointment_ibfk_2` FOREIGN KEY (`AppointmentStatusId`) REFERENCES `Statics_AppointmentStatus` (`Id`);
@@ -272,9 +260,4 @@ ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_2` FOREIGN KEY (`DogI
 ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_1` FOREIGN KEY (`ServiceId`) REFERENCES `Statics_Service` (`Id`);
 ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_2` FOREIGN KEY (`AppointmentDogId`) REFERENCES `AppointmentDog` (`Id`);
 
--- Restore original settings
-SET SQL_MODE=@OLD_SQL_MODE;
-SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
-SET SQL_NOTES=@OLD_SQL_NOTES;
-SET TIME_ZONE=@OLD_TIME_ZONE;
-SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT;
+SET FOREIGN_KEY_CHECKS = 1;

@@ -1,4 +1,5 @@
 # Dependencies
+/frontend/node_modules/
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -7,7 +8,9 @@ yarn-error.log*
 # Build output
 dist/
 build/
+.next/
 *.js.map
+frontend/.next/
 
 # Environment variables
 .env
@@ -30,3 +33,4 @@ test-results/
 *.swp
 *.swo
 .DS_Store
+
