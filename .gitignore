@@ -22,10 +22,18 @@ logs/
 *.log
 combined.log
 error.log
+access.log
+debug.log
+info.log
+warn.log
+trace.log
 
-# Test coverage
+# Test coverage and results
 coverage/
 test-results/
+junit.xml
+*.junit.xml
+test-results/*.xml
 
 # IDE and editor files
 .idea/

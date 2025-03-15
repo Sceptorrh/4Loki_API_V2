@@ -43,9 +43,10 @@ interface Dog {
 }
 
 interface Status {
-  Id: string;
-  Label: string;
-  Color: string;
+  id: string;
+  label: string;
+  order: number;
+  color: string;
 }
 
 export default function NewAppointmentPage() {
@@ -123,16 +124,17 @@ export default function NewAppointmentPage() {
           // Set default status if available
           if (statusesData && statusesData.length > 0) {
             // Find the "Planned" status or use the first one
-            const plannedStatus = statusesData.find((status: Status) => status.Id === 'Pln') || statusesData[0];
-            setStatusId(plannedStatus.Id);
+            const plannedStatus = statusesData.find((status: Status) => status.id === 'Pln') || statusesData[0];
+            setStatusId(plannedStatus.id);
           }
         } catch (statusError) {
           console.error('Error fetching statuses:', statusError);
           // Create a default status
           const defaultStatuses = [{
-            Id: 'Pln',
-            Label: 'Planned',
-            Color: '#3498db'
+            id: 'Pln',
+            label: 'Planned',
+            order: 1,
+            color: '#3498db'
           }];
           setStatuses(defaultStatuses);
           setStatusId('Pln');
@@ -521,8 +523,8 @@ export default function NewAppointmentPage() {
             >
               <option value="">Select a status</option>
               {statuses.map(status => (
-                <option key={status.Id} value={status.Id}>
-                  {status.Label}
+                <option key={status.id} value={status.id}>
+                  {status.label}
                 </option>
               ))}
             </select>
