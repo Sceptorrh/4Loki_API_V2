@@ -5,7 +5,83 @@ import { endpoints } from '@/lib/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { FaMoneyBillWave, FaUniversity, FaClock, FaEdit, FaFileInvoiceDollar, FaTimes, FaCheck } from 'react-icons/fa';
+import { FaMoneyBillWave, FaUniversity, FaClock, FaEdit, FaFileInvoiceDollar, FaTimes, FaCheck, FaCalendarCheck, FaCalendarTimes, FaCalendarDay, FaCalendarAlt } from 'react-icons/fa';
+
+// Toast notification component
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error';
+  onClose: () => void;
+}
+
+const Toast = ({ message, type, onClose }: ToastProps) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000); // Auto-dismiss after 3 seconds
+    
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  
+  return (
+    <div className="fixed bottom-6 right-6 z-50 sm:max-w-sm md:max-w-md">
+      <div 
+        className={`rounded-md p-4 shadow-xl flex items-center w-full ${
+          type === 'success' ? 'bg-green-50 text-green-800 border-l-4 border-green-500' : 
+          'bg-red-50 text-red-800 border-l-4 border-red-500'
+        }`}
+        style={{
+          animation: 'slideInUp 0.3s ease-out, fadeIn 0.3s ease-out',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+        }}
+      >
+        <div className="flex-shrink-0 mr-3">
+          {type === 'success' ? (
+            <FaCheck className="h-5 w-5 text-green-500" />
+          ) : (
+            <FaTimes className="h-5 w-5 text-red-500" />
+          )}
+        </div>
+        <div className="mr-2 font-medium text-sm sm:text-base flex-grow">{message}</div>
+        <button 
+          onClick={onClose}
+          className="flex-shrink-0 -mx-1.5 -my-1.5 rounded-md p-1.5 inline-flex text-gray-500 hover:text-gray-700 focus:outline-none"
+        >
+          <FaTimes className="h-4 w-4" />
+        </button>
+      </div>
+      <style jsx>{`
+        @keyframes slideInUp {
+          from {
+            transform: translateY(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        @media (max-width: 640px) {
+          div {
+            bottom: 0;
+            right: 0;
+            left: 0;
+            margin: 0 1rem 1rem;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 interface Dog {
   DogId: number;
@@ -28,6 +104,7 @@ interface InvoiceReadyAppointment {
   IsPaidInCash: boolean;
   TotalPrice: number;
   Dogs: Dog[];
+  StatusColor?: string;
 }
 
 // Define the ConfirmationDialog component
@@ -230,6 +307,7 @@ export default function InvoiceReadyPage() {
   const [selectedAppointments, setSelectedAppointments] = useState<number[]>([]);
   const [showGroupConfirmDialog, setShowGroupConfirmDialog] = useState(false);
   const [processingGroup, setProcessingGroup] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -269,7 +347,7 @@ export default function InvoiceReadyPage() {
         CustomerId: appointmentToUpdate.CustomerId,
         AppointmentStatusId: appointmentToUpdate.AppointmentStatusId,
         ActualDuration: appointmentToUpdate.ActualDuration || 0,
-        IsPaidInCash: value 
+        IsPaidInCash: Boolean(value) // Explicitly convert to boolean
       });
 
       // Update the local state
@@ -366,7 +444,7 @@ export default function InvoiceReadyPage() {
         CustomerId: appointmentToUpdate.CustomerId,
         AppointmentStatusId: 'Inv', // Change status to Invoiced
         ActualDuration: appointmentToUpdate.ActualDuration || 0,
-        IsPaidInCash: appointmentToUpdate.IsPaidInCash
+        IsPaidInCash: Boolean(appointmentToUpdate.IsPaidInCash) // Explicitly convert to boolean
       });
 
       // Remove the invoiced appointment from the list
@@ -374,8 +452,11 @@ export default function InvoiceReadyPage() {
         prevAppointments.filter(app => app.Id !== id)
       );
 
-      // Show success message
-      alert(`Appointment #${id} has been marked as invoiced.`);
+      // Show success toast instead of alert
+      setToast({
+        message: `Appointment #${id} has been marked as invoiced.`,
+        type: 'success'
+      });
     } catch (err) {
       console.error('Error marking appointment as invoiced:', err);
       setError('Failed to mark appointment as invoiced. Please try again.');
@@ -454,7 +535,7 @@ export default function InvoiceReadyPage() {
           CustomerId: appointmentToUpdate.CustomerId,
           AppointmentStatusId: 'Inv', // Change status to Invoiced
           ActualDuration: appointmentToUpdate.ActualDuration || 0,
-          IsPaidInCash: appointmentToUpdate.IsPaidInCash
+          IsPaidInCash: Boolean(appointmentToUpdate.IsPaidInCash) // Explicitly convert to boolean
         });
       }
       
@@ -466,8 +547,11 @@ export default function InvoiceReadyPage() {
       // Clear selection
       setSelectedAppointments([]);
       
-      // Show success message
-      alert(`${selectedAppointments.length} appointments have been marked as invoiced.`);
+      // Show success toast instead of alert
+      setToast({
+        message: `${selectedAppointments.length} appointments have been marked as invoiced.`,
+        type: 'success'
+      });
     } catch (err) {
       console.error('Error marking appointments as invoiced:', err);
       setError('Failed to mark appointments as invoiced. Please try again.');
@@ -482,6 +566,15 @@ export default function InvoiceReadyPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Toast Notification */}
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+      
       {/* Individual Confirmation Dialog */}
       {showConfirmDialog && appointmentToInvoice && (
         <ConfirmationDialog 

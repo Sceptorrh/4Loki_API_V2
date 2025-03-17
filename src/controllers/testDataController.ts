@@ -1222,12 +1222,17 @@ export const generateTestData = async (req: Request, res: Response) => {
     
     // Create appointments spanning the configured month range
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to midnight
     
     // Start date: First day of (current month - monthRange)
     const startDate = new Date(today.getFullYear(), today.getMonth() - params.monthRange, 1);
+    startDate.setHours(0, 0, 0, 0); // Reset time to midnight
     
     // End date: Last day of (current month + monthRange)
     const endDate = new Date(today.getFullYear(), today.getMonth() + params.monthRange + 1, 0);
+    endDate.setHours(0, 0, 0, 0); // Reset time to midnight
+    
+    console.log(`Generating appointments from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
     
     // Group dogs by customer for multi-dog appointments
     const dogsByCustomer = new Map<number, number[]>();
@@ -1245,13 +1250,39 @@ export const generateTestData = async (req: Request, res: Response) => {
     
     // Generate appointments for each day
     for (let currentDate = new Date(startDate); currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) {
+      // Create a new date object to avoid any potential reference issues
+      const processDate = new Date(currentDate.getTime());
+      processDate.setHours(0, 0, 0, 0); // Reset time to midnight
+      
+      // Helper function to get the correct day of week
+      const getDayOfWeek = (date: Date): number => {
+        // Create a new date object with the date string to ensure consistent behavior
+        const dateStr = date.toISOString().split('T')[0];
+        const newDate = new Date(dateStr + 'T00:00:00.000Z');
+        return newDate.getDay();
+      };
+      
+      // Verify the day of week is correct using the helper function
+      const actualDayOfWeek = getDayOfWeek(processDate);
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const dateStr = processDate.toISOString().split('T')[0];
+      
       // Skip weekends (Saturday and Sunday)
-      if (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+      if (actualDayOfWeek === 0 || actualDayOfWeek === 6) {
+        console.log(`Skipping weekend: ${dateStr}, ${dayNames[actualDayOfWeek]}`);
         continue;
       }
       
+      // Check if it's Friday - use the actual day of week
+      const isFriday = actualDayOfWeek === 5;
+      
+      console.log(`Creating appointments for ${dateStr}, ${dayNames[actualDayOfWeek]}`);
+      
       // Random number of appointments per day within the configured range
-      const numAppointments = Math.floor(Math.random() * (params.maxAppointmentsPerDay - params.minAppointmentsPerDay + 1)) + params.minAppointmentsPerDay;
+      // For Fridays, create a fixed number of appointments for consistency
+      const numAppointments = isFriday ? 
+        3 : // Fixed number for Fridays
+        Math.floor(Math.random() * (params.maxAppointmentsPerDay - params.minAppointmentsPerDay + 1)) + params.minAppointmentsPerDay;
       
       // Business hours: 9:00 to 17:00
       const startHour = 9;
@@ -1263,7 +1294,9 @@ export const generateTestData = async (req: Request, res: Response) => {
         if (dogs.length === 0) continue;
         
         // Decide if this will be a multi-dog appointment (30% chance if we have customers with multiple dogs)
+        // For Fridays, always create single-dog appointments for consistency
         const isMultiDogAppointment = 
+          !isFriday && 
           customersWithMultipleDogs.length > 0 && 
           Math.random() < 0.3;
         
@@ -1293,7 +1326,10 @@ export const generateTestData = async (req: Request, res: Response) => {
         }
         
         // Random start time between business hours
-        const hour = startHour + Math.floor(Math.random() * (endHour - startHour - 1));
+        // For Fridays, use a more restricted time range to ensure visibility
+        const hour = isFriday ? 
+          10 + Math.floor(Math.random() * 4) : // 10:00 to 13:00 for Fridays
+          startHour + Math.floor(Math.random() * (endHour - startHour - 1));
         const minute = Math.floor(Math.random() * 4) * 15; // 0, 15, 30, or 45
         
         // Random duration between 30 minutes and 2 hours
@@ -1309,15 +1345,10 @@ export const generateTestData = async (req: Request, res: Response) => {
         const endMinuteRaw = (minute + durationMinutes) % 60;
         const endTime = `${endHourRaw.toString().padStart(2, '0')}:${endMinuteRaw.toString().padStart(2, '0')}:00`;
         
-        // Format date for MySQL
-        const dateStr = currentDate.toISOString().split('T')[0];
+        // Format date for MySQL - already calculated above as dateStr
         
-        // Set appointment status based on date
-        // Past appointments are marked as exported, current month as planned, future as planned
-        let appointmentStatusId = 'Pln'; // Default to planned
-        if (currentDate < today && currentDate.getMonth() < today.getMonth()) {
-          appointmentStatusId = 'Exp'; // Past appointments are exported
-        }
+        // Set appointment status - all appointments should be planned
+        const appointmentStatusId = 'Pln'; // Always set to planned
         
         // Insert appointment
         const [appointmentResult] = await connection.query<ResultSetHeader>(
@@ -1333,7 +1364,7 @@ export const generateTestData = async (req: Request, res: Response) => {
             isMultiDogAppointment ? 
               `Multiple dog grooming session for ${dogIds.length} dogs` : 
               (i % 3 === 0 ? 'Regular grooming appointment' : ''),
-            i + 1, // Serial number for the day
+            0, // Serial number always set to 0
             Math.random() > 0.7 // 30% chance of being paid in cash
           ]
         );

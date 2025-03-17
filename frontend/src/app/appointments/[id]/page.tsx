@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { FaCalendarCheck, FaCalendarTimes, FaCalendarDay, FaClock, FaMoneyBillWave, FaCheck, FaCalendarAlt } from 'react-icons/fa';
 
 interface Dog {
   DogId: number;
@@ -247,7 +248,7 @@ export default function AppointmentDetailPage() {
           style={{ 
             borderLeftWidth: '6px', 
             borderLeftStyle: 'solid', 
-            borderLeftColor: appointment.Status?.HexColor || appointment.Status?.Color || '#cccccc' 
+            borderLeftColor: appointment.Status?.HexColor || appointment.Status?.Color || '#8b5cf6' 
           }}
         >
           <div className="flex justify-between items-center">
@@ -262,12 +263,21 @@ export default function AppointmentDetailPage() {
             <div>
               {appointment.Status && (
                 <span 
-                  className="px-3 py-1 inline-flex text-sm font-medium rounded-full"
+                  className="px-3 py-1 inline-flex text-sm font-medium rounded-full items-center"
                   style={{ 
-                    backgroundColor: `${appointment.Status.HexColor || appointment.Status.Color}20`,
-                    color: appointment.Status.HexColor || appointment.Status.Color
+                    backgroundColor: `${appointment.Status.HexColor || appointment.Status.Color || '#8b5cf6'}20`,
+                    color: appointment.Status.HexColor || appointment.Status.Color || '#8b5cf6'
                   }}
                 >
+                  {/* Status icon based on status */}
+                  <span className="mr-2">
+                    {appointment.Status.Id === 'Can' && <FaCalendarTimes />}
+                    {appointment.Status.Id === 'Exp' && <FaCalendarCheck />}
+                    {appointment.Status.Id === 'Inv' && <FaMoneyBillWave />}
+                    {appointment.Status.Id === 'NotExp' && <FaCalendarDay />}
+                    {appointment.Status.Id === 'Pln' && <FaCalendarAlt />}
+                    {!['Can', 'Exp', 'Inv', 'NotExp', 'Pln'].includes(appointment.Status.Id) && <FaCalendarDay />}
+                  </span>
                   {appointment.Status.Label}
                 </span>
               )}

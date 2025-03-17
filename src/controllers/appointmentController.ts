@@ -449,6 +449,7 @@ export const getAppointmentsByYearMonth = async (req: Request, res: Response) =>
     }
     
     // Get all appointments for the specified month with customer contact person and status details
+    // Join with Statics_CustomColor to get the hex color
     const [appointments] = await connection.execute(`
       SELECT 
         a.Id as AppointmentId,
@@ -458,10 +459,12 @@ export const getAppointmentsByYearMonth = async (req: Request, res: Response) =>
         c.Contactpersoon as ContactPerson,
         s.Label as StatusLabel,
         s.Color as StatusColor,
-        s.Id as StatusId
+        s.Id as StatusId,
+        cc.Hex as StatusHexColor
       FROM Appointment a
       JOIN Customer c ON a.CustomerId = c.Id
       JOIN Statics_AppointmentStatus s ON a.AppointmentStatusId = s.Id
+      LEFT JOIN Statics_CustomColor cc ON s.Color = cc.Color
       WHERE YEAR(a.Date) = ? AND MONTH(a.Date) = ?
       ORDER BY a.Date, a.TimeStart
     `, [yearNum, monthNum]);
@@ -482,8 +485,8 @@ export const getAppointmentsByYearMonth = async (req: Request, res: Response) =>
         GROUP BY d.Id, d.Name
       `, [appointment.AppointmentId]);
       
-      // Check if the color is a valid hex code, if not provide a default
-      let statusColor = appointment.StatusColor;
+      // Use the hex color from the database if available, otherwise fall back to default colors
+      let statusColor = appointment.StatusHexColor;
       if (!statusColor || !statusColor.startsWith('#')) {
         // Map status names to default hex colors if the database doesn't have proper hex codes
         const colorMap: Record<string, string> = {
@@ -517,7 +520,8 @@ export const getAppointmentsByYearMonth = async (req: Request, res: Response) =>
         Status: {
           Id: appointment.StatusId,
           Label: appointment.StatusLabel,
-          Color: statusColor
+          Color: appointment.StatusColor,
+          HexColor: statusColor
         },
         Dogs: dogs
       });

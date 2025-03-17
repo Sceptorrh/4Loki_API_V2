@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaCalendarCheck, FaCalendarTimes, FaCalendarDay, FaClock, FaMoneyBillWave, FaCheck, FaCalendarAlt } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 
 interface Dog {
@@ -194,11 +194,23 @@ export default function AppointmentsPage() {
                             href={`/appointments/${appointment.AppointmentId}`}
                             key={appointment.AppointmentId} 
                             className="block text-xs py-0.5 px-1 rounded hover:bg-opacity-90 transition-colors"
-                            style={{ backgroundColor: `${appointment.Status.HexColor || appointment.Status.Color}15`, borderLeft: `2px solid ${appointment.Status.HexColor || appointment.Status.Color}` }}
+                            style={{ 
+                              backgroundColor: `${appointment.Status.HexColor || appointment.Status.Color || '#8b5cf6'}20`, 
+                              borderLeft: `3px solid ${appointment.Status.HexColor || appointment.Status.Color || '#8b5cf6'}` 
+                            }}
                             onClick={(e) => e.stopPropagation()} // Prevent day click when clicking on appointment
-                            title={`${format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'HH:mm')} - ${dogNames} - ${appointment.ContactPerson}`}
+                            title={`${format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'HH:mm')} - ${dogNames} - ${appointment.ContactPerson} - ${appointment.Status.Label}`}
                           >
                             <div className="flex items-center">
+                              {/* Status icon based on status */}
+                              <span className="mr-1" style={{ color: appointment.Status.HexColor || appointment.Status.Color || '#8b5cf6' }}>
+                                {appointment.Status.Id === 'Can' && <FaCalendarTimes />}
+                                {appointment.Status.Id === 'Exp' && <FaCalendarCheck />}
+                                {appointment.Status.Id === 'Inv' && <FaMoneyBillWave />}
+                                {appointment.Status.Id === 'NotExp' && <FaCalendarDay />}
+                                {appointment.Status.Id === 'Pln' && <FaCalendarAlt />}
+                                {!['Can', 'Exp', 'Inv', 'NotExp', 'Pln'].includes(appointment.Status.Id) && <FaCalendarDay />}
+                              </span>
                               <span className="w-8 flex-shrink-0 font-medium text-xs">
                                 {format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'HH:mm')}
                               </span>
