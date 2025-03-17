@@ -16,12 +16,18 @@ interface Dog {
   Id?: number;
   Name?: string;
   CustomerId?: number;
+  services?: Array<{
+    ServiceId: string | number;
+    Price: number;
+    ServiceName?: string;
+  }>;
 }
 
 interface Status {
   Id: string;
   Label: string;
   Color: string;
+  HexColor?: string;
 }
 
 interface AppointmentDetail {
@@ -34,6 +40,16 @@ interface AppointmentDetail {
   Status: Status;
   Dogs: Dog[];
   Note?: string;
+  CustomerName?: string;
+}
+
+// Add Service interface
+interface Service {
+  Id: string;
+  Name: string;
+  StandardPrice: number;
+  IsPriceAllowed: boolean;
+  StandardDuration: number;
 }
 
 export default function EditAppointmentPage() {
@@ -55,32 +71,42 @@ export default function EditAppointmentPage() {
   const [notes, setNotes] = useState<string>('');
   const [selectedDogIds, setSelectedDogIds] = useState<number[]>([]);
   const [availableDogs, setAvailableDogs] = useState<Dog[]>([]);
+  
+  // Add state for services
+  const [services, setServices] = useState<Service[]>([]);
+  const [dogServicesMap, setDogServicesMap] = useState<Map<number, any[]>>(new Map());
 
   useEffect(() => {
     const fetchAppointment = async () => {
       try {
         setLoading(true);
         
-        // Fetch appointment data
-        const appointmentResponse = await endpoints.appointments.getById(parseInt(appointmentId));
-        const appointmentData = appointmentResponse.data;
+        // Fetch appointment data using getComplete instead of getById
+        const appointmentResponse = await endpoints.appointments.getComplete(parseInt(appointmentId));
+        const responseData = appointmentResponse.data;
         
-        if (!appointmentData) {
+        if (!responseData) {
           throw new Error('No appointment data received');
         }
         
-        // Set default values for potentially missing properties
-        if (!appointmentData.Status) {
-          appointmentData.Status = {
-            Id: 'unknown',
-            Label: 'Unknown',
-            Color: '#cccccc'
-          };
-        }
-        
-        if (!appointmentData.Dogs) {
-          appointmentData.Dogs = [];
-        }
+        // Extract the relevant data from the complete appointment response
+        const appointmentData = {
+          AppointmentId: responseData.appointment.Id,
+          Date: responseData.appointment.Date,
+          TimeStart: responseData.appointment.TimeStart,
+          TimeEnd: responseData.appointment.TimeEnd,
+          CustomerId: responseData.appointment.CustomerId,
+          ContactPerson: responseData.customer.Contactpersoon,
+          CustomerName: responseData.customer.Naam,
+          Status: responseData.status,
+          Note: responseData.appointment.Note,
+          Dogs: responseData.appointmentDogs.map((dog: any) => ({
+            DogId: dog.DogId,
+            DogName: dog.DogName,
+            ServiceCount: dog.services?.length || 0,
+            services: dog.services // Store the services for each dog
+          }))
+        };
         
         setAppointment(appointmentData);
         
@@ -115,16 +141,44 @@ export default function EditAppointmentPage() {
         
         // Fetch all dogs for this customer
         try {
-          const dogsResponse = await endpoints.dogs.getAll();
-          const allDogs = dogsResponse.data as any[];
-          const customerDogs = allDogs.filter(
-            (dog: any) => dog.CustomerId === appointmentData.CustomerId
-          );
-          setAvailableDogs(customerDogs);
+          const customerDogsResponse = await endpoints.customers.getById(appointmentData.CustomerId);
+          const customerData = customerDogsResponse.data;
+          
+          if (customerData && customerData.Dogs && Array.isArray(customerData.Dogs)) {
+            // Format dogs to match our expected structure
+            const formattedDogs = customerData.Dogs.map((dog: any) => ({
+              DogId: dog.Id,
+              DogName: dog.Name,
+              Id: dog.Id,
+              Name: dog.Name,
+              CustomerId: dog.CustomerId
+            }));
+            setAvailableDogs(formattedDogs);
+          } else {
+            // Fallback to dogs from appointment
+            setAvailableDogs(appointmentData.Dogs);
+          }
         } catch (dogsError) {
-          console.error('Error fetching dogs:', dogsError);
+          console.error('Error fetching customer dogs:', dogsError);
           // Use dogs from appointment if fetch fails
           setAvailableDogs(appointmentData.Dogs);
+        }
+        
+        // Create a map of dog services from the original appointment
+        const servicesMap = new Map();
+        appointmentData.Dogs.forEach((dog: Dog) => {
+          if (dog.services && dog.services.length > 0) {
+            servicesMap.set(dog.DogId, dog.services);
+          }
+        });
+        setDogServicesMap(servicesMap);
+        
+        // Fetch services
+        try {
+          const servicesResponse = await endpoints.services.getAll();
+          setServices(servicesResponse.data || []);
+        } catch (servicesError) {
+          console.error('Error fetching services:', servicesError);
         }
         
         setError(null);
@@ -151,6 +205,54 @@ export default function EditAppointmentPage() {
     });
   };
 
+  // Add functions to handle service selection and price changes
+  const handleServiceSelection = (dogId: number, serviceId: string, isSelected: boolean) => {
+    setDogServicesMap(current => {
+      const newMap = new Map(current);
+      const dogServices = [...(newMap.get(dogId) || [])];
+      
+      if (isSelected) {
+        // Find the service to get its standard price
+        const serviceInfo = services.find(s => s.Id === serviceId);
+        if (!serviceInfo) return current;
+        
+        // Add service with standard price
+        dogServices.push({
+          ServiceId: serviceId,
+          Price: Number(serviceInfo.StandardPrice),
+          ServiceName: serviceInfo.Name
+        });
+      } else {
+        // Remove service
+        const index = dogServices.findIndex(s => s.ServiceId === serviceId);
+        if (index !== -1) {
+          dogServices.splice(index, 1);
+        }
+      }
+      
+      newMap.set(dogId, dogServices);
+      return newMap;
+    });
+  };
+  
+  const handleServicePriceChange = (dogId: number, serviceId: string, price: number) => {
+    setDogServicesMap(current => {
+      const newMap = new Map(current);
+      const dogServices = [...(newMap.get(dogId) || [])];
+      const index = dogServices.findIndex(s => s.ServiceId === serviceId);
+      
+      if (index !== -1) {
+        dogServices[index] = {
+          ...dogServices[index],
+          Price: Number(price)
+        };
+      }
+      
+      newMap.set(dogId, dogServices);
+      return newMap;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -173,24 +275,32 @@ export default function EditAppointmentPage() {
       const formattedStartTime = format(startTime, 'HH:mm');
       const formattedEndTime = format(endTime, 'HH:mm');
       
-      // Create appointment data
+      // Create appointment data for the complete endpoint
       const appointmentData = {
-        Date: formattedDate,
-        TimeStart: formattedStartTime,
-        TimeEnd: formattedEndTime,
-        DateEnd: formattedDate, // Assuming same day
-        ActualDuration: 90, // Default duration in minutes
-        CustomerId: appointment?.CustomerId,
-        AppointmentStatusId: statusId,
-        Note: notes,
-        Dogs: selectedDogIds.map(dogId => ({
-          DogId: dogId,
-          Services: [] // Add services if needed
-        }))
+        appointment: {
+          Date: formattedDate,
+          TimeStart: formattedStartTime,
+          TimeEnd: formattedEndTime,
+          DateEnd: formattedDate, // Assuming same day
+          ActualDuration: 90, // Default duration in minutes
+          CustomerId: appointment?.CustomerId,
+          AppointmentStatusId: statusId,
+          Note: notes
+        },
+        appointmentDogs: selectedDogIds.map(dogId => {
+          // Get services for this dog from the map
+          const services = dogServicesMap.get(dogId) || [];
+          
+          return {
+            DogId: dogId,
+            Note: '',
+            services: services
+          };
+        })
       };
       
-      // Update the appointment
-      await endpoints.appointments.update(parseInt(appointmentId), appointmentData);
+      // Update the appointment using the complete endpoint
+      await endpoints.appointments.updateComplete(parseInt(appointmentId), appointmentData);
       
       // Redirect to the appointment detail page
       router.push(`/appointments/${appointmentId}`);
@@ -268,28 +378,34 @@ export default function EditAppointmentPage() {
               Customer
             </label>
             <div className="p-2 border border-gray-300 rounded-md bg-gray-50">
-              {appointment.ContactPerson}
+              {appointment.CustomerName ? (
+                <div>
+                  <div className="font-medium">{appointment.CustomerName}</div>
+                  <div className="text-sm text-gray-600">{appointment.ContactPerson}</div>
+                </div>
+              ) : (
+                appointment.ContactPerson
+              )}
             </div>
           </div>
           
           {/* Appointment Status */}
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-              Status *
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
             </label>
-            <select
-              id="status"
-              value={statusId}
-              onChange={(e) => setStatusId(e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
-              required
-            >
-              {statuses.map(status => (
-                <option key={status.Id} value={status.Id}>
-                  {status.Label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center">
+              {appointment && appointment.Status && (
+                <div 
+                  className="px-4 py-2 rounded-full text-white font-medium inline-block"
+                  style={{ backgroundColor: appointment.Status.HexColor || appointment.Status.Color }}
+                >
+                  {appointment.Status.Label}
+                </div>
+              )}
+            </div>
+            <input type="hidden" name="statusId" value={statusId} />
+            <p className="text-xs text-gray-500 mt-1">Status cannot be changed from this screen</p>
           </div>
           
           {/* Date Selection */}
@@ -354,28 +470,80 @@ export default function EditAppointmentPage() {
           {availableDogs.length === 0 ? (
             <p className="text-gray-500 text-sm">No dogs found for this customer</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {availableDogs.map(dog => (
-                <div 
-                  key={dog.DogId} 
-                  className={`border rounded-md p-3 cursor-pointer ${
-                    selectedDogIds.includes(dog.DogId) 
-                      ? 'border-primary-500 bg-primary-50' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onClick={() => handleDogSelection(dog.DogId)}
-                >
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedDogIds.includes(dog.DogId)}
-                      onChange={() => {}}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                    />
-                    <span className="ml-2 text-gray-900">{dog.DogName}</span>
+            <div className="grid grid-cols-1 gap-4">
+              {availableDogs.map(dog => {
+                const dogId = dog.Id || dog.DogId;
+                // Get services for this dog from the map
+                const dogServices = dogServicesMap.get(dogId) || [];
+                const isSelected = selectedDogIds.includes(dogId);
+                
+                return (
+                  <div 
+                    key={dogId} 
+                    className={`border rounded-md p-4 ${
+                      isSelected 
+                        ? 'border-primary-500' 
+                        : 'border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleDogSelection(dogId)}
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      />
+                      <span className="ml-2 text-gray-900 font-medium">{dog.Name || dog.DogName}</span>
+                    </div>
+                    
+                    {/* Services section - only show if dog is selected */}
+                    {isSelected && (
+                      <div className="mt-3 pl-6">
+                        <h4 className="font-medium text-gray-700 mb-2">Services</h4>
+                        <div className="space-y-3">
+                          {services.map(service => {
+                            const isServiceSelected = dogServices.some(s => s.ServiceId === service.Id);
+                            const servicePrice = dogServices.find(s => s.ServiceId === service.Id)?.Price || service.StandardPrice;
+                            
+                            return (
+                              <div key={service.Id} className="flex flex-col sm:flex-row sm:items-center">
+                                <div className="flex items-center mb-2 sm:mb-0 sm:flex-1">
+                                  <input
+                                    type="checkbox"
+                                    id={`service-${dogId}-${service.Id}`}
+                                    checked={isServiceSelected}
+                                    onChange={(e) => handleServiceSelection(dogId, service.Id, e.target.checked)}
+                                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                  />
+                                  <label htmlFor={`service-${dogId}-${service.Id}`} className="ml-2 text-gray-700">
+                                    {service.Name}
+                                  </label>
+                                </div>
+                                
+                                {isServiceSelected && (
+                                  <div className="sm:w-32">
+                                    <div className="flex items-center">
+                                      <span className="text-gray-500 mr-2">€</span>
+                                      <input
+                                        type="number"
+                                        value={servicePrice}
+                                        onChange={(e) => handleServicePriceChange(dogId, service.Id, parseFloat(e.target.value))}
+                                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                        step="0.01"
+                                        min="0"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

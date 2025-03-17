@@ -17,6 +17,7 @@ interface Status {
   Id: string;
   Label: string;
   Color: string;
+  HexColor?: string;
 }
 
 interface CalendarAppointment {
@@ -193,7 +194,7 @@ export default function AppointmentsPage() {
                             href={`/appointments/${appointment.AppointmentId}`}
                             key={appointment.AppointmentId} 
                             className="block text-xs py-0.5 px-1 rounded hover:bg-opacity-90 transition-colors"
-                            style={{ backgroundColor: `${appointment.Status.Color}15`, borderLeft: `2px solid ${appointment.Status.Color}` }}
+                            style={{ backgroundColor: `${appointment.Status.HexColor || appointment.Status.Color}15`, borderLeft: `2px solid ${appointment.Status.HexColor || appointment.Status.Color}` }}
                             onClick={(e) => e.stopPropagation()} // Prevent day click when clicking on appointment
                             title={`${format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'HH:mm')} - ${dogNames} - ${appointment.ContactPerson}`}
                           >

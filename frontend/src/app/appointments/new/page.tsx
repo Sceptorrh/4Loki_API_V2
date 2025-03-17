@@ -66,7 +66,7 @@ export default function NewAppointmentPage() {
   const [appointmentDate, setAppointmentDate] = useState<Date>(dateParam ? new Date(dateParam) : new Date());
   const [startTime, setStartTime] = useState<Date>(setHours(setMinutes(new Date(), 0), 9)); // Default to 9:00 AM
   const [endTime, setEndTime] = useState<Date>(setHours(setMinutes(new Date(), 30), 10)); // Default to 10:30 AM
-  const [statusId, setStatusId] = useState<string>('');
+  const [statusId, setStatusId] = useState<string>('Pln');
   const [notes, setNotes] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +126,7 @@ export default function NewAppointmentPage() {
           if (statusesData && statusesData.length > 0) {
             // Find the "Planned" status or use the first one
             const plannedStatus = statusesData.find((status: Status) => status.id === 'Pln') || statusesData[0];
-            setStatusId(plannedStatus.id);
+            setStatusId('Pln');
           }
         } catch (statusError) {
           console.error('Error fetching statuses:', statusError);
@@ -519,22 +519,15 @@ export default function NewAppointmentPage() {
           {/* Appointment Status */}
           <div>
             <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-              Status *
+              Status
             </label>
-            <select
-              id="status"
-              value={statusId}
-              onChange={(e) => setStatusId(e.target.value)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
-              required
-            >
-              <option value="">Select a status</option>
-              {statuses.map(status => (
-                <option key={status.id} value={status.id}>
-                  {status.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center">
+              <div className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
+                Planned
+              </div>
+              <input type="hidden" value="Pln" name="statusId" />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">New appointments are always created with "Planned" status</p>
           </div>
           
           {/* Date Selection */}

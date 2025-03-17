@@ -126,9 +126,16 @@ export const getCompleteAppointment = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Appointment not found' });
     }
     
-    // Get the complete status object
+    // Get the complete status object with hex color
     const [statusRows] = await connection.execute(
-      `SELECT Id, Label, Color FROM Statics_AppointmentStatus WHERE Id = ?`,
+      `SELECT 
+        s.Id, 
+        s.Label, 
+        s.Color,
+        c.Hex as HexColor
+      FROM Statics_AppointmentStatus s
+      JOIN Statics_CustomColor c ON s.Color = c.Color
+      WHERE s.Id = ?`,
       [appointment.AppointmentStatusId]
     );
     

@@ -340,6 +340,8 @@ describe('Appointment API Endpoints', () => {
       expect(res.body.status.Id).toBeDefined();
       expect(res.body.status.Label).toBeDefined();
       expect(res.body.status.Color).toBeDefined();
+      expect(res.body.status.HexColor).toBeDefined();
+      expect(res.body.status.HexColor).toMatch(/^#[0-9a-f]{6}$/i);
       
       // Verify dogs and services
       const firstDog = res.body.appointmentDogs.find((dog: any) => dog.DogId === dogIds[0]);

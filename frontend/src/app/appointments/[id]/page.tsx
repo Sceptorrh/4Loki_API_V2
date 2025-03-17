@@ -25,6 +25,7 @@ interface Status {
   Id: string;
   Label: string;
   Color: string;
+  HexColor?: string;
 }
 
 interface AppointmentDetail {
@@ -246,7 +247,7 @@ export default function AppointmentDetailPage() {
           style={{ 
             borderLeftWidth: '6px', 
             borderLeftStyle: 'solid', 
-            borderLeftColor: appointment.Status?.Color || '#cccccc' 
+            borderLeftColor: appointment.Status?.HexColor || appointment.Status?.Color || '#cccccc' 
           }}
         >
           <div className="flex justify-between items-center">
@@ -263,8 +264,8 @@ export default function AppointmentDetailPage() {
                 <span 
                   className="px-3 py-1 inline-flex text-sm font-medium rounded-full"
                   style={{ 
-                    backgroundColor: `${appointment.Status.Color}20`,
-                    color: appointment.Status.Color
+                    backgroundColor: `${appointment.Status.HexColor || appointment.Status.Color}20`,
+                    color: appointment.Status.HexColor || appointment.Status.Color
                   }}
                 >
                   {appointment.Status.Label}

@@ -18,6 +18,7 @@ export const endpoints = {
     create: (data: any) => api.post('/appointments', data),
     createComplete: (data: any) => api.post('/appointments/complete', data),
     update: (id: number, data: any) => api.put(`/appointments/${id}`, data),
+    updateComplete: (id: number, data: any) => api.put(`/appointments/${id}/complete`, data),
     delete: (id: number) => api.delete(`/appointments/${id}`),
     getByYearMonth: (year: number, month: number) => api.get(`/appointments/year/${year}/month/${month}`),
     getByCustomerId: (customerId: number) => api.get(`/appointments/customer/${customerId}`),
