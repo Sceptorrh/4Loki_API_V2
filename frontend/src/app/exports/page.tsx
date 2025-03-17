@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { endpoints } from '@/lib/api';
 import { format } from 'date-fns';
 import { FaFileExcel, FaCheck, FaSpinner, FaHistory, FaUndo, FaEye, FaCalendarAlt, FaInfoCircle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
@@ -76,41 +76,93 @@ export default function ExportsPage() {
   const [reverting, setReverting] = useState(false);
   const [isLatestExport, setIsLatestExport] = useState(false);
   const [highestSerialNumbers, setHighestSerialNumbers] = useState<{[key: string]: number}>({});
+  const [hasUnexportedBefore, setHasUnexportedBefore] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Fetch export-ready appointments
-        const appointmentsResponse = await endpoints.exports.getExportReady();
-        setAppointments(appointmentsResponse.data || []);
-        
-        // Fetch export logs
-        const exportLogsResponse = await endpoints.exportLogs.getAll();
-        setExportLogs(exportLogsResponse.data || []);
-
-        // Calculate highest serial numbers
-        calculateHighestSerialNumbers(appointmentsResponse.data || []);
-      } catch (err) {
-        console.error('Error fetching export data:', err);
-        setError('Failed to load export data. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Calculate highest serial numbers for both payment types
+  const calculateHighestSerialNumbers = useCallback((appointmentData: ExportReadyAppointment[]) => {
+    const result: {[key: string]: number} = {};
     
-    fetchData();
-  }, []);
-  
-  // Add effect to recalculate highest serial numbers when selected year changes
+    // Initialize with zeros for the selected year
+    result[`${selectedYear}-bank`] = 0;
+    result[`${selectedYear}-cash`] = 0;
+    
+    // Find highest serial numbers for all years
+    appointmentData.forEach(app => {
+      // Only consider appointments that have a valid serial number (greater than 0)
+      if (app.SerialNumber && app.SerialNumber > 0) {
+        const year = new Date(app.Date).getFullYear();
+        const paymentType = app.IsPaidInCash ? 'cash' : 'bank';
+        const key = `${year}-${paymentType}`;
+        
+        // Initialize the year-paymentType combination if it doesn't exist
+        if (!result[key]) {
+          result[key] = 0;
+        }
+        
+        // Update the highest serial number if this one is higher
+        if (app.SerialNumber > result[key]) {
+          result[key] = app.SerialNumber;
+        }
+      }
+    });
+    
+    setHighestSerialNumbers(result);
+  }, []); // Remove selectedYear dependency
+
+  // Get appointments to export based on selected date
+  const getAppointmentsToExport = useCallback(() => {
+    return appointments.filter(app => app.Date <= selectedDate);
+  }, [appointments, selectedDate]);
+
+  // Effect to update hasUnexportedBefore state
   useEffect(() => {
-    if (appointments.length > 0) {
-      calculateHighestSerialNumbers(appointments);
+    const selectedAppointments = getAppointmentsToExport();
+    const hasUnexported = appointments.some(app => 
+      app.Date < selectedDate && 
+      app.AppointmentStatusId === 'Inv' && 
+      !selectedAppointments.some(selected => selected.Id === app.Id)
+    );
+    setHasUnexportedBefore(hasUnexported);
+  }, [appointments, selectedDate, getAppointmentsToExport]);
+
+  // Function to fetch all data
+  const fetchAllData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch all appointments with serial numbers
+      const allAppointmentsResponse = await endpoints.appointments.getAll();
+      const appointmentsWithSerialNumbers = allAppointmentsResponse.data || [];
+      
+      // Calculate highest serial numbers using all appointments
+      calculateHighestSerialNumbers(appointmentsWithSerialNumbers);
+      
+      // Fetch export-ready appointments
+      const appointmentsResponse = await endpoints.exports.getExportReady();
+      setAppointments(appointmentsResponse.data || []);
+      
+      // Fetch export logs
+      const exportLogsResponse = await endpoints.exportLogs.getAll();
+      setExportLogs(exportLogsResponse.data || []);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  }, [selectedYear]);
-  
+  }, [calculateHighestSerialNumbers]);
+
+  // Initial data fetching effect
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Effect to refresh data when year changes
+  useEffect(() => {
+    fetchAllData();
+  }, [selectedYear, fetchAllData]);
+
   // Clear toast after 5 seconds
   useEffect(() => {
     if (toast) {
@@ -121,11 +173,11 @@ export default function ExportsPage() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
-  
-  // Get appointments to export based on selected date
-  const getAppointmentsToExport = () => {
-    return appointments.filter(app => app.Date <= selectedDate);
-  };
+
+  // Function to refresh data
+  const refreshData = useCallback(async () => {
+    await fetchAllData();
+  }, [fetchAllData]);
   
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedDate(e.target.value);
@@ -149,6 +201,14 @@ export default function ExportsPage() {
       return;
     }
     
+    if (hasUnexportedBefore) {
+      setToast({
+        message: 'Cannot export appointments: there are unexported appointments before the selected date range',
+        type: 'error'
+      });
+      return;
+    }
+    
     try {
       setExporting(true);
       
@@ -159,18 +219,7 @@ export default function ExportsPage() {
       const now = new Date();
       const formattedIssuedOn = format(now, 'yyyy-MM-dd HH:mm:ss');
       
-      // Step 1: Generate Excel file
-      let excelResponse;
-      try {
-        console.log('Generating Excel file...');
-        excelResponse = await endpoints.exports.generateExcel(appointmentIds);
-        console.log('Excel file generated successfully');
-      } catch (err) {
-        console.error('Error generating Excel:', err);
-        throw new Error('Failed to generate Excel file');
-      }
-      
-      // Step 2: Mark appointments as exported
+      // Step 1: Mark appointments as exported (this assigns serial numbers)
       let markAsExportedResponse;
       try {
         console.log('Marking appointments as exported...');
@@ -188,6 +237,17 @@ export default function ExportsPage() {
       } catch (err) {
         console.error('Error marking appointments as exported:', err);
         throw new Error('Failed to mark appointments as exported');
+      }
+      
+      // Step 2: Generate Excel file with the updated serial numbers
+      let excelResponse;
+      try {
+        console.log('Generating Excel file...');
+        excelResponse = await endpoints.exports.generateExcel(appointmentIds);
+        console.log('Excel file generated successfully');
+      } catch (err) {
+        console.error('Error generating Excel:', err);
+        throw new Error('Failed to generate Excel file');
       }
       
       // Generate filename
@@ -240,59 +300,14 @@ export default function ExportsPage() {
       link.click();
       document.body.removeChild(link);
       
-      // Remove exported appointments from the list and update highest serial numbers
-      if (markAsExportedResponse && markAsExportedResponse.data && markAsExportedResponse.data.updatedAppointments) {
-        // Update the highest serial numbers based on the newly assigned values
-        const updatedAppointments = markAsExportedResponse.data.updatedAppointments;
-        const updatedHighestSerialNumbers = {...highestSerialNumbers};
-        
-        console.log('Processing updated appointments for highest serial numbers:', updatedAppointments);
-        
-        updatedAppointments.forEach((app: any) => {
-          const year = new Date(app.Date).getFullYear();
-          const paymentType = app.IsPaidInCash === 1 ? 'cash' : 'bank';
-          const key = `${year}-${paymentType}`;
-          
-          console.log(`Processing appointment ${app.Id}:`, {
-            year,
-            paymentType,
-            key,
-            serialNumber: app.SerialNumber,
-            currentHighest: updatedHighestSerialNumbers[key]
-          });
-          
-          if (!updatedHighestSerialNumbers[key] || app.SerialNumber > updatedHighestSerialNumbers[key]) {
-            updatedHighestSerialNumbers[key] = app.SerialNumber;
-          }
-        });
-        
-        console.log('Updated highest serial numbers:', updatedHighestSerialNumbers);
-        setHighestSerialNumbers(updatedHighestSerialNumbers);
-      }
-      
-      // Instead of just removing the exported appointments, fetch fresh data
-      // to ensure we have the latest state including serial numbers
-      try {
-        console.log('Refreshing appointment data after export...');
-        const refreshResponse = await endpoints.exports.getExportReady();
-        console.log('Refreshed appointment data:', refreshResponse.data);
-        setAppointments(refreshResponse.data || []);
-      } catch (refreshErr) {
-        console.error('Error refreshing appointments after export:', refreshErr);
-      }
-      
-      // Refresh export logs
-      const exportLogsResponse = await endpoints.exportLogs.getAll();
-      setExportLogs(exportLogsResponse.data || []);
+      // Refresh all data to ensure we have the latest state
+      await fetchAllData();
       
       // Show success message
       setToast({
         message: `Successfully exported ${appointmentIds.length} appointments`,
         type: 'success'
       });
-      
-      // Refresh data to ensure we have the latest information
-      await refreshData();
     } catch (err) {
       console.error('Error exporting to Excel:', err);
       setToast({
@@ -316,7 +331,7 @@ export default function ExportsPage() {
   };
   
   // Calculate preview serial numbers for appointments that will be exported
-  const calculatePreviewSerialNumbers = () => {
+  const calculatePreviewSerialNumbers = useCallback(() => {
     const appointmentsToExport = getAppointmentsToExport();
     const previewSerialNumbers = new Map<number, number>();
     
@@ -358,10 +373,10 @@ export default function ExportsPage() {
     });
     
     return previewSerialNumbers;
-  };
+  }, [appointments, getAppointmentsToExport]);
   
   // Generate invoice number for preview or actual appointment
-  const generateInvoiceNumber = (appointment: ExportReadyAppointment, previewSerialNumbers?: Map<number, number>) => {
+  const generateInvoiceNumber = useCallback((appointment: ExportReadyAppointment, previewSerialNumbers?: Map<number, number>) => {
     const year = new Date(appointment.Date).getFullYear();
     
     // If we have a preview serial number, use it
@@ -381,7 +396,7 @@ export default function ExportsPage() {
       serialNumber = 'C' + serialNumber;
     }
     return `${year}-${serialNumber}`;
-  };
+  }, []);
   
   // Helper function to ensure a value is a number and format it
   const formatCurrency = (value: any): string => {
@@ -440,12 +455,15 @@ export default function ExportsPage() {
       const exportLogsResponse = await endpoints.exportLogs.getAll();
       setExportLogs(exportLogsResponse.data || []);
       
-      // Refresh appointments (some may have been reverted back to 'Inv' status)
-      const appointmentsResponse = await endpoints.exports.getExportReady();
-      const updatedAppointments = appointmentsResponse.data || [];
-      setAppointments(updatedAppointments);
+      // Fetch all appointments to get the updated serial numbers
+      const allAppointmentsResponse = await endpoints.appointments.getAll();
+      const updatedAppointments = allAppointmentsResponse.data || [];
       
-      // Recalculate highest serial numbers after revert
+      // Update appointments state with export-ready appointments
+      const exportReadyResponse = await endpoints.exports.getExportReady();
+      setAppointments(exportReadyResponse.data || []);
+      
+      // Recalculate highest serial numbers using all appointments
       calculateHighestSerialNumbers(updatedAppointments);
       
       // Close modals and reset state
@@ -474,54 +492,6 @@ export default function ExportsPage() {
       });
     } finally {
       setReverting(false);
-    }
-  };
-  
-  // Calculate highest serial numbers for both payment types
-  const calculateHighestSerialNumbers = (appointmentData: ExportReadyAppointment[]) => {
-    const result: {[key: string]: number} = {};
-    
-    // Find highest serial numbers for all years
-    appointmentData.forEach(app => {
-      // Only consider appointments that have a valid serial number (greater than 0)
-      // Explicitly ignore null, undefined, 0, or negative numbers
-      if (app.SerialNumber && app.SerialNumber > 0) {
-        const year = new Date(app.Date).getFullYear();
-        const paymentType = app.IsPaidInCash ? 'cash' : 'bank';
-        const key = `${year}-${paymentType}`;
-        
-        if (!result[key] || app.SerialNumber > result[key]) {
-          result[key] = app.SerialNumber;
-        }
-      }
-    });
-    
-    // Initialize with zero if no serial numbers found for selected year
-    if (!result[`${selectedYear}-bank`]) {
-      result[`${selectedYear}-bank`] = 0;
-    }
-    if (!result[`${selectedYear}-cash`]) {
-      result[`${selectedYear}-cash`] = 0;
-    }
-    
-    setHighestSerialNumbers(result);
-  };
-  
-  // Function to refresh data
-  const refreshData = async () => {
-    try {
-      // Fetch export-ready appointments
-      const appointmentsResponse = await endpoints.exports.getExportReady();
-      setAppointments(appointmentsResponse.data || []);
-      
-      // Fetch export logs
-      const exportLogsResponse = await endpoints.exportLogs.getAll();
-      setExportLogs(exportLogsResponse.data || []);
-
-      // Calculate highest serial numbers
-      calculateHighestSerialNumbers(appointmentsResponse.data || []);
-    } catch (err) {
-      console.error('Error refreshing data:', err);
     }
   };
   
@@ -639,8 +609,16 @@ export default function ExportsPage() {
               These appointments have been invoiced and are ready to be exported
             </p>
             {getAppointmentsToExport().length > 0 && (
-              <div className="mt-2 text-sm text-blue-600">
-                <strong>{getAppointmentsToExport().length}</strong> appointments selected for export (up to {format(new Date(selectedDate), 'dd-MM-yyyy')})
+              <div className="mt-2">
+                <div className="text-sm text-blue-600">
+                  <strong>{getAppointmentsToExport().length}</strong> appointments selected for export (up to {format(new Date(selectedDate), 'dd-MM-yyyy')})
+                </div>
+                {hasUnexportedBefore && (
+                  <div className="mt-2 text-sm text-red-600">
+                    <FaInfoCircle className="inline mr-1" />
+                    There are unexported appointments before the selected date range. Please export all appointments in chronological order.
+                  </div>
+                )}
               </div>
             )}
           </div>

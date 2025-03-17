@@ -703,15 +703,32 @@ export const markAppointmentsAsExported = async (req: Request, res: Response) =>
     
     console.log(`Processing ${appointmentIds.length} appointments for export`);
     
-    // Get the appointments to be exported with their payment method
+    // Get the appointments to be exported with their payment method and dates
     const placeholders = appointmentIds.map(() => '?').join(',');
     const [appointmentsToExport] = await connection.execute(`
       SELECT Id, Date, IsPaidInCash
       FROM Appointment
       WHERE Id IN (${placeholders})
+      ORDER BY Date ASC
     `, [...appointmentIds]);
     
     console.log(`Found ${(appointmentsToExport as any[]).length} appointments to export`);
+    
+    // Get the earliest date among the appointments to be exported
+    const earliestDate = (appointmentsToExport as any[])[0]?.Date;
+    
+    // Check if there are any unexported appointments before the earliest date
+    const [unexportedAppointments] = await connection.execute(`
+      SELECT COUNT(*) as count
+      FROM Appointment
+      WHERE Date < ?
+      AND AppointmentStatusId = 'Inv'
+      AND Id NOT IN (${placeholders})
+    `, [earliestDate, ...appointmentIds]);
+    
+    if ((unexportedAppointments as any[])[0].count > 0) {
+      throw new AppError('Cannot export appointments: there are unexported appointments before the selected date range', 400);
+    }
     
     // Group appointments by year and payment type
     const groupedAppointments = new Map();

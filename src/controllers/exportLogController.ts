@@ -225,9 +225,12 @@ export const revertExport = async (req: Request, res: Response) => {
     for (const exportAppointment of (exportAppointments as any[])) {
       // Always revert to 'Inv' status regardless of previous status
       
-      // Update appointment status to 'Inv'
+      // Update appointment status to 'Inv' and reset SerialNumber to 0
       await connection.execute(`
-        UPDATE Appointment SET AppointmentStatusId = 'Inv' WHERE Id = ?
+        UPDATE Appointment 
+        SET AppointmentStatusId = 'Inv',
+            SerialNumber = 0
+        WHERE Id = ?
       `, [exportAppointment.AppointmentId]);
       
       // Mark the export-appointment relationship as reverted
