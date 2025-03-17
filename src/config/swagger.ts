@@ -394,9 +394,17 @@ const swaggerOptions = {
                     type: 'integer',
                     description: 'Dog ID'
                   },
+                  DogName: {
+                    type: 'string',
+                    description: 'Dog name'
+                  },
                   Note: {
                     type: 'string',
                     description: 'Notes for this dog'
+                  },
+                  DogSizeId: {
+                    type: 'string',
+                    description: 'Dog size ID'
                   },
                   services: {
                     type: 'array',
@@ -407,21 +415,98 @@ const swaggerOptions = {
                           type: 'string',
                           description: 'Service ID'
                         },
+                        ServiceName: {
+                          type: 'string',
+                          description: 'Service name'
+                        },
                         Price: {
                           type: 'number',
                           format: 'decimal',
                           description: 'Service price'
                         }
                       },
-                      required: ['ServiceId', 'Price']
+                      required: ['ServiceId', 'Price', 'ServiceName']
+                    }
+                  },
+                  breeds: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        BreedId: {
+                          type: 'string',
+                          description: 'Breed ID'
+                        },
+                        BreedName: {
+                          type: 'string',
+                          description: 'Breed name'
+                        }
+                      },
+                      required: ['BreedId', 'BreedName']
                     }
                   }
                 },
-                required: ['DogId', 'services']
+                required: ['DogId', 'DogName', 'services', 'breeds']
               }
+            },
+            customer: {
+              type: 'object',
+              properties: {
+                Id: {
+                  type: 'integer',
+                  description: 'Customer ID'
+                },
+                Naam: {
+                  type: 'string',
+                  description: 'Customer name'
+                },
+                Contactpersoon: {
+                  type: 'string',
+                  description: 'Contact person'
+                },
+                Emailadres: {
+                  type: 'string',
+                  description: 'Email address'
+                },
+                Telefoonnummer: {
+                  type: 'string',
+                  description: 'Phone number'
+                },
+                Notities: {
+                  type: 'string',
+                  description: 'Notes'
+                },
+                IsExported: {
+                  type: 'boolean',
+                  description: 'Whether customer is exported'
+                },
+                IsAllowContactShare: {
+                  type: 'string',
+                  description: 'Whether customer allows contact sharing'
+                }
+              },
+              required: ['Id', 'Naam', 'Contactpersoon']
+            },
+            status: {
+              type: 'object',
+              properties: {
+                Id: {
+                  type: 'string',
+                  description: 'Status ID'
+                },
+                Label: {
+                  type: 'string',
+                  description: 'Status label'
+                },
+                Color: {
+                  type: 'string',
+                  description: 'Status color'
+                }
+              },
+              required: ['Id', 'Label', 'Color']
             }
           },
-          required: ['appointment', 'appointmentDogs']
+          required: ['appointment', 'appointmentDogs', 'customer', 'status']
         },
         // New CompleteAppointmentInput schema for POST/PUT operations
         CompleteAppointmentInput: {

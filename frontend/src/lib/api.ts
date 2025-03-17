@@ -14,6 +14,7 @@ export const endpoints = {
   appointments: {
     getAll: () => api.get('/appointments'),
     getById: (id: number) => api.get(`/appointments/${id}`),
+    getComplete: (id: number) => api.get(`/appointments/${id}/complete`),
     create: (data: any) => api.post('/appointments', data),
     createComplete: (data: any) => api.post('/appointments/complete', data),
     update: (id: number, data: any) => api.put(`/appointments/${id}`, data),
@@ -66,6 +67,11 @@ export const endpoints = {
   services: {
     getAll: () => api.get('/static/services'),
     getById: (id: string) => api.get(`/static/services/${id}`),
+  },
+  
+  // Appointment Statuses
+  appointmentStatuses: {
+    getAll: () => api.get('/static/appointment-statuses'),
   },
 };
 

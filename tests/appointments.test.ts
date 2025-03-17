@@ -329,6 +329,18 @@ describe('Appointment API Endpoints', () => {
       expect(Array.isArray(res.body.appointmentDogs)).toBe(true);
       expect(res.body.appointmentDogs.length).toBe(3);
       
+      // Verify customer information
+      expect(res.body.customer).toBeDefined();
+      expect(res.body.customer.Id).toBeDefined();
+      expect(res.body.customer.Naam).toBeDefined();
+      expect(res.body.customer.Contactpersoon).toBeDefined();
+      
+      // Verify status information
+      expect(res.body.status).toBeDefined();
+      expect(res.body.status.Id).toBeDefined();
+      expect(res.body.status.Label).toBeDefined();
+      expect(res.body.status.Color).toBeDefined();
+      
       // Verify dogs and services
       const firstDog = res.body.appointmentDogs.find((dog: any) => dog.DogId === dogIds[0]);
       const secondDog = res.body.appointmentDogs.find((dog: any) => dog.DogId === dogIds[1]);
@@ -338,6 +350,7 @@ describe('Appointment API Endpoints', () => {
       expect(secondDog).toBeDefined();
       expect(thirdDog).toBeDefined();
       
+      // Verify services
       expect(firstDog.services).toBeDefined();
       expect(Array.isArray(firstDog.services)).toBe(true);
       expect(firstDog.services.length).toBe(1);
@@ -349,6 +362,16 @@ describe('Appointment API Endpoints', () => {
       expect(thirdDog.services).toBeDefined();
       expect(Array.isArray(thirdDog.services)).toBe(true);
       expect(thirdDog.services.length).toBe(1);
+      
+      // Verify breeds
+      expect(firstDog.breeds).toBeDefined();
+      expect(Array.isArray(firstDog.breeds)).toBe(true);
+      
+      expect(secondDog.breeds).toBeDefined();
+      expect(Array.isArray(secondDog.breeds)).toBe(true);
+      
+      expect(thirdDog.breeds).toBeDefined();
+      expect(Array.isArray(thirdDog.breeds)).toBe(true);
     });
 
     it('PUT /api/v1/appointments/:id/complete should update a complete appointment', async () => {

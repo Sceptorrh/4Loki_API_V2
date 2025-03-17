@@ -126,7 +126,23 @@ export const getCompleteAppointment = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Appointment not found' });
     }
     
-    // Get appointment dogs with their services
+    // Get the complete status object
+    const [statusRows] = await connection.execute(
+      `SELECT Id, Label, Color FROM Statics_AppointmentStatus WHERE Id = ?`,
+      [appointment.AppointmentStatusId]
+    );
+    
+    const status = (statusRows as any[])[0] || null;
+    
+    // Get complete customer information
+    const [customerRows] = await connection.execute(
+      `SELECT * FROM Customer WHERE Id = ?`,
+      [appointment.CustomerId]
+    );
+    
+    const customer = (customerRows as any[])[0] || null;
+    
+    // Get appointment dogs with their services and breeds
     const [appointmentDogs] = await connection.execute(`
       SELECT 
         ad.Id as AppointmentDogId,
@@ -139,9 +155,10 @@ export const getCompleteAppointment = async (req: Request, res: Response) => {
       WHERE ad.AppointmentId = ?
     `, [appointmentId]);
     
-    // For each appointment dog, get its services
+    // For each appointment dog, get its services and breeds
     const processedAppointmentDogs = [];
     for (const dog of (appointmentDogs as any[])) {
+      // Get services for this dog
       const [services] = await connection.execute(`
         SELECT 
           sad.ServiceId,
@@ -152,19 +169,32 @@ export const getCompleteAppointment = async (req: Request, res: Response) => {
         WHERE sad.AppointmentDogId = ?
       `, [dog.AppointmentDogId]);
       
+      // Get breeds for this dog
+      const [breeds] = await connection.execute(`
+        SELECT 
+          db.Id as BreedId,
+          db.Name as BreedName
+        FROM DogDogbreed ddb
+        JOIN Statics_Dogbreed db ON ddb.DogBreedId = db.Id
+        WHERE ddb.DogId = ?
+      `, [dog.DogId]);
+      
       processedAppointmentDogs.push({
         DogId: dog.DogId,
         Note: dog.Note,
         DogName: dog.DogName,
         DogSizeId: dog.DogSizeId,
-        services: services
+        services: services,
+        breeds: breeds
       });
     }
     
     // Format the response
     const completeAppointment = {
       appointment,
-      appointmentDogs: processedAppointmentDogs
+      appointmentDogs: processedAppointmentDogs,
+      customer,
+      status
     };
     
     res.json(completeAppointment);

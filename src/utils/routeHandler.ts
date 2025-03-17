@@ -158,8 +158,54 @@ export class RouteHandler {
   async delete(req: Request, res: Response) {
     try {
       const id = req.params.id;
-      await pool.query(`DELETE FROM ${this.tableName} WHERE Id = ?`, [id]);
-      res.json({ message: `${this.tableName} deleted successfully` });
+      
+      // Special handling for Appointment table due to foreign key constraints
+      if (this.tableName === 'Appointment') {
+        const connection = await pool.getConnection();
+        
+        try {
+          await connection.beginTransaction();
+          
+          // First delete related records in AppointmentDog
+          const [appointmentDogs] = await connection.execute(
+            `SELECT Id FROM AppointmentDog WHERE AppointmentId = ?`,
+            [id]
+          );
+          
+          // Delete services for each appointment dog
+          for (const dog of (appointmentDogs as any[])) {
+            await connection.execute(
+              `DELETE FROM ServiceAppointmentDog WHERE AppointmentDogId = ?`,
+              [dog.Id]
+            );
+          }
+          
+          // Delete all appointment dogs
+          await connection.execute(
+            `DELETE FROM AppointmentDog WHERE AppointmentId = ?`,
+            [id]
+          );
+          
+          // Then delete the appointment
+          await connection.execute(
+            `DELETE FROM Appointment WHERE Id = ?`,
+            [id]
+          );
+          
+          await connection.commit();
+          res.json({ message: `${this.tableName} deleted successfully` });
+        } catch (error) {
+          await connection.rollback();
+          console.error(`Error deleting ${this.tableName}:`, error);
+          throw new AppError(`Error deleting ${this.tableName}`, 500);
+        } finally {
+          connection.release();
+        }
+      } else {
+        // Standard delete for other tables
+        await pool.query(`DELETE FROM ${this.tableName} WHERE Id = ?`, [id]);
+        res.json({ message: `${this.tableName} deleted successfully` });
+      }
     } catch (error) {
       console.error(`Error deleting ${this.tableName}:`, error);
       throw new AppError(`Error deleting ${this.tableName}`, 500);

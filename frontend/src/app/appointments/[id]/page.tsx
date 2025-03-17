@@ -10,6 +10,15 @@ interface Dog {
   DogId: number;
   DogName: string;
   ServiceCount: number;
+  Breeds?: Array<{
+    BreedId: string;
+    BreedName: string;
+  }>;
+  Services?: Array<{
+    ServiceId: number;
+    ServiceName: string;
+    Price: number;
+  }>;
 }
 
 interface Status {
@@ -29,6 +38,52 @@ interface AppointmentDetail {
   Note?: string;
   CustomerPhone?: string;
   CustomerEmail?: string;
+  CustomerName?: string;
+  CustomerNotes?: string;
+  CustomerAllowContactShare?: string;
+}
+
+interface CompleteAppointmentResponse {
+  appointment: {
+    Id: number;
+    Date: string;
+    TimeStart: string;
+    TimeEnd: string;
+    Note?: string;
+    AppointmentStatusId: string;
+    CustomerId: number;
+  };
+  appointmentDogs: Array<{
+    DogId: number;
+    DogName: string;
+    Note?: string;
+    services: Array<{
+      ServiceId: number;
+      ServiceName: string;
+      Price: number;
+    }>;
+    breeds: Array<{
+      BreedId: string;
+      BreedName: string;
+    }>;
+  }>;
+  customer: {
+    Id: number;
+    Naam: string;
+    Emailadres?: string;
+    Telefoonnummer?: string;
+    Contactpersoon: string;
+    Notities?: string;
+    IsExported?: boolean;
+    IsAllowContactShare?: string;
+    CreatedOn?: string;
+    UpdatedOn?: string;
+  };
+  status: {
+    Id: string;
+    Label: string;
+    Color: string;
+  };
 }
 
 export default function AppointmentDetailPage() {
@@ -45,26 +100,45 @@ export default function AppointmentDetailPage() {
     const fetchAppointment = async () => {
       try {
         setLoading(true);
-        const response = await endpoints.appointments.getById(parseInt(appointmentId));
+        const response = await endpoints.appointments.getComplete(parseInt(appointmentId));
         
         // Ensure the response data has all required fields
-        const appointmentData = response.data;
-        if (!appointmentData) {
+        const responseData = response.data as CompleteAppointmentResponse;
+        if (!responseData) {
           throw new Error('No appointment data received');
         }
         
-        // Set default values for potentially missing properties
-        if (!appointmentData.Status) {
-          appointmentData.Status = {
-            Id: 'unknown',
-            Label: 'Unknown',
-            Color: '#cccccc'
-          };
-        }
+        // Get status information
+        const statusResponse = await endpoints.appointmentStatuses.getAll();
+        const statuses = statusResponse.data || [];
+        const statusInfo = statuses.find((s: any) => s.Id === responseData.appointment.AppointmentStatusId) || {
+          Id: 'unknown',
+          Label: 'Unknown',
+          Color: '#cccccc'
+        };
         
-        if (!appointmentData.Dogs) {
-          appointmentData.Dogs = [];
-        }
+        // Transform the data to match our component's expected format
+        const appointmentData: AppointmentDetail = {
+          AppointmentId: responseData.appointment.Id,
+          Date: responseData.appointment.Date,
+          TimeStart: responseData.appointment.TimeStart,
+          TimeEnd: responseData.appointment.TimeEnd,
+          Note: responseData.appointment.Note,
+          Status: responseData.status,
+          ContactPerson: responseData.customer.Contactpersoon || '',
+          CustomerName: responseData.customer.Naam || '',
+          CustomerEmail: responseData.customer.Emailadres,
+          CustomerPhone: responseData.customer.Telefoonnummer,
+          CustomerNotes: responseData.customer.Notities,
+          CustomerAllowContactShare: responseData.customer.IsAllowContactShare,
+          Dogs: responseData.appointmentDogs.map(dog => ({
+            DogId: dog.DogId,
+            DogName: dog.DogName,
+            ServiceCount: dog.services?.length || 0,
+            Breeds: dog.breeds,
+            Services: dog.services
+          }))
+        };
         
         setAppointment(appointmentData);
         setError(null);
@@ -100,6 +174,14 @@ export default function AppointmentDetailPage() {
 
   const cancelDelete = () => {
     setDeleteConfirm(false);
+  };
+
+  // Calculate total price for all services
+  const calculateTotalPrice = (dogs: Dog[]) => {
+    return dogs.reduce((total, dog) => {
+      const dogTotal = (dog.Services || []).reduce((sum, service) => sum + Number(service.Price || 0), 0);
+      return total + dogTotal;
+    }, 0);
   };
 
   if (loading) {
@@ -177,7 +259,7 @@ export default function AppointmentDetailPage() {
               </p>
             </div>
             <div>
-              {appointment.Status ? (
+              {appointment.Status && (
                 <span 
                   className="px-3 py-1 inline-flex text-sm font-medium rounded-full"
                   style={{ 
@@ -186,10 +268,6 @@ export default function AppointmentDetailPage() {
                   }}
                 >
                   {appointment.Status.Label}
-                </span>
-              ) : (
-                <span className="px-3 py-1 inline-flex text-sm font-medium rounded-full bg-gray-100 text-gray-600">
-                  Unknown Status
                 </span>
               )}
             </div>
@@ -203,8 +281,13 @@ export default function AppointmentDetailPage() {
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-3">Customer Information</h3>
               <div className="space-y-2">
+                {appointment.CustomerName && (
+                  <p className="text-gray-700">
+                    <span className="font-medium">Name:</span> {appointment.CustomerName}
+                  </p>
+                )}
                 <p className="text-gray-700">
-                  <span className="font-medium">Name:</span> {appointment.ContactPerson}
+                  <span className="font-medium">Contact Person:</span> {appointment.ContactPerson}
                 </p>
                 {appointment.CustomerPhone && (
                   <p className="text-gray-700">
@@ -216,21 +299,85 @@ export default function AppointmentDetailPage() {
                     <span className="font-medium">Email:</span> {appointment.CustomerEmail}
                   </p>
                 )}
+                {appointment.CustomerNotes && (
+                  <p className="text-gray-700">
+                    <span className="font-medium">Notes:</span> {appointment.CustomerNotes}
+                  </p>
+                )}
+                {appointment.CustomerAllowContactShare && (
+                  <p className="text-gray-700">
+                    <span className="font-medium">Contact Sharing:</span> {appointment.CustomerAllowContactShare}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Dogs Information */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-3">Dogs</h3>
-              {appointment.Dogs.length > 0 ? (
-                <ul className="space-y-2">
-                  {appointment.Dogs.map(dog => (
-                    <li key={dog.DogId} className="flex justify-between">
-                      <span className="text-gray-700">{dog.DogName}</span>
-                      <span className="text-gray-500">{dog.ServiceCount} service(s)</span>
-                    </li>
-                  ))}
-                </ul>
+              {appointment.Dogs && appointment.Dogs.length > 0 ? (
+                <div className="space-y-4">
+                  {appointment.Dogs.map(dog => {
+                    // Calculate total price for this dog
+                    const dogTotalPrice = (dog.Services || []).reduce(
+                      (sum, service) => sum + Number(service.Price || 0), 
+                      0
+                    );
+                    
+                    return (
+                      <div key={dog.DogId} className="border rounded-md p-3">
+                        <div className="flex justify-between mb-2">
+                          <span className="text-gray-700 font-medium">{dog.DogName}</span>
+                          <span className="text-gray-500">{dog.ServiceCount} service(s)</span>
+                        </div>
+                        
+                        {/* Dog Breeds */}
+                        {dog.Breeds && dog.Breeds.length > 0 && (
+                          <div className="mb-2">
+                            <span className="text-sm text-gray-600">Breeds: </span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {dog.Breeds.map(breed => (
+                                <span 
+                                  key={breed.BreedId}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                >
+                                  {breed.BreedName}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Dog Services */}
+                        {dog.Services && dog.Services.length > 0 && (
+                          <div>
+                            <span className="text-sm text-gray-600">Services: </span>
+                            <ul className="mt-1 space-y-1">
+                              {dog.Services.map(service => (
+                                <li key={service.ServiceId} className="flex justify-between text-sm">
+                                  <span>{service.ServiceName}</span>
+                                  <span>€{(Number(service.Price || 0)).toFixed(2)}</span>
+                                </li>
+                              ))}
+                              <li className="flex justify-between text-sm font-medium border-t pt-1 mt-1">
+                                <span>Total for {dog.DogName}</span>
+                                <span>€{dogTotalPrice.toFixed(2)}</span>
+                              </li>
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Overall Total */}
+                  <div className="border rounded-md p-3 bg-gray-50">
+                    <div className="flex justify-between font-medium text-gray-900">
+                      <span>Total Price</span>
+                      <span>€{calculateTotalPrice(appointment.Dogs).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <p className="text-gray-500">No dogs associated with this appointment</p>
               )}

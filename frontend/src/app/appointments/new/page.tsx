@@ -115,11 +115,11 @@ export default function NewAppointmentPage() {
         
         // Fetch appointment statuses
         try {
-          const statusesResponse = await fetch('/api/v1/static/appointment-statuses');
-          if (!statusesResponse.ok) {
-            throw new Error(`Status response not OK: ${statusesResponse.status}`);
+          const statusesResponse = await endpoints.appointmentStatuses.getAll();
+          if (!statusesResponse.data) {
+            throw new Error(`Status response has no data`);
           }
-          const statusesData = await statusesResponse.json();
+          const statusesData = statusesResponse.data;
           setStatuses(statusesData || []);
           
           // Set default status if available

@@ -64,6 +64,10 @@ export default function AppointmentsPage() {
     setCurrentDate(prevDate => addMonths(prevDate, 1));
   };
 
+  const goToCurrentMonth = () => {
+    setCurrentDate(new Date());
+  };
+
   const handleDayClick = (day: Date) => {
     // Check if the day is a weekday (not Saturday or Sunday)
     const dayOfWeek = getDay(day);
@@ -243,7 +247,11 @@ export default function AppointmentsPage() {
         >
           <FaChevronLeft />
         </button>
-        <h2 className="text-lg font-semibold mx-4">
+        <h2 
+          className="text-lg font-semibold mx-4 cursor-pointer hover:text-primary-600 transition-colors"
+          onClick={goToCurrentMonth}
+          title="Click to return to current month"
+        >
           {format(currentDate, 'MMMM yyyy')}
         </h2>
         <button 

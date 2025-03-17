@@ -104,8 +104,8 @@ export default function EditAppointmentPage() {
         
         // Fetch statuses
         try {
-          const statusesResponse = await fetch('/api/v1/static/appointment-statuses');
-          const statusesData = await statusesResponse.json();
+          const statusesResponse = await endpoints.appointmentStatuses.getAll();
+          const statusesData = statusesResponse.data;
           setStatuses(statusesData || []);
         } catch (statusError) {
           console.error('Error fetching statuses:', statusError);
