@@ -256,29 +256,4 @@ router.get('/:id/dogs', async (req, res, next) => {
  */
 router.get('/:id/appointments', handler.getByCustomerId.bind(handler));
 
-/**
- * @swagger
- * /customers/{id}/invoices:
- *   get:
- *     summary: Get customer's invoices
- *     tags: [Customers]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Customer ID
- *     responses:
- *       200:
- *         description: List of customer's invoices
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Invoice'
- */
-router.get('/:id/invoices', handler.getByCustomerId.bind(handler));
-
 export default router; 

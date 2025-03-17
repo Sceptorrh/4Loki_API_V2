@@ -29,7 +29,6 @@ const navItems = [
   },
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
-  { name: 'Invoices', href: '/invoices', icon: FiFileText },
   { name: 'Exports', href: '/exports', icon: FiDownload },
   { name: 'Reports', href: '/reports', icon: FiBarChart2 },
 ];

@@ -29,18 +29,6 @@ export default function Home() {
             icon="🐕"
           />
           <DashboardCard 
-            title="Services" 
-            description="Configure available grooming services"
-            link="/services"
-            icon="✂️"
-          />
-          <DashboardCard 
-            title="Invoices" 
-            description="Manage billing and invoices"
-            link="/invoices"
-            icon="💰"
-          />
-          <DashboardCard 
             title="Reports" 
             description="View business analytics and reports"
             link="/reports"

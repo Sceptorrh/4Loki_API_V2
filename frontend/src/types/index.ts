@@ -123,18 +123,6 @@ export interface Appointment {
   ActualDuration?: number;
 }
 
-// Invoice interface
-export interface Invoice {
-  id: number;
-  appointment_id: number;
-  customer_id: number;
-  amount: number;
-  status: string;
-  date: string;
-  due_date: string;
-  notes?: string;
-}
-
 // Service interface
 export interface Service {
   Id: string;
