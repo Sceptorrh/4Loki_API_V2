@@ -18,14 +18,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-gray-50">
           <Navigation />
-          <main className="flex-grow p-4">
+          <main className="flex-grow p-4 md:ml-20 pt-16 md:pt-4">
             {children}
           </main>
-          <footer className="bg-gray-100 py-4 text-center text-gray-600 text-sm">
-            <p>© {new Date().getFullYear()} 4Loki Dog Grooming. All rights reserved.</p>
-          </footer>
         </div>
       </body>
     </html>

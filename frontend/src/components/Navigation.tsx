@@ -1,74 +1,136 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { 
+  FiHome, 
+  FiCalendar, 
+  FiUsers, 
+  FiTarget, 
+  FiFileText, 
+  FiBarChart2, 
+  FiBell,
+  FiMenu,
+  FiX
+} from 'react-icons/fi';
 
 const navItems = [
-  { name: 'Dashboard', href: '/' },
-  { name: 'Appointments', href: '/appointments' },
-  { name: 'Customers', href: '/customers' },
-  { name: 'Dogs', href: '/dogs' },
-  { name: 'Invoices', href: '/invoices' },
-  { name: 'Reports', href: '/reports' },
+  { name: 'Dashboard', href: '/', icon: FiHome },
+  { name: 'Appointments', href: '/appointments', icon: FiCalendar },
+  { name: 'Customers', href: '/customers', icon: FiUsers },
+  { name: 'Dogs', href: '/dogs', icon: FiTarget },
+  { name: 'Invoices', href: '/invoices', icon: FiFileText },
+  { name: 'Reports', href: '/reports', icon: FiBarChart2 },
 ];
 
 export default function Navigation() {
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="bg-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <Link href="/" className="text-xl font-bold text-primary-700">
-                4Loki
-              </Link>
+    <>
+      {/* Mobile Menu Toggle Button - Only visible on small screens */}
+      <button
+        type="button"
+        className="md:hidden fixed top-4 left-4 z-20 p-2 rounded-md bg-white shadow-md text-dog-lightgray"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      >
+        {isMobileMenuOpen ? (
+          <FiX className="h-6 w-6" />
+        ) : (
+          <FiMenu className="h-6 w-6" />
+        )}
+      </button>
+
+      {/* Sidebar Navigation */}
+      <aside 
+        className={`bg-secondary-50 shadow-md h-screen fixed left-0 top-0 flex flex-col z-10 transition-all duration-300
+          ${isMobileMenuOpen ? 'w-64' : 'w-0 md:w-20'} 
+          md:hover:w-64 group`}
+      >
+        {/* Logo */}
+        <div className="p-4 flex items-center justify-center h-24">
+          <Link href="/" className="relative">
+            {/* Small logo for collapsed sidebar */}
+            <div className="hidden md:block group-hover:hidden w-16 h-16 relative">
+              <Image
+                src="/images/Logo-small.png"
+                alt="4Loki Logo"
+                width={64}
+                height={64}
+                className="object-contain"
+                priority
+              />
             </div>
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      isActive
-                        ? 'border-primary-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <button
-              type="button"
-              className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              <span className="sr-only">View notifications</span>
-              <svg
-                className="h-6 w-6"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+            
+            {/* Full logo for expanded sidebar */}
+            <div className="hidden md:group-hover:block w-56 h-16 relative">
+              <div className="absolute inset-0 bg-primary-100 rounded-lg flex items-center p-2">
+                <Image
+                  src="/images/Logo-wide.png"
+                  alt="4Loki Logo"
+                  width={200}
+                  height={48}
+                  className="object-contain"
+                  priority
                 />
-              </svg>
-            </button>
-          </div>
+              </div>
+            </div>
+            
+            {/* Mobile logo */}
+            <div className="md:hidden w-56 h-16 relative">
+              <div className="absolute inset-0 bg-primary-100 rounded-lg flex items-center p-2">
+                <Image
+                  src="/images/Logo-wide.png"
+                  alt="4Loki Logo"
+                  width={200}
+                  height={48}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </div>
+          </Link>
         </div>
-      </div>
-    </nav>
+        
+        {/* Navigation Items */}
+        <nav className="flex-1 py-4 overflow-y-auto">
+          <ul className="space-y-2 px-2">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className={`sidebar-nav-item rounded-lg ${
+                      isActive
+                        ? 'bg-primary-100 text-dog-lightgray border-l-4 border-dog-gray'
+                        : 'text-dog-gray hover:bg-secondary-100 hover:text-dog-lightgray'
+                    }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="ml-3 whitespace-nowrap md:hidden md:group-hover:block font-medium">{item.name}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        
+        {/* Notification Icon at Bottom */}
+        <div className="p-4 border-t border-secondary-100">
+          <button
+            type="button"
+            className="w-full flex items-center justify-center md:group-hover:justify-start text-dog-gray hover:text-dog-lightgray focus:outline-none rounded-lg p-2 hover:bg-secondary-100"
+          >
+            <FiBell className="h-5 w-5" />
+            <span className="ml-3 md:hidden md:group-hover:block font-medium">Notifications</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 } 

@@ -6,6 +6,30 @@
   body {
     @apply bg-gray-50 text-gray-900;
   }
+  
+  :root {
+    --color-primary-50: #f0f7f6;
+    --color-primary-100: #c5dbd8;
+    --color-primary-200: #a6c7c2;
+    --color-primary-300: #87b3ac;
+    --color-primary-400: #689f96;
+    --color-primary-500: #4a8b80;
+    --color-primary-600: #3b7066;
+    --color-primary-700: #2d554d;
+    --color-primary-800: #1e3a33;
+    --color-primary-900: #0f1f1a;
+    
+    --color-secondary-50: #f5e9c3;
+    --color-secondary-100: #e5d9b3;
+    --color-secondary-200: #d5c9a3;
+    --color-secondary-300: #c5b993;
+    --color-secondary-400: #b5a983;
+    --color-secondary-500: #a59973;
+    --color-secondary-600: #958963;
+    --color-secondary-700: #857953;
+    --color-secondary-800: #756943;
+    --color-secondary-900: #655933;
+  }
 }
 
 @layer components {
@@ -14,11 +38,11 @@
   }
   
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700;
+    @apply bg-[#4a8b80] text-white hover:bg-[#3b7066];
   }
   
   .btn-secondary {
-    @apply bg-secondary-600 text-white hover:bg-secondary-700;
+    @apply bg-[#a59973] text-white hover:bg-[#958963];
   }
   
   .btn-outline {
@@ -26,10 +50,23 @@
   }
   
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#4a8b80] focus:border-[#4a8b80];
   }
   
   .card {
     @apply bg-white rounded-lg shadow-md p-6;
+  }
+  
+  /* Sidebar Navigation Styles */
+  .sidebar-nav-item {
+    @apply flex items-center px-4 py-3 transition-colors duration-200;
+  }
+  
+  .sidebar-nav-item-active {
+    @apply bg-[#c5dbd8] text-[#4a4a4a] border-l-4 border-[#6b6b6b];
+  }
+  
+  .sidebar-nav-item-inactive {
+    @apply text-[#6b6b6b] hover:bg-[#e5d9b3] hover:text-[#4a4a4a];
   }
 } 

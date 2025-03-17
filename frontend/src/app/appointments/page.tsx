@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
 
 interface Dog {
   DogId: number;
@@ -33,6 +34,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const router = useRouter();
 
   const fetchAppointmentsByMonth = async (year: number, month: number) => {
     try {
@@ -62,88 +64,191 @@ export default function AppointmentsPage() {
     setCurrentDate(prevDate => addMonths(prevDate, 1));
   };
 
+  const handleDayClick = (day: Date) => {
+    // Check if the day is a weekday (not Saturday or Sunday)
+    const dayOfWeek = getDay(day);
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      // Weekend day - don't allow appointment creation
+      return;
+    }
+    
+    // Format the date as YYYY-MM-DD for the URL
+    const formattedDate = format(day, 'yyyy-MM-dd');
+    router.push(`/appointments/new?date=${formattedDate}`);
+  };
+
   const renderCalendar = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-    // Create a grid with 7 columns (days of the week)
-    const dayOfWeek = monthStart.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const emptyDays = Array(dayOfWeek).fill(null);
-    const calendarDays = [...emptyDays, ...days];
+    
+    // Filter out weekends (Saturday = 6, Sunday = 0)
+    const weekdaysOnly = days.filter(day => {
+      const dayNum = getDay(day);
+      return dayNum !== 0 && dayNum !== 6; // Exclude Sunday (0) and Saturday (6)
+    });
+    
+    // Group days by week for better layout control
+    const weeks: (Date | null)[][] = [];
+    let currentWeek: (Date | null)[] = [];
+    
+    // Initialize with empty days for the first week if needed
+    if (weekdaysOnly.length > 0) {
+      const firstDay = weekdaysOnly[0];
+      const firstDayOfWeek = getDay(firstDay);
+      
+      // If first day is not Monday (1), add empty slots
+      // Convert Sunday (0) to 5 (after Friday), and shift others to 0-based for Monday
+      const emptyDaysAtStart = firstDayOfWeek === 0 ? 0 : firstDayOfWeek - 1;
+      
+      for (let i = 0; i < emptyDaysAtStart; i++) {
+        currentWeek.push(null);
+      }
+    }
+    
+    // Add all weekdays to the appropriate week
+    weekdaysOnly.forEach((day, index) => {
+      const dayOfWeek = getDay(day);
+      
+      // Add the day to the current week
+      currentWeek.push(day);
+      
+      // If it's Friday (5) or the last day of the month, start a new week
+      if (dayOfWeek === 5 || index === weekdaysOnly.length - 1) {
+        // If this week doesn't have 5 days yet, add empty cells to fill the row
+        while (currentWeek.length < 5) {
+          currentWeek.push(null);
+        }
+        
+        weeks.push([...currentWeek]);
+        currentWeek = [];
+      }
+    });
+    
+    // If there are any remaining days in the current week, add them
+    if (currentWeek.length > 0) {
+      // Fill the rest of the week with empty cells
+      while (currentWeek.length < 5) {
+        currentWeek.push(null);
+      }
+      weeks.push(currentWeek);
+    }
 
     return (
-      <div className="grid grid-cols-7 gap-1">
-        {/* Day headers */}
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-          <div key={index} className="text-center font-semibold py-2 bg-gray-100">
-            {day}
-          </div>
-        ))}
-
-        {/* Calendar days */}
-        {calendarDays.map((day, index) => {
-          if (!day) {
-            return <div key={`empty-${index}`} className="h-40 bg-gray-50"></div>;
-          }
-
-          // Find appointments for this day
-          const dayAppointments = appointments.filter(appointment => 
-            isSameDay(new Date(appointment.Date), day)
-          );
-
-          return (
-            <div key={index} className="h-40 border border-gray-200 p-1">
-              <div className="text-right text-sm font-medium mb-1">
-                {format(day, 'd')}
-              </div>
-              
-              {dayAppointments.map(appointment => (
-                <Link 
-                  href={`/appointments/${appointment.AppointmentId}`}
-                  key={appointment.AppointmentId} 
-                  className="block mb-1 text-xs p-1.5 rounded hover:bg-opacity-90 transition-colors"
-                  style={{ backgroundColor: `${appointment.Status.Color}20`, borderLeft: `3px solid ${appointment.Status.Color}` }}
-                >
-                  <div className="font-semibold">
-                    {format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'h:mm a')} - {format(new Date(`${appointment.Date}T${appointment.TimeEnd}`), 'h:mm a')}
-                  </div>
-                  <div className="truncate">{appointment.ContactPerson}</div>
-                  <div className="truncate text-gray-600">
-                    {appointment.Dogs.map(dog => dog.DogName).join(', ')}
-                  </div>
-                </Link>
-              ))}
+      <div className="flex flex-col h-full">
+        {/* Day headers - weekdays only */}
+        <div className="grid grid-cols-5 gap-0.5 mb-0.5">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, index) => (
+            <div key={index} className="text-center font-semibold py-1 bg-gray-100 text-sm">
+              {day}
             </div>
-          );
-        })}
+          ))}
+        </div>
+
+        {/* Calendar weeks */}
+        <div className="grid grid-rows-[repeat(auto-fill,1fr)] gap-0.5 flex-grow">
+          {weeks.map((week, weekIndex) => (
+            <div key={`week-${weekIndex}`} className="grid grid-cols-5 gap-0.5 h-full">
+              {week.map((day, dayIndex) => {
+                if (!day) {
+                  return <div key={`empty-${weekIndex}-${dayIndex}`} className="bg-gray-50 h-full"></div>;
+                }
+
+                // Find appointments for this day
+                const dayAppointments = appointments.filter(appointment => 
+                  isSameDay(new Date(appointment.Date), day)
+                );
+
+                // Check if it's today
+                const isToday = isSameDay(day, new Date());
+
+                // Always show up to 5 appointments
+                const maxAppointments = 5;
+
+                return (
+                  <div 
+                    key={`day-${weekIndex}-${dayIndex}`} 
+                    className={`border border-gray-200 p-0.5 overflow-hidden cursor-pointer transition-colors relative h-full
+                      ${isToday ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                    onClick={() => handleDayClick(day)}
+                  >
+                    <div className={`text-right text-xs font-medium mb-0.5 py-0.5 px-1
+                      ${isToday ? 'bg-blue-100' : 'bg-gray-50'}`}>
+                      {format(day, 'd')}
+                    </div>
+                    
+                    <div className="space-y-0.5">
+                      {dayAppointments.slice(0, maxAppointments).map(appointment => {
+                        // Format dog names for display and tooltip
+                        const dogNames = appointment.Dogs.map(dog => dog.DogName).join(', ');
+                        // Get first name of customer for shorter display
+                        const customerFirstName = appointment.ContactPerson.split(' ')[0];
+                        
+                        return (
+                          <Link 
+                            href={`/appointments/${appointment.AppointmentId}`}
+                            key={appointment.AppointmentId} 
+                            className="block text-xs py-0.5 px-1 rounded hover:bg-opacity-90 transition-colors"
+                            style={{ backgroundColor: `${appointment.Status.Color}15`, borderLeft: `2px solid ${appointment.Status.Color}` }}
+                            onClick={(e) => e.stopPropagation()} // Prevent day click when clicking on appointment
+                            title={`${format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'HH:mm')} - ${dogNames} - ${appointment.ContactPerson}`}
+                          >
+                            <div className="flex items-center">
+                              <span className="w-8 flex-shrink-0 font-medium text-xs">
+                                {format(new Date(`${appointment.Date}T${appointment.TimeStart}`), 'HH:mm')}
+                              </span>
+                              <span className="flex-grow font-medium text-xs truncate mx-1">
+                                {dogNames}
+                              </span>
+                              <span className="flex-shrink-0 text-xs text-gray-500 truncate">
+                                {customerFirstName}
+                              </span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                      {dayAppointments.length > maxAppointments && (
+                        <div 
+                          className="text-xs text-center text-gray-500 mt-0.5 bg-gray-50 py-0.5 rounded"
+                          onClick={(e) => e.stopPropagation()} // Prevent day click when clicking on "more" indicator
+                        >
+                          +{dayAppointments.length - maxAppointments} more
+                        </div>
+                      )}
+                      {dayAppointments.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                          <div className="text-xs text-gray-400 bg-white bg-opacity-80 px-2 py-1 rounded">
+                            Click to add
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
-        <Link href="/appointments/new" className="btn btn-primary">
-          New Appointment
-        </Link>
-      </div>
-
-      <div className="mb-6 flex justify-between items-center">
+    <div className="w-full h-screen flex flex-col px-1 py-1">
+      <div className="flex justify-center items-center mb-1">
         <button 
           onClick={goToPreviousMonth} 
-          className="p-2 rounded-full hover:bg-gray-100"
+          className="p-1 rounded-full hover:bg-gray-100"
           aria-label="Previous month"
         >
           <FaChevronLeft />
         </button>
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-lg font-semibold mx-4">
           {format(currentDate, 'MMMM yyyy')}
         </h2>
         <button 
           onClick={goToNextMonth} 
-          className="p-2 rounded-full hover:bg-gray-100"
+          className="p-1 rounded-full hover:bg-gray-100"
           aria-label="Next month"
         >
           <FaChevronRight />
@@ -162,14 +267,35 @@ export default function AppointmentsPage() {
           {error}
         </div>
       ) : appointments.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 mb-4">No appointments found for {format(currentDate, 'MMMM yyyy')}</p>
-          <Link href="/appointments/new" className="btn btn-primary">
-            Schedule an appointment
-          </Link>
+        <div className="flex-grow flex flex-col bg-gray-50 rounded-lg">
+          <div className="p-4 text-center">
+            <p className="text-gray-500 mb-2">No appointments found for {format(currentDate, 'MMMM yyyy')}</p>
+            <p className="text-gray-500 text-sm mb-4">Click on a day to schedule an appointment</p>
+            <button 
+              onClick={() => {
+                // Create a date in the middle of the current month
+                const middleOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 15);
+                // Find the next weekday if the 15th is a weekend
+                let dateToUse = middleOfMonth;
+                const dayOfWeek = getDay(middleOfMonth);
+                if (dayOfWeek === 0) { // Sunday
+                  dateToUse = new Date(middleOfMonth.setDate(middleOfMonth.getDate() + 1)); // Move to Monday
+                } else if (dayOfWeek === 6) { // Saturday
+                  dateToUse = new Date(middleOfMonth.setDate(middleOfMonth.getDate() + 2)); // Move to Monday
+                }
+                const formattedDate = format(dateToUse, 'yyyy-MM-dd');
+                router.push(`/appointments/new?date=${formattedDate}`);
+              }}
+              className="btn btn-primary"
+            >
+              Create Appointment
+            </button>
+          </div>
         </div>
       ) : (
-        renderCalendar()
+        <div className="flex-grow overflow-hidden flex flex-col">
+          {renderCalendar()}
+        </div>
       )}
     </div>
   );

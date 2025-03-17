@@ -6,7 +6,7 @@ import { endpoints } from '@/lib/api';
 import Link from 'next/link';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
-import { format, addHours, setHours, setMinutes } from 'date-fns';
+import { format, addHours, setHours, setMinutes, getDay } from 'date-fns';
 
 interface CustomerDropdownItem {
   id: number;
@@ -53,6 +53,7 @@ export default function NewAppointmentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const customerId = searchParams.get('customer_id');
+  const dateParam = searchParams.get('date');
   
   const [customers, setCustomers] = useState<CustomerDropdownItem[]>([]);
   const [dogs, setDogs] = useState<Dog[]>([]);
@@ -62,7 +63,7 @@ export default function NewAppointmentPage() {
   const [selectedDogIds, setSelectedDogIds] = useState<number[]>([]);
   const [dogServices, setDogServices] = useState<Record<number, DogService[]>>({});
   const [dogNotes, setDogNotes] = useState<Record<number, string>>({});
-  const [appointmentDate, setAppointmentDate] = useState<Date>(new Date());
+  const [appointmentDate, setAppointmentDate] = useState<Date>(dateParam ? new Date(dateParam) : new Date());
   const [startTime, setStartTime] = useState<Date>(setHours(setMinutes(new Date(), 0), 9)); // Default to 9:00 AM
   const [endTime, setEndTime] = useState<Date>(setHours(setMinutes(new Date(), 30), 10)); // Default to 10:30 AM
   const [statusId, setStatusId] = useState<string>('');
@@ -347,6 +348,12 @@ export default function NewAppointmentPage() {
     );
   });
 
+  // Function to filter out weekends
+  const isWeekday = (date: Date) => {
+    const day = getDay(date);
+    return day !== 0 && day !== 6; // 0 is Sunday, 6 is Saturday
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -542,7 +549,10 @@ export default function NewAppointmentPage() {
               dateFormat="yyyy-MM-dd"
               className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               required
+              filterDate={isWeekday}
+              placeholderText="Select a weekday"
             />
+            <p className="text-xs text-gray-500 mt-1">Weekends are not available for appointments</p>
           </div>
           
           {/* Time Selection */}
