@@ -588,4 +588,291 @@ export const getInvoiceReadyAppointments = async (req: Request, res: Response) =
     console.error('Error getting invoice-ready appointments:', error);
     throw new AppError('Failed to retrieve invoice-ready appointments', 500);
   }
+};
+
+/**
+ * Get all appointments with status 'Inv' that need to be exported
+ */
+export const getExportReadyAppointments = async (req: Request, res: Response) => {
+  try {
+    // Query to get all appointments with status 'Inv' and calculate total price
+    const [appointments] = await db.execute(`
+      SELECT 
+        a.*,
+        c.Naam as CustomerName,
+        c.Contactpersoon as CustomerContactperson,
+        s.Label as StatusLabel,
+        COALESCE(SUM(sad.Price), 0) as TotalPrice
+      FROM Appointment a
+      JOIN Customer c ON a.CustomerId = c.Id
+      JOIN Statics_AppointmentStatus s ON a.AppointmentStatusId = s.Id
+      LEFT JOIN AppointmentDog ad ON a.Id = ad.AppointmentId
+      LEFT JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+      WHERE a.AppointmentStatusId = 'Inv'
+      GROUP BY a.Id
+      ORDER BY a.Date ASC
+    `);
+    
+    // For each appointment, get the associated dogs and services
+    const appointmentsWithDetails = [];
+    for (const appointment of (appointments as any[])) {
+      // Get dogs and services for this appointment
+      const [dogsWithServices] = await db.execute(`
+        SELECT 
+          d.Id as DogId,
+          d.Name as DogName,
+          sad.Id as ServiceId,
+          s.Name as ServiceLabel,
+          sad.Price as ServicePrice
+        FROM AppointmentDog ad
+        JOIN Dog d ON ad.DogId = d.Id
+        LEFT JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+        LEFT JOIN Statics_Service s ON sad.ServiceId = s.Id
+        WHERE ad.AppointmentId = ?
+        ORDER BY d.Name, s.Name
+      `, [appointment.Id]);
+      
+      // Group services by dog
+      const dogs = [];
+      const dogMap = new Map();
+      
+      for (const item of (dogsWithServices as any[])) {
+        if (!dogMap.has(item.DogId)) {
+          const dog = {
+            DogId: item.DogId,
+            DogName: item.DogName,
+            Services: []
+          };
+          dogs.push(dog);
+          dogMap.set(item.DogId, dog);
+        }
+        
+        // Only add service if it exists
+        if (item.ServiceId) {
+          // Calculate BTW at 21%
+          const servicePriceExclBtw = parseFloat((item.ServicePrice / 1.21).toFixed(2));
+          const serviceBtw = parseFloat((item.ServicePrice - servicePriceExclBtw).toFixed(2));
+          
+          dogMap.get(item.DogId).Services.push({
+            ServiceId: item.ServiceId,
+            ServiceLabel: item.ServiceLabel,
+            ServicePrice: item.ServicePrice,
+            BtwPercentage: 21,
+            ServiceQuantity: 1,
+            ServicePriceExclBtw: servicePriceExclBtw
+          });
+        }
+      }
+      
+      appointmentsWithDetails.push({
+        ...appointment,
+        Dogs: dogs
+      });
+    }
+    
+    return res.status(200).json(appointmentsWithDetails);
+  } catch (error) {
+    console.error('Error getting export-ready appointments:', error);
+    throw new AppError('Failed to retrieve export-ready appointments', 500);
+  }
+};
+
+/**
+ * Update appointment status to 'Exp' when exported and assign serial numbers
+ */
+export const markAppointmentsAsExported = async (req: Request, res: Response) => {
+  const connection = await db.getConnection();
+  
+  try {
+    // Test the database connection
+    try {
+      const [testResult] = await connection.execute('SELECT 1 as test');
+      console.log('Database connection test:', testResult);
+    } catch (testErr) {
+      console.error('Database connection test failed:', testErr);
+      throw new Error('Database connection test failed');
+    }
+    
+    await connection.beginTransaction();
+    
+    const { appointmentIds } = req.body;
+    
+    if (!appointmentIds || !Array.isArray(appointmentIds) || appointmentIds.length === 0) {
+      throw new AppError('Invalid or missing appointmentIds', 400);
+    }
+    
+    console.log(`Processing ${appointmentIds.length} appointments for export`);
+    
+    // Get the appointments to be exported with their payment method
+    const placeholders = appointmentIds.map(() => '?').join(',');
+    const [appointmentsToExport] = await connection.execute(`
+      SELECT Id, Date, IsPaidInCash
+      FROM Appointment
+      WHERE Id IN (${placeholders})
+    `, [...appointmentIds]);
+    
+    console.log(`Found ${(appointmentsToExport as any[]).length} appointments to export`);
+    
+    // Group appointments by year and payment type
+    const groupedAppointments = new Map();
+    
+    for (const appointment of (appointmentsToExport as any[])) {
+      const appointmentYear = new Date(appointment.Date).getFullYear();
+      const isCashPayment = appointment.IsPaidInCash === 1;
+      const key = `${appointmentYear}-${isCashPayment ? 'cash' : 'bank'}`;
+      
+      if (!groupedAppointments.has(key)) {
+        groupedAppointments.set(key, []);
+      }
+      groupedAppointments.get(key).push(appointment);
+    }
+    
+    console.log(`Grouped appointments into ${groupedAppointments.size} categories`);
+    
+    // Process each group to assign sequential serial numbers
+    const updatedAppointments = [];
+    
+    for (const [key, appointments] of groupedAppointments.entries()) {
+      const [year, paymentType] = key.split('-');
+      const isCashPayment = paymentType === 'cash';
+      
+      console.log(`Processing group: ${key} with ${appointments.length} appointments`);
+      
+      // Get the highest serial number for this year and payment type
+      const [highestSerialResult] = await connection.execute(`
+        SELECT MAX(SerialNumber) as MaxSerialNumber
+        FROM Appointment
+        WHERE YEAR(Date) = ? AND IsPaidInCash = ? AND SerialNumber IS NOT NULL
+      `, [year, isCashPayment ? 1 : 0]);
+      
+      // Calculate the new serial number (highest + 1)
+      let nextSerialNumber = 1; // Default to 1 if no previous serial numbers
+      if ((highestSerialResult as any[])[0].MaxSerialNumber) {
+        nextSerialNumber = (highestSerialResult as any[])[0].MaxSerialNumber + 1;
+      }
+      
+      console.log(`Starting serial number for ${key}: ${nextSerialNumber}`);
+      
+      // Assign sequential serial numbers to all appointments in this group
+      for (const appointment of appointments) {
+        const serialNumber = nextSerialNumber++;
+        console.log(`Assigning serial number ${serialNumber} to appointment ${appointment.Id}`);
+        
+        // Update the appointment with the new serial number and status
+        const updateResult = await connection.execute(`
+          UPDATE Appointment
+          SET AppointmentStatusId = 'Exp', SerialNumber = ?
+          WHERE Id = ?
+        `, [serialNumber, appointment.Id]);
+        
+        console.log(`Update result for appointment ${appointment.Id}:`, updateResult);
+        
+        // Verify the update was successful with a direct query
+        const [verifyUpdate] = await connection.execute(`
+          SELECT Id, SerialNumber, AppointmentStatusId 
+          FROM Appointment 
+          WHERE Id = ?
+        `, [appointment.Id]);
+        
+        console.log(`Verification for appointment ${appointment.Id}:`, verifyUpdate);
+        
+        // Add to updated appointments list
+        updatedAppointments.push({
+          Id: appointment.Id,
+          SerialNumber: serialNumber,
+          IsPaidInCash: appointment.IsPaidInCash,
+          Date: appointment.Date
+        });
+      }
+    }
+    
+    // Verify that all appointments were updated correctly
+    const [verificationResult] = await connection.execute(`
+      SELECT Id, SerialNumber, IsPaidInCash, Date, AppointmentStatusId
+      FROM Appointment
+      WHERE Id IN (${placeholders})
+    `, [...appointmentIds]);
+    
+    console.log(`Verification result:`, verificationResult);
+    
+    // Check if any appointments weren't updated properly
+    const notUpdated = (verificationResult as any[]).filter(app => 
+      app.AppointmentStatusId !== 'Exp' || app.SerialNumber === null
+    );
+    
+    if (notUpdated.length > 0) {
+      console.error(`${notUpdated.length} appointments were not updated properly:`, notUpdated);
+      throw new Error(`Failed to update ${notUpdated.length} appointments`);
+    }
+    
+    await connection.commit();
+    console.log(`Successfully committed transaction for ${appointmentIds.length} appointments`);
+    
+    // Final verification after commit
+    try {
+      const [finalVerification] = await connection.execute(`
+        SELECT COUNT(*) as count
+        FROM Appointment
+        WHERE Id IN (${placeholders}) AND AppointmentStatusId = 'Exp' AND SerialNumber IS NOT NULL
+      `, [...appointmentIds]);
+      
+      console.log('Final verification after commit:', finalVerification);
+      
+      if ((finalVerification as any[])[0].count !== appointmentIds.length) {
+        console.error('Final verification failed: not all appointments were updated');
+      }
+    } catch (verifyErr) {
+      console.error('Error in final verification:', verifyErr);
+    }
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: `${appointmentIds.length} appointments marked as exported with serial numbers assigned`,
+      appointmentIds,
+      updatedAppointments
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error marking appointments as exported:', error);
+    throw new AppError('Failed to mark appointments as exported', 500);
+  } finally {
+    connection.release();
+  }
+};
+
+/**
+ * Revert appointments back to 'Inv' status when an export fails
+ */
+export const revertAppointmentsToInvoiced = async (req: Request, res: Response) => {
+  const connection = await db.getConnection();
+  
+  try {
+    await connection.beginTransaction();
+    
+    const { appointmentIds } = req.body;
+    
+    if (!appointmentIds || !Array.isArray(appointmentIds) || appointmentIds.length === 0) {
+      throw new AppError('Valid appointment IDs are required', 400);
+    }
+    
+    // Update all appointments back to 'Inv' status
+    for (const appointmentId of appointmentIds) {
+      await connection.execute(`
+        UPDATE Appointment SET AppointmentStatusId = 'Inv' WHERE Id = ?
+      `, [appointmentId]);
+    }
+    
+    await connection.commit();
+    
+    return res.status(200).json({
+      message: 'Appointments successfully reverted to invoiced status',
+      appointmentIds
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error reverting appointments to invoiced status:', error);
+    throw new AppError('Failed to revert appointments to invoiced status', 500);
+  } finally {
+    connection.release();
+  }
 }; 

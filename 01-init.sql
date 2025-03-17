@@ -164,13 +164,37 @@ CREATE TABLE IF NOT EXISTS `DogDogbreed` (
 CREATE TABLE IF NOT EXISTS `ExportLog` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `IssuedOn` datetime DEFAULT NULL,
-  `ForMonthDate` date DEFAULT NULL,
+  `UpUntilDate` date DEFAULT NULL,
   `IsSuccesfull` tinyint(1) DEFAULT NULL,
   `IsDummy` tinyint(1) DEFAULT NULL,
+  `FileName` varchar(255) DEFAULT NULL,
+  `Notes` text DEFAULT NULL,
+  `IsReverted` tinyint(1) DEFAULT 0,
+  `RevertedOn` datetime DEFAULT NULL,
+  `RevertedBy` varchar(100) DEFAULT NULL,
+  `RevertReason` text DEFAULT NULL,
   `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ExportLogAppointment` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `ExportLogId` int(11) NOT NULL,
+  `AppointmentId` int(11) NOT NULL,
+  `PreviousStatusId` varchar(50) DEFAULT NULL,
+  `IsReverted` tinyint(1) DEFAULT 0,
+  `RevertedOn` datetime DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`),
+  KEY `ExportLogId` (`ExportLogId`),
+  KEY `AppointmentId` (`AppointmentId`),
+  KEY `PreviousStatusId` (`PreviousStatusId`),
+  CONSTRAINT `ExportLogAppointment_ibfk_1` FOREIGN KEY (`ExportLogId`) REFERENCES `ExportLog` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `ExportLogAppointment_ibfk_2` FOREIGN KEY (`AppointmentId`) REFERENCES `Appointment` (`Id`) ON DELETE CASCADE,
+  CONSTRAINT `ExportLogAppointment_ibfk_3` FOREIGN KEY (`PreviousStatusId`) REFERENCES `Statics_AppointmentStatus` (`Id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ServiceAppointmentDog` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,

@@ -8,6 +8,7 @@ import dropdownRoutes from './dropdownRoutes';
 import additionalHourRoutes from './additionalHourRoutes';
 import exportLogRoutes from './exportLogRoutes';
 import testDataRoutes from './testDataRoutes';
+import exportRoutes from './exportRoutes';
 
 export const setupRoutes = (app: Express) => {
   const apiPrefix = process.env.API_PREFIX || '/api/v1';
@@ -21,4 +22,5 @@ export const setupRoutes = (app: Express) => {
   app.use(`${apiPrefix}/additional-hours`, additionalHourRoutes);
   app.use(`${apiPrefix}/export-logs`, exportLogRoutes);
   app.use(`${apiPrefix}/test-data`, testDataRoutes);
+  app.use(`${apiPrefix}/exports`, exportRoutes);
 }; 

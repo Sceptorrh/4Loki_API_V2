@@ -15,8 +15,12 @@ import { logger } from './utils/logger';
 import appointmentRoutes from './routes/appointmentRoutes';
 import customerRoutes from './routes/customerRoutes';
 import dogRoutes from './routes/dogRoutes';
+import additionalHourRoutes from './routes/additionalHourRoutes';
+import exportLogRoutes from './routes/exportLogRoutes';
+import travelTimeRoutes from './routes/travelTimeRoutes';
 import dropdownRoutes from './routes/dropdownRoutes';
 import staticRoutes from './routes/staticRoutes';
+import exportRoutes from './routes/exportRoutes';
 import { NextFunction, Request, Response } from 'express';
 import { Server } from 'http';
 import { convertDatesToUTC, convertDatesInResponse } from './middleware/dateHandler';
@@ -138,6 +142,17 @@ app.get('/api/v1/health', (req, res) => {
 const apiPrefix = process.env.API_PREFIX || '/api/v1';
 console.log('Registering routes with prefix:', apiPrefix);
 setupRoutes(app);
+
+// API routes
+app.use('/api/v1/appointments', appointmentRoutes);
+app.use('/api/v1/customers', customerRoutes);
+app.use('/api/v1/dogs', dogRoutes);
+app.use('/api/v1/additional-hours', additionalHourRoutes);
+app.use('/api/v1/export-logs', exportLogRoutes);
+app.use('/api/v1/travel-times', travelTimeRoutes);
+app.use('/api/v1/dropdowns', dropdownRoutes);
+app.use('/api/v1/static', staticRoutes);
+app.use('/api/v1/exports', exportRoutes);
 
 // Error handling
 app.use(notFoundHandler);

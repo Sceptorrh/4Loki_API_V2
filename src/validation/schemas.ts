@@ -55,10 +55,25 @@ export const additionalHourSchema = z.object({
 });
 
 export const exportLogSchema = z.object({
-  IssuedOn: z.string().datetime(),
-  ForMonthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  IssuedOn: z.string().refine(
+    (val) => {
+      // Accept both MySQL datetime format (YYYY-MM-DD HH:MM:SS) and ISO format
+      return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(val) || // MySQL format
+             /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/.test(val); // ISO format
+    },
+    { message: "IssuedOn must be in 'YYYY-MM-DD HH:MM:SS' format or ISO datetime format" }
+  ),
+  UpUntilDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   IsSuccesfull: z.boolean(),
   IsDummy: z.boolean(),
+  FileName: z.string().optional(),
+  Notes: z.string().optional(),
+  AppointmentIds: z.array(z.number().int().positive()).optional(),
+});
+
+export const revertExportSchema = z.object({
+  RevertedBy: z.string().optional(),
+  RevertReason: z.string().optional(),
 });
 
 export const travelTimeSchema = z.object({

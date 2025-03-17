@@ -1,8 +1,15 @@
 import { Router } from 'express';
-import { RouteHandler } from '../utils/routeHandler';
+import { 
+  createExportLog, 
+  getAllExportLogs, 
+  getExportLogById,
+  revertExport,
+  revertAppointmentFromExport
+} from '../controllers/exportLogController';
+import { validate } from '../middleware/validate';
+import { exportLogSchema, revertExportSchema } from '../validation/schemas';
 
 const router = Router();
-const handler = new RouteHandler('ExportLog');
 
 /**
  * @swagger
@@ -22,7 +29,7 @@ const handler = new RouteHandler('ExportLog');
  *       500:
  *         description: Server error
  */
-router.get('/', handler.getAll.bind(handler));
+router.get('/', getAllExportLogs);
 
 /**
  * @swagger
@@ -49,7 +56,7 @@ router.get('/', handler.getAll.bind(handler));
  *       500:
  *         description: Server error
  */
-router.get('/:id', handler.getById.bind(handler));
+router.get('/:id', getExportLogById);
 
 /**
  * @swagger
@@ -73,47 +80,14 @@ router.get('/:id', handler.getById.bind(handler));
  *       400:
  *         description: Invalid input
  */
-router.post('/', handler.create.bind(handler));
+router.post('/', validate(exportLogSchema), createExportLog);
 
 /**
  * @swagger
- * /api/export-logs/{id}:
- *   put:
- *     summary: Update an export log
+ * /api/export-logs/{id}/revert:
+ *   post:
+ *     summary: Revert an entire export
  *     tags: [Export Logs]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Export Log ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/ExportLogInput'
- *     responses:
- *       200:
- *         description: Updated export log
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ExportLog'
- *       404:
- *         description: Export log not found
- *       400:
- *         description: Invalid input
- */
-router.put('/:id', handler.update.bind(handler));
-
-/**
- * @swagger
- * /api/export-logs/{id}:
- *   delete:
- *     summary: Delete an export log
- *     tags: [ExportLog]
  *     parameters:
  *       - in: path
  *         name: id
@@ -121,14 +95,50 @@ router.put('/:id', handler.update.bind(handler));
  *         schema:
  *           type: string
  *         description: The export log ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RevertExportInput'
  *     responses:
  *       200:
- *         description: Export log deleted successfully
+ *         description: Export successfully reverted
+ *       400:
+ *         description: Export already reverted
  *       404:
  *         description: Export log not found
  *       500:
  *         description: Server error
  */
-router.delete('/:id', handler.delete.bind(handler));
+router.post('/:id/revert', validate(revertExportSchema), revertExport);
+
+/**
+ * @swagger
+ * /api/export-logs/{exportId}/appointments/{appointmentId}/revert:
+ *   post:
+ *     summary: Revert a single appointment from an export
+ *     tags: [Export Logs]
+ *     parameters:
+ *       - in: path
+ *         name: exportId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The export log ID
+ *       - in: path
+ *         name: appointmentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The appointment ID
+ *     responses:
+ *       200:
+ *         description: Appointment successfully reverted from export
+ *       404:
+ *         description: Appointment not found in this export or already reverted
+ *       500:
+ *         description: Server error
+ */
+router.post('/:exportId/appointments/:appointmentId/revert', revertAppointmentFromExport);
 
 export default router; 

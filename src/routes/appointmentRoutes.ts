@@ -8,7 +8,10 @@ import {
   updateCompleteAppointment, 
   deleteCompleteAppointment,
   getAppointmentsByYearMonth,
-  getInvoiceReadyAppointments
+  getInvoiceReadyAppointments,
+  getExportReadyAppointments,
+  markAppointmentsAsExported,
+  revertAppointmentsToInvoiced
 } from '../controllers/appointmentController';
 
 const router = Router();
@@ -83,6 +86,25 @@ router.get('/', handler.getAll.bind(handler));
  *                 $ref: '#/components/schemas/Appointment'
  */
 router.get('/invoice-ready', getInvoiceReadyAppointments);
+
+/**
+ * @swagger
+ * /appointments/export-ready:
+ *   get:
+ *     summary: Get appointments with status 'Inv' that are ready to be exported
+ *     tags: [Appointments]
+ *     description: Retrieves all appointments that have a status of 'Inv' and need to be exported
+ *     responses:
+ *       200:
+ *         description: List of appointments ready to be exported
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
+router.get('/export-ready', getExportReadyAppointments);
 
 /**
  * @swagger
@@ -484,5 +506,62 @@ router.get('/type/:typeId', handler.getByAppointmentId.bind(handler));
  *         description: Server error
  */
 router.get('/year/:year/month/:month', getAppointmentsByYearMonth);
+
+/**
+ * @swagger
+ * /appointments/mark-exported:
+ *   post:
+ *     summary: Mark appointments as exported
+ *     tags: [Appointments]
+ *     description: Updates the status of specified appointments to 'Exp' (Exported)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               appointmentIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: Array of appointment IDs to mark as exported
+ *     responses:
+ *       200:
+ *         description: Appointments successfully marked as exported
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Server error
+ */
+router.post('/mark-exported', markAppointmentsAsExported);
+
+/**
+ * @swagger
+ * /appointments/revert-to-invoiced:
+ *   post:
+ *     summary: Revert appointments back to 'Inv' status when an export fails
+ *     tags: [Appointments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               appointmentIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: Array of appointment IDs to revert
+ *     responses:
+ *       200:
+ *         description: Appointments successfully reverted to invoiced status
+ *       400:
+ *         description: Invalid request body
+ *       500:
+ *         description: Server error
+ */
+router.post('/revert-to-invoiced', revertAppointmentsToInvoiced);
 
 export default router; 

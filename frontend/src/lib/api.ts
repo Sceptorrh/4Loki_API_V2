@@ -75,6 +75,24 @@ export const endpoints = {
   appointmentStatuses: {
     getAll: () => api.get('/static/appointment-statuses'),
   },
+  
+  // Export Logs
+  exportLogs: {
+    getAll: () => api.get('/export-logs'),
+    getById: (id: number) => api.get(`/export-logs/${id}`),
+    create: (data: any) => api.post('/export-logs', data),
+    revertExport: (id: number, data: any) => api.post(`/export-logs/${id}/revert`, data),
+    revertAppointment: (exportId: number, appointmentId: number) => 
+      api.post(`/export-logs/${exportId}/appointments/${appointmentId}/revert`),
+  },
+  
+  // Exports
+  exports: {
+    getExportReady: () => api.get('/appointments/export-ready'),
+    markAsExported: (appointmentIds: number[]) => api.post('/appointments/mark-exported', { appointmentIds }),
+    generateExcel: (appointmentIds: number[]) => api.post('/exports/excel', { appointmentIds }, { responseType: 'blob' }),
+    revertToInvoiced: (appointmentIds: number[]) => api.post('/appointments/revert-to-invoiced', { appointmentIds }),
+  },
 };
 
 export default api; 
