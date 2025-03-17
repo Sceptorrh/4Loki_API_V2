@@ -4,7 +4,24 @@ import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Customer, Dog } from '@/types';
+import { Customer, Dog, Appointment } from '@/types';
+
+// Helper function to normalize appointment data
+const normalizeAppointmentData = (appointment: any): Appointment => {
+  return {
+    id: appointment.id || appointment.Id || appointment.AppointmentId,
+    date: appointment.date || appointment.Date,
+    time: appointment.time || appointment.TimeStart,
+    customer_id: appointment.customer_id || appointment.CustomerId,
+    customer_name: appointment.customer_name || appointment.ContactPerson,
+    status: appointment.status || (appointment.Status ? appointment.Status.Id : undefined),
+    statusLabel: appointment.Status ? appointment.Status.Label : undefined,
+    notes: appointment.notes || appointment.Note,
+    dogs: appointment.dogs || appointment.Dogs,
+    // Keep original properties
+    ...appointment
+  };
+};
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -12,6 +29,7 @@ export default function CustomerDetailPage() {
   const customerId = Number(params.id);
   
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +50,26 @@ export default function CustomerDetailPage() {
       }
     };
 
+    const fetchAppointments = async () => {
+      try {
+        const response = await endpoints.appointments.getByCustomerId(customerId);
+        console.log('Customer appointments response:', response.data);
+        console.log('First appointment data structure:', response.data && response.data.length > 0 ? response.data[0] : 'No appointments');
+        
+        // Normalize the appointment data
+        const normalizedAppointments = Array.isArray(response.data) 
+          ? response.data.map(normalizeAppointmentData) 
+          : [];
+        
+        setAppointments(normalizedAppointments);
+      } catch (err) {
+        console.error('Error fetching customer appointments:', err);
+      }
+    };
+
     if (customerId) {
       fetchCustomer();
+      fetchAppointments();
     }
   }, [customerId]);
 
@@ -130,11 +166,33 @@ export default function CustomerDetailPage() {
           </div>
           {customer.Dogs && Array.isArray(customer.Dogs) && customer.Dogs.length > 0 ? (
             <div className="space-y-4">
-              {customer.Dogs.map((dogName, index) => (
-                <div key={index} className="block p-4 border rounded-lg">
-                  <div className="font-medium text-gray-900">{dogName}</div>
-                </div>
-              ))}
+              {customer.Dogs.map((dog, index) => {
+                // Check if dog is a string or an object
+                const isDogObject = typeof dog !== 'string';
+                
+                return (
+                  <div key={isDogObject ? (dog as Dog).Id : index} className="block p-4 border rounded-lg">
+                    <div className="font-medium text-gray-900">
+                      {isDogObject ? (dog as Dog).Name : dog}
+                    </div>
+                    {isDogObject && (dog as Dog).DogSizeId && (
+                      <div className="text-sm text-gray-600 mt-1">Size: {(dog as Dog).DogSizeId}</div>
+                    )}
+                    {isDogObject && (dog as Dog).Birthday && (
+                      <div className="text-sm text-gray-600">
+                        Birthday: {new Date(String((dog as Dog).Birthday)).toLocaleDateString()}
+                      </div>
+                    )}
+                    {isDogObject && (
+                      <div className="mt-2">
+                        <Link href={`/dogs/${(dog as Dog).Id}`} className="text-primary-600 hover:text-primary-800 text-sm">
+                          View Details
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-6 bg-gray-50 rounded-lg">
@@ -149,22 +207,63 @@ export default function CustomerDetailPage() {
 
       <div className="mt-6">
         <h2 className="text-xl font-semibold mb-4">Recent Appointments</h2>
-        {customer.DaysSinceLastAppointment !== null && customer.DaysSinceLastAppointment !== undefined ? (
+        {appointments.length > 0 ? (
           <div className="card">
-            <p className="text-gray-700">
-              Last appointment was{' '}
-              <span className={`font-medium ${
-                customer.DaysSinceLastAppointment > 180 
-                  ? 'text-red-600' 
-                  : customer.DaysSinceLastAppointment > 90 
-                    ? 'text-yellow-600' 
-                    : 'text-green-600'
-              }`}>
-                {customer.DaysSinceLastAppointment} days ago
-              </span>
-            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {appointments.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {appointment.date ? new Date(appointment.date).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {appointment.time || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          appointment.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
+                          appointment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                          appointment.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {appointment.statusLabel || appointment.status || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <Link href={`/appointments/${appointment.id}`} className="text-primary-600 hover:text-primary-900 mr-4">
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {customer?.DaysSinceLastAppointment !== null && customer?.DaysSinceLastAppointment !== undefined && (
+              <p className="text-gray-700 mt-4">
+                Last appointment was{' '}
+                <span className={`font-medium ${
+                  customer.DaysSinceLastAppointment > 180 
+                    ? 'text-red-600' 
+                    : customer.DaysSinceLastAppointment > 90 
+                      ? 'text-yellow-600' 
+                      : 'text-green-600'
+                }`}>
+                  {customer.DaysSinceLastAppointment} days ago
+                </span>
+              </p>
+            )}
             <div className="mt-4">
-              <Link href={`/appointments?customer_id=${customer.Id}`} className="text-primary-600 hover:text-primary-800">
+              <Link href={`/appointments?customer_id=${customer?.Id}`} className="text-primary-600 hover:text-primary-800">
                 View all appointments
               </Link>
             </div>
@@ -172,7 +271,7 @@ export default function CustomerDetailPage() {
         ) : (
           <div className="text-center py-6 bg-gray-50 rounded-lg">
             <p className="text-gray-500 mb-2">No appointments yet</p>
-            <Link href={`/appointments/new?customer_id=${customer.Id}`} className="btn btn-primary">
+            <Link href={`/appointments/new?customer_id=${customer?.Id}`} className="btn btn-primary">
               Book First Appointment
             </Link>
           </div>

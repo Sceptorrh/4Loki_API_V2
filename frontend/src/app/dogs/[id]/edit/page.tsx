@@ -17,6 +17,8 @@ export default function EditDogPage() {
   const [dogBreeds, setDogBreeds] = useState<DogBreed[]>([]);
   const [dogSizes, setDogSizes] = useState<DogSize[]>([]);
   const [selectedBreeds, setSelectedBreeds] = useState<string[]>([]);
+  const [breedSearchTerm, setBreedSearchTerm] = useState('');
+  const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Dog>>({
     Name: '',
@@ -78,18 +80,23 @@ export default function EditDogPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleBreedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const options = e.target.options;
-    const selectedValues: string[] = [];
-    
-    for (let i = 0; i < options.length; i++) {
-      if (options[i].selected) {
-        selectedValues.push(options[i].value);
+  const handleBreedToggle = (breedId: string) => {
+    setSelectedBreeds(prev => {
+      if (prev.includes(breedId)) {
+        return prev.filter(id => id !== breedId);
+      } else {
+        return [...prev, breedId];
       }
-    }
-    
-    setSelectedBreeds(selectedValues);
+    });
   };
+
+  const handleRemoveBreed = (breedId: string) => {
+    setSelectedBreeds(prev => prev.filter(id => id !== breedId));
+  };
+
+  const filteredBreeds = dogBreeds.filter(breed => 
+    (breed.Name || breed.name || '').toLowerCase().includes(breedSearchTerm.toLowerCase())
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,8 +108,13 @@ export default function EditDogPage() {
       // Prepare the dog data with selected breeds
       const dogData = {
         ...formData,
+        // Convert empty DogSizeId to null for the API
+        DogSizeId: formData.DogSizeId === '' ? null : formData.DogSizeId,
+        // Ensure breed IDs are sent in the correct format
         DogBreeds: selectedBreeds.map(breedId => ({ Id: breedId }))
       };
+      
+      console.log('Sending dog data:', dogData);
       
       const response = await endpoints.dogs.update(Number(dogId), dogData);
       console.log('Dog updated:', response.data);
@@ -183,43 +195,135 @@ export default function EditDogPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="DogSizeId" className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Size
                   </label>
-                  <select
-                    id="DogSizeId"
-                    name="DogSizeId"
-                    value={formData.DogSizeId}
-                    onChange={handleChange}
-                    className="mt-1 input"
-                  >
-                    <option value="">Select a size</option>
+                  <div className="flex flex-wrap gap-2">
                     {dogSizes.map(size => (
-                      <option key={size.Id || size.id} value={size.Id || size.id}>
+                      <button
+                        key={size.Id || size.id}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, DogSizeId: size.Id || size.id || '' }))}
+                        className={`px-4 py-2 rounded-md border ${
+                          formData.DogSizeId === (size.Id || size.id)
+                            ? 'bg-primary-500 text-white border-primary-500'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
                         {size.Name || size.label}
-                      </option>
+                      </button>
                     ))}
-                  </select>
+                    {formData.DogSizeId && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, DogSizeId: '' }))}
+                        className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
-                  <label htmlFor="breeds" className="block text-sm font-medium text-gray-700">
-                    Breeds (hold Ctrl/Cmd to select multiple)
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Breeds
                   </label>
-                  <select
-                    id="breeds"
-                    name="breeds"
-                    multiple
-                    value={selectedBreeds}
-                    onChange={handleBreedChange}
-                    className="mt-1 input h-32"
-                  >
-                    {dogBreeds.map(breed => (
-                      <option key={breed.Id || breed.id} value={breed.Id || breed.id}>
-                        {breed.Name || breed.name}
-                      </option>
-                    ))}
-                  </select>
+                  
+                  {/* Selected breeds display */}
+                  {selectedBreeds.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {selectedBreeds.map(breedId => {
+                        const breed = dogBreeds.find(b => (b.Id || b.id) === breedId);
+                        return (
+                          <div 
+                            key={breedId} 
+                            className="bg-primary-100 text-primary-800 px-2 py-1 rounded-md flex items-center"
+                          >
+                            <span>{breed?.Name || breed?.name}</span>
+                            <button 
+                              type="button" 
+                              className="ml-1 text-primary-600 hover:text-primary-800"
+                              onClick={() => handleRemoveBreed(breedId)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {/* Search input */}
+                  <div className="relative" id="breed-search-container-edit">
+                    <input
+                      type="text"
+                      placeholder="Search breeds..."
+                      value={breedSearchTerm}
+                      onChange={(e) => setBreedSearchTerm(e.target.value)}
+                      onFocus={() => setShowBreedDropdown(true)}
+                      className="w-full input"
+                      id="breed-search-input-edit"
+                    />
+                    
+                    {/* Breed dropdown - positioned fixed to avoid container clipping */}
+                    {showBreedDropdown && (
+                      <>
+                        <div 
+                          className="fixed z-50 bg-white shadow-lg rounded-md border border-gray-300 overflow-hidden"
+                          style={{
+                            width: document.getElementById('breed-search-input-edit')?.offsetWidth || 300,
+                            maxHeight: '300px',
+                            top: (() => {
+                              const input = document.getElementById('breed-search-input-edit');
+                              if (!input) return '200px';
+                              const rect = input.getBoundingClientRect();
+                              return `${rect.bottom + window.scrollY + 4}px`;
+                            })(),
+                            left: (() => {
+                              const input = document.getElementById('breed-search-input-edit');
+                              if (!input) return '0px';
+                              const rect = input.getBoundingClientRect();
+                              return `${rect.left + window.scrollX}px`;
+                            })()
+                          }}
+                        >
+                          <div className="max-h-[300px] overflow-y-auto">
+                            {filteredBreeds.length === 0 ? (
+                              <div className="p-2 text-gray-500">No breeds found</div>
+                            ) : (
+                              filteredBreeds.map(breed => {
+                                const breedId = breed.Id || breed.id || '';
+                                const isSelected = selectedBreeds.includes(breedId);
+                                
+                                return (
+                                  <div 
+                                    key={breedId}
+                                    className={`p-2 cursor-pointer hover:bg-gray-100 flex items-center ${isSelected ? 'bg-primary-50' : ''}`}
+                                    onClick={() => handleBreedToggle(breedId)}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => {}}
+                                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mr-2"
+                                    />
+                                    <span>{breed.Name || breed.name}</span>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Click outside handler */}
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={() => setShowBreedDropdown(false)}
+                        ></div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 

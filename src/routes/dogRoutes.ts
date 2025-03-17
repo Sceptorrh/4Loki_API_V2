@@ -186,7 +186,12 @@ router.post('/', validate(dogSchema), async (req, res, next) => {
     
     // Add dog breeds if provided
     if (DogBreeds && Array.isArray(DogBreeds) && DogBreeds.length > 0) {
-      const breedValues = DogBreeds.map(breedId => [dogId, breedId]);
+      const breedValues = DogBreeds.map(breed => {
+        // Handle both formats: { Id: 'breedId' } or 'breedId'
+        const breedId = typeof breed === 'object' ? (breed.Id || breed.id) : breed;
+        return [dogId, breedId];
+      });
+      
       await connection.query(
         `INSERT INTO DogDogbreed (DogId, DogBreedId) VALUES ?`,
         [breedValues]
@@ -265,6 +270,13 @@ router.put('/:id', validate(dogSchema), async (req, res, next) => {
     // Extract dogBreeds from request body
     const { DogBreeds, Id, CreatedOn, UpdatedOn, ...dogData } = req.body;
     
+    // Sanitize Birthday field
+    if (dogData.Birthday === '') {
+      dogData.Birthday = null;
+    } else if (dogData.Birthday) {
+      dogData.Birthday = dogData.Birthday.trim();
+    }
+    
     // Check if dog exists
     const [checkResult] = await connection.query<RowDataPacket[]>(
       'SELECT Id FROM Dog WHERE Id = ?',
@@ -295,7 +307,12 @@ router.put('/:id', validate(dogSchema), async (req, res, next) => {
       
       // Add new breeds
       if (DogBreeds.length > 0) {
-        const breedValues = DogBreeds.map(breedId => [id, breedId]);
+        const breedValues = DogBreeds.map(breed => {
+          // Handle both formats: { Id: 'breedId' } or 'breedId'
+          const breedId = typeof breed === 'object' ? (breed.Id || breed.id) : breed;
+          return [id, breedId];
+        });
+        
         await connection.query(
           `INSERT INTO DogDogbreed (DogId, DogBreedId) VALUES ?`,
           [breedValues]

@@ -37,6 +37,19 @@ export class RouteHandler {
         throw new AppError('Record not found', 404);
       }
       
+      // If this is a customer, fetch their dogs as well
+      if (this.tableName === 'Customer') {
+        const [dogs] = await pool.query(
+          'SELECT * FROM Dog WHERE CustomerId = ?',
+          [req.params.id]
+        );
+        
+        if (Array.isArray(dogs)) {
+          // Add the dogs to the customer object
+          (rows[0] as any).Dogs = dogs;
+        }
+      }
+      
       res.json(rows[0]);
     } catch (error) {
       if (error instanceof AppError) throw error;
@@ -322,7 +335,8 @@ export class RouteHandler {
           d.Name,
           c.Contactpersoon as CustomerName,
           ds.Label as Size,
-          GROUP_CONCAT(DISTINCT db.Name) as Breeds
+          GROUP_CONCAT(DISTINCT db.Name) as BreedNames,
+          GROUP_CONCAT(DISTINCT db.Id) as BreedIds
         FROM Dog d
         LEFT JOIN Customer c ON d.CustomerId = c.Id
         LEFT JOIN Statics_DogSize ds ON d.DogSizeId = ds.Id
@@ -341,11 +355,25 @@ export class RouteHandler {
         return res.json([]);
       }
 
-      // Process the results to format the breeds array
-      const processedRows = rows.map((row: any) => ({
-        ...row,
-        Breeds: row.Breeds ? row.Breeds.split(',') : []
-      }));
+      // Process the results to format the breeds array with both id and name
+      const processedRows = rows.map((row: any) => {
+        const breedNames = row.BreedNames ? row.BreedNames.split(',') : [];
+        const breedIds = row.BreedIds ? row.BreedIds.split(',') : [];
+        
+        // Create an array of breed objects with Id and Name
+        const breeds = breedNames.map((name: string, index: number) => ({
+          Id: breedIds[index] || '',
+          Name: name
+        }));
+        
+        return {
+          ...row,
+          Breeds: breeds,
+          // Remove the temporary fields used for processing
+          BreedNames: undefined,
+          BreedIds: undefined
+        };
+      });
 
       res.json(processedRows);
     } catch (error) {

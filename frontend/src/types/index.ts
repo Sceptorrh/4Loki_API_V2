@@ -39,6 +39,8 @@ export interface Dog {
   BreedNames?: string;
   SizeName?: string;
   CustomerName?: string;
+  Breeds?: DogBreed[];
+  Size?: string;
   
   // Alternative property names (for API compatibility)
   id?: number;
@@ -66,7 +68,7 @@ export interface Customer {
   IsAllowContactShare?: string;
   IsExported?: boolean;
   DogCount?: number;
-  Dogs?: string[];
+  Dogs?: (string | Dog)[];
   DaysSinceLastAppointment?: number;
   
   // Legacy properties (keeping for backward compatibility)
@@ -85,14 +87,32 @@ export interface Customer {
 
 // Appointment interface
 export interface Appointment {
-  id: number;
-  date: string;
-  time: string;
-  customer_id: number;
+  // Frontend expected properties (lowercase)
+  id?: number;
+  date?: string;
+  time?: string;
+  customer_id?: number;
   customer_name?: string;
-  status: string;
+  status?: string;
+  statusLabel?: string;
   notes?: string;
   dogs?: Dog[];
+  
+  // Backend properties (uppercase)
+  Id?: number;
+  Date?: string;
+  TimeStart?: string;
+  TimeEnd?: string;
+  CustomerId?: number;
+  ContactPerson?: string;
+  Status?: {
+    Id: string;
+    Label: string;
+    Color: string;
+  };
+  Note?: string;
+  Dogs?: Dog[];
+  AppointmentId?: number;
 }
 
 // Invoice interface
