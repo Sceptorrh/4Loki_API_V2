@@ -7,7 +7,8 @@ import {
   createCompleteAppointment, 
   updateCompleteAppointment, 
   deleteCompleteAppointment,
-  getAppointmentsByYearMonth
+  getAppointmentsByYearMonth,
+  getInvoiceReadyAppointments
 } from '../controllers/appointmentController';
 
 const router = Router();
@@ -63,6 +64,25 @@ router.get('/date-range', handler.getByDateRange.bind(handler));
  *                 $ref: '#/components/schemas/Appointment'
  */
 router.get('/', handler.getAll.bind(handler));
+
+/**
+ * @swagger
+ * /appointments/invoice-ready:
+ *   get:
+ *     summary: Get past appointments with status 'Pln' that are ready to be invoiced
+ *     tags: [Appointments]
+ *     description: Retrieves all appointments that have a status of 'Pln' and are in the past
+ *     responses:
+ *       200:
+ *         description: List of appointments ready to be invoiced
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ */
+router.get('/invoice-ready', getInvoiceReadyAppointments);
 
 /**
  * @swagger

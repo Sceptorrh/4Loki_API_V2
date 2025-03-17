@@ -530,4 +530,58 @@ export const getAppointmentsByYearMonth = async (req: Request, res: Response) =>
   } finally {
     connection.release();
   }
+};
+
+/**
+ * Get all past appointments with status 'Pln' that are ready to be invoiced
+ */
+export const getInvoiceReadyAppointments = async (req: Request, res: Response) => {
+  try {
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    
+    // Query to get all past appointments with status 'Pln' and calculate total price
+    const [appointments] = await db.execute(`
+      SELECT 
+        a.*,
+        c.Naam as CustomerName,
+        s.Label as StatusLabel,
+        COALESCE(SUM(sad.Price), 0) as TotalPrice
+      FROM Appointment a
+      JOIN Customer c ON a.CustomerId = c.Id
+      JOIN Statics_AppointmentStatus s ON a.AppointmentStatusId = s.Id
+      LEFT JOIN AppointmentDog ad ON a.Id = ad.AppointmentId
+      LEFT JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+      WHERE a.AppointmentStatusId = 'Pln'
+      AND a.Date < ?
+      GROUP BY a.Id
+      ORDER BY a.Date DESC
+    `, [currentDate]);
+    
+    // For each appointment, get the associated dogs
+    const appointmentsWithDogs = [];
+    for (const appointment of (appointments as any[])) {
+      // Get dogs for this appointment
+      const [dogs] = await db.execute(`
+        SELECT 
+          d.Id as DogId,
+          d.Name as DogName,
+          COUNT(sad.Id) as ServiceCount
+        FROM AppointmentDog ad
+        JOIN Dog d ON ad.DogId = d.Id
+        LEFT JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+        WHERE ad.AppointmentId = ?
+        GROUP BY d.Id, d.Name
+      `, [appointment.Id]);
+      
+      appointmentsWithDogs.push({
+        ...appointment,
+        Dogs: dogs
+      });
+    }
+    
+    return res.status(200).json(appointmentsWithDogs);
+  } catch (error) {
+    console.error('Error getting invoice-ready appointments:', error);
+    throw new AppError('Failed to retrieve invoice-ready appointments', 500);
+  }
 }; 

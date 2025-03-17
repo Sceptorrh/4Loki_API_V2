@@ -18,7 +18,14 @@ import {
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: FiHome },
-  { name: 'Appointments', href: '/appointments', icon: FiCalendar },
+  { 
+    name: 'Appointments', 
+    href: '/appointments', 
+    icon: FiCalendar,
+    subItems: [
+      { name: 'Invoice Ready', href: '/appointments/invoice-ready' }
+    ]
+  },
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
   { name: 'Invoices', href: '/invoices', icon: FiFileText },
@@ -99,7 +106,9 @@ export default function Navigation() {
         <nav className="flex-1 py-4 overflow-y-auto">
           <ul className="space-y-2 px-2">
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const hasSubItems = item.subItems && item.subItems.length > 0;
+              
               return (
                 <li key={item.name}>
                   <Link
@@ -114,6 +123,30 @@ export default function Navigation() {
                     <item.icon className="h-5 w-5 flex-shrink-0" />
                     <span className="ml-3 whitespace-nowrap md:hidden md:group-hover:block font-medium">{item.name}</span>
                   </Link>
+                  
+                  {/* Sub-items */}
+                  {hasSubItems && (
+                    <ul className="mt-1 ml-6 space-y-1">
+                      {item.subItems.map((subItem) => {
+                        const isSubActive = pathname === subItem.href;
+                        return (
+                          <li key={subItem.name}>
+                            <Link
+                              href={subItem.href}
+                              className={`flex items-center px-2 py-1.5 text-sm rounded-md ${
+                                isSubActive
+                                  ? 'bg-primary-50 text-dog-lightgray'
+                                  : 'text-dog-gray hover:bg-secondary-100 hover:text-dog-lightgray'
+                              }`}
+                              onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                              <span className="ml-1 whitespace-nowrap md:hidden md:group-hover:block">{subItem.name}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}

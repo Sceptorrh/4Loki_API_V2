@@ -97,22 +97,30 @@ export interface Appointment {
   statusLabel?: string;
   notes?: string;
   dogs?: Dog[];
+  isPaidInCash?: boolean;
+  actualDuration?: number;
   
   // Backend properties (uppercase)
   Id?: number;
   Date?: string;
   TimeStart?: string;
   TimeEnd?: string;
+  DateEnd?: string;
   CustomerId?: number;
   ContactPerson?: string;
+  CustomerName?: string;
   Status?: {
     Id: string;
     Label: string;
     Color: string;
   };
+  StatusLabel?: string;
+  AppointmentStatusId?: string;
   Note?: string;
   Dogs?: Dog[];
   AppointmentId?: number;
+  IsPaidInCash?: boolean;
+  ActualDuration?: number;
 }
 
 // Invoice interface
