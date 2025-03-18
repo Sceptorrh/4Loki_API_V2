@@ -96,9 +96,10 @@ router.get('/:id', async (req, res, next) => {
   try {
     const id = req.params.id;
     
-    // Get dog details
+    // Get dog details with size information
     const [dogRows] = await pool.query<RowDataPacket[]>(
-      `SELECT d.*, ds.Label as SizeLabel FROM Dog d 
+      `SELECT d.*, ds.Label as SizeName 
+       FROM Dog d 
        LEFT JOIN Statics_DogSize ds ON d.DogSizeId = ds.Id 
        WHERE d.Id = ?`,
       [id]
@@ -121,6 +122,11 @@ router.get('/:id', async (req, res, next) => {
     
     // Add breeds to dog object
     dog.DogBreeds = Array.isArray(breedRows) ? breedRows : [];
+    
+    // Format the birthday if it exists
+    if (dog.Birthday) {
+      dog.Birthday = new Date(dog.Birthday).toISOString().split('T')[0];
+    }
     
     res.json(dog);
   } catch (error) {

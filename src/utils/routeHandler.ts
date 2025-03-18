@@ -358,27 +358,13 @@ export class RouteHandler {
 
   async getDogTable(req: Request, res: Response) {
     try {
-      // First check if the Dog table exists and has data
-      const [tableCheck] = await pool.query('SELECT COUNT(*) as count FROM Dog');
-
-      if (!Array.isArray(tableCheck) || (tableCheck as any)[0].count === 0) {
-        return res.json([]);
-      }
-
-      const searchTerm = req.query.search as string || '';
+      const searchTerm = req.query.search as string;
       
-      const searchCondition = searchTerm 
-        ? `WHERE LOWER(d.Name) LIKE LOWER(?) OR LOWER(c.Contactpersoon) LIKE LOWER(?) OR LOWER(db.Name) LIKE LOWER(?)`
-        : '';
-
-      const searchParams = searchTerm 
-        ? [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
-        : [];
-
-      const query = `
+      let query = `
         SELECT 
           d.Id,
           d.Name,
+          d.Birthday,
           c.Contactpersoon as CustomerName,
           ds.Label as Size,
           GROUP_CONCAT(DISTINCT db.Name) as BreedNames,
@@ -388,17 +374,29 @@ export class RouteHandler {
         LEFT JOIN Statics_DogSize ds ON d.DogSizeId = ds.Id
         LEFT JOIN DogDogbreed ddb ON d.Id = ddb.DogId
         LEFT JOIN Statics_Dogbreed db ON ddb.DogBreedId = db.Id
-        ${searchCondition}
-        GROUP BY d.Id, d.Name, c.Contactpersoon, ds.Label
-        ORDER BY d.Name
-        LIMIT 1000
       `;
 
-      const [rows] = await pool.query(query, searchParams);
-
+      const params: any[] = [];
+      
+      if (searchTerm) {
+        query += `
+          WHERE d.Name LIKE ? 
+          OR c.Contactpersoon LIKE ? 
+          OR db.Name LIKE ?
+        `;
+        params.push(
+          `%${searchTerm}%`,
+          `%${searchTerm}%`,
+          `%${searchTerm}%`
+        );
+      }
+      
+      query += ' GROUP BY d.Id';
+      
+      const [rows] = await pool.query(query, params);
+      
       if (!Array.isArray(rows)) {
-        console.log('Query did not return an array');
-        return res.json([]);
+        throw new AppError('Invalid response from database', 500);
       }
 
       // Process the results to format the breeds array with both id and name
@@ -411,6 +409,11 @@ export class RouteHandler {
           Id: breedIds[index] || '',
           Name: name
         }));
+        
+        // Format the birthday if it exists
+        if (row.Birthday) {
+          row.Birthday = new Date(row.Birthday).toISOString().split('T')[0];
+        }
         
         return {
           ...row,

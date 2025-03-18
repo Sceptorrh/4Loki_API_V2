@@ -102,7 +102,13 @@ export default function AppointmentDetailPage() {
     const fetchAppointment = async () => {
       try {
         setLoading(true);
-        const response = await endpoints.appointments.getComplete(parseInt(appointmentId));
+        const id = parseInt(appointmentId);
+        if (isNaN(id)) {
+          setError('Invalid appointment ID');
+          setLoading(false);
+          return;
+        }
+        const response = await endpoints.appointments.getComplete(id);
         
         // Ensure the response data has all required fields
         const responseData = response.data as CompleteAppointmentResponse;

@@ -37,11 +37,25 @@ export default function DogsPage() {
   const filteredDogs = dogs.filter(dog => {
     if (!dog) return false;
     
-    const name = (dog.Name || dog.name || '').toLowerCase();
     const search = searchTerm.toLowerCase();
     
     // Search by name
-    return name.includes(search);
+    const name = (dog.Name || dog.name || '').toLowerCase();
+    if (name.includes(search)) return true;
+    
+    // Search by breed
+    const breeds = dog.Breeds 
+      ? dog.Breeds.map(breed => (breed.Name || breed.name || '').toLowerCase())
+      : dog.BreedNames 
+        ? dog.BreedNames.split(',').map(breed => breed.trim().toLowerCase())
+        : [];
+    if (breeds.some(breed => breed.includes(search))) return true;
+    
+    // Search by owner name
+    const ownerName = (dog.CustomerName || '').toLowerCase();
+    if (ownerName.includes(search)) return true;
+    
+    return false;
   });
 
   // Helper function to format date
@@ -153,7 +167,7 @@ export default function DogsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900">
-                      {dog.SizeName || 'Unknown'}
+                      {dog.Size || 'Unknown'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

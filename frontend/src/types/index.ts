@@ -34,13 +34,13 @@ export interface Dog {
   UpdatedOn?: string;
   DogBreeds?: DogBreed[];
   DogSize?: DogSize;
+  Size?: string;
   
   // Properties from the table endpoint
   BreedNames?: string;
   SizeName?: string;
   CustomerName?: string;
   Breeds?: DogBreed[];
-  Size?: string;
   
   // Alternative property names (for API compatibility)
   id?: number;
@@ -54,6 +54,7 @@ export interface Dog {
   updatedOn?: string;
   dogBreeds?: DogBreed[];
   dogSize?: DogSize;
+  size?: string;
 }
 
 // Customer interface
