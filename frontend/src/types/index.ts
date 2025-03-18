@@ -100,6 +100,7 @@ export interface Appointment {
   dogs?: Dog[];
   isPaidInCash?: boolean;
   actualDuration?: number;
+  daysSincePrevious?: number | null;
   
   // Backend properties (uppercase)
   Id?: number;
@@ -120,7 +121,7 @@ export interface Appointment {
   Note?: string;
   Dogs?: Dog[];
   AppointmentId?: number;
-  IsPaidInCash?: boolean;
+  IsPaidInCash?: boolean | number;
   ActualDuration?: number;
 }
 

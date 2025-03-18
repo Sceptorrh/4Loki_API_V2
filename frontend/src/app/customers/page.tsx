@@ -200,7 +200,7 @@ export default function CustomersPage() {
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('lastAppointment')}
                 >
-                  Last Appointment <SortIcon field="lastAppointment" />
+                  Next/Last Appointment <SortIcon field="lastAppointment" />
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -245,13 +245,17 @@ export default function CustomersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {customer.DaysSinceLastAppointment !== null && customer.DaysSinceLastAppointment !== undefined ? (
                       <span className={`text-sm ${
-                        customer.DaysSinceLastAppointment > 180 
-                          ? 'text-red-600' 
-                          : customer.DaysSinceLastAppointment > 90 
-                            ? 'text-yellow-600' 
-                            : 'text-green-600'
+                        customer.DaysSinceLastAppointment < 0 
+                          ? 'text-blue-600' 
+                          : customer.DaysSinceLastAppointment > 180 
+                            ? 'text-red-600' 
+                            : customer.DaysSinceLastAppointment > 90 
+                              ? 'text-yellow-600' 
+                              : 'text-green-600'
                       }`}>
-                        {customer.DaysSinceLastAppointment} days ago
+                        {customer.DaysSinceLastAppointment < 0 
+                          ? `In ${Math.abs(customer.DaysSinceLastAppointment)} days`
+                          : `${customer.DaysSinceLastAppointment} days ago`}
                       </span>
                     ) : (
                       <span className="text-sm text-gray-500">Never</span>
