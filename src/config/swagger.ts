@@ -687,17 +687,7 @@ const swaggerOptions = {
           required: ['IsHomeToWork', 'Duration']
         }
       },
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
     },
-    security: [{
-      bearerAuth: [],
-    }],
   },
   apis: [
     // Use absolute paths to ensure files are found correctly

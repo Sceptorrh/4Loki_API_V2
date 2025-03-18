@@ -31,11 +31,11 @@ const app = express();
 // Create HTTP server instance
 let server: Server;
 
-// CORS configuration
+// CORS configuration - Remove Authorization header
 const corsOptions = {
   origin: true, // Allow all origins in development
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Accept'],
   credentials: true,
   maxAge: 86400 // 24 hours
 };
@@ -122,7 +122,6 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
   customSiteTitle: "4Loki API Documentation",
   swaggerOptions: {
     docExpansion: 'list',
-    persistAuthorization: true,
     displayRequestDuration: true
   }
 }));

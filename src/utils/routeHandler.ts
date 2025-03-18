@@ -312,10 +312,25 @@ export class RouteHandler {
           c.IsAllowContactShare,
           COUNT(DISTINCT d.Id) as DogCount,
           GROUP_CONCAT(DISTINCT d.Name) as Dogs,
-          DATEDIFF(CURDATE(), MAX(a.Date)) as DaysSinceLastAppointment
+          DATEDIFF(CURDATE(), MAX(a.Date)) as DaysSinceLastAppointment,
+          AVG(interval_data.DaysBetween) as AverageInterval
         FROM Customer c
         LEFT JOIN Dog d ON c.Id = d.CustomerId
         LEFT JOIN Appointment a ON c.Id = a.CustomerId
+        LEFT JOIN (
+          SELECT 
+            a1.CustomerId,
+            DATEDIFF(a1.Date, a2.Date) as DaysBetween
+          FROM 
+            Appointment a1
+          JOIN 
+            Appointment a2 ON a1.CustomerId = a2.CustomerId AND a1.Date > a2.Date
+          WHERE 
+            NOT EXISTS (
+              SELECT 1 FROM Appointment a3
+              WHERE a3.CustomerId = a1.CustomerId AND a3.Date > a2.Date AND a3.Date < a1.Date
+            )
+        ) interval_data ON c.Id = interval_data.CustomerId
         ${searchCondition}
         GROUP BY c.Id, c.Contactpersoon, c.Naam, c.Emailadres, c.Telefoonnummer, c.IsAllowContactShare
         ORDER BY c.Naam
@@ -336,7 +351,8 @@ export class RouteHandler {
       const processedRows = rows.map((row: any) => ({
         ...row,
         Dogs: row.Dogs ? row.Dogs.split(',') : [],
-        DaysSinceLastAppointment: row.DaysSinceLastAppointment || null
+        DaysSinceLastAppointment: row.DaysSinceLastAppointment || null,
+        AverageInterval: row.AverageInterval ? Math.round(row.AverageInterval) : null
       }));
 
       res.json(processedRows);

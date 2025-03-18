@@ -73,6 +73,7 @@ export interface Customer {
   DaysSinceLastAppointment?: number;
   AppointmentCount?: number;
   IsActive?: boolean;
+  AverageInterval?: number;
   
   // Legacy properties (keeping for backward compatibility)
   id?: number;

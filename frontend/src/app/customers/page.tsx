@@ -8,7 +8,7 @@ import { Customer, Dog } from '@/types';
 import ActiveCustomers from './components/ActiveCustomers';
 import { FaCheckCircle } from 'react-icons/fa';
 
-type SortField = 'customer' | 'lastAppointment' | null;
+type SortField = 'customer' | 'lastAppointment' | 'averageInterval' | null;
 type SortDirection = 'asc' | 'desc';
 
 export default function CustomersPage() {
@@ -21,6 +21,7 @@ export default function CustomersPage() {
   const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -55,9 +56,14 @@ export default function CustomersPage() {
     return activeCustomerIds.has(customerId);
   };
 
-  // Filter customers based on search term
+  // Filter customers based on search term and active filter
   const filteredCustomers = customers.filter(customer => {
     if (!customer) return false;
+    
+    // Filter by active status if the toggle is on
+    if (showActiveOnly && !isCustomerActive(customer.Id)) {
+      return false;
+    }
     
     const search = searchTerm.toLowerCase();
     
@@ -106,6 +112,15 @@ export default function CustomersPage() {
           : Number.MAX_SAFE_INTEGER; // Customers without appointments go at the end (or beginning if desc)
         bValue = b.DaysSinceLastAppointment !== null && b.DaysSinceLastAppointment !== undefined
           ? b.DaysSinceLastAppointment 
+          : Number.MAX_SAFE_INTEGER;
+        break;
+      case 'averageInterval':
+        // Use AverageInterval to sort
+        aValue = a.AverageInterval !== null && a.AverageInterval !== undefined
+          ? a.AverageInterval
+          : Number.MAX_SAFE_INTEGER; // Customers without average interval go at the end (or beginning if desc)
+        bValue = b.AverageInterval !== null && b.AverageInterval !== undefined
+          ? b.AverageInterval
           : Number.MAX_SAFE_INTEGER;
         break;
       default:
@@ -169,13 +184,33 @@ export default function CustomersPage() {
       )}
 
       <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Search by customer name, email, phone, or dog name..."
-          className="input"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search by customer name, email, phone, or dog name..."
+            className="input flex-grow"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <div className="flex items-center whitespace-nowrap">
+            <div className="relative inline-block w-10 mr-2 align-middle select-none">
+              <input 
+                type="checkbox" 
+                id="activeToggle"
+                className="sr-only peer"
+                checked={showActiveOnly}
+                onChange={() => setShowActiveOnly(!showActiveOnly)}
+              />
+              <label 
+                htmlFor="activeToggle"
+                className="block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer peer-checked:bg-blue-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+              ></label>
+            </div>
+            <label htmlFor="activeToggle" className="text-sm font-medium text-gray-700 cursor-pointer">
+              Show active customers only
+            </label>
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -224,6 +259,12 @@ export default function CustomersPage() {
                   onClick={() => handleSort('lastAppointment')}
                 >
                   Next/Last Appointment <SortIcon field="lastAppointment" />
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('averageInterval')}
+                >
+                  Avg Interval <SortIcon field="averageInterval" />
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -289,6 +330,19 @@ export default function CustomersPage() {
                       </span>
                     ) : (
                       <span className="text-sm text-gray-500">Never</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {customer.AverageInterval !== null && customer.AverageInterval !== undefined ? (
+                      <span className={`text-sm ${
+                        customer.AverageInterval > 180 ? 'text-red-600 font-medium' : 
+                        customer.AverageInterval > 90 ? 'text-yellow-600 font-medium' : 
+                        'text-green-600 font-medium'
+                      }`}>
+                        {customer.AverageInterval} days
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-500">Not available</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
