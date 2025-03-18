@@ -3,13 +3,21 @@
 import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Customer, Dog } from '@/types';
 
+type SortField = 'customer' | 'lastAppointment' | null;
+type SortDirection = 'asc' | 'desc';
+
 export default function CustomersPage() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -36,14 +44,97 @@ export default function CustomersPage() {
   const filteredCustomers = customers.filter(customer => {
     if (!customer) return false;
     
-    // Use the correct property names from the API response
-    const contactPerson = customer.Contactpersoon || '';
-    const email = (customer.Emailadres || '').toLowerCase();
-    const phone = (customer.Telefoonnummer || '').toLowerCase();
     const search = searchTerm.toLowerCase();
     
-    return contactPerson.toLowerCase().includes(search) || email.includes(search) || phone.includes(search);
+    // Search by customer name
+    const customerName = (customer.Contactpersoon || '').toLowerCase();
+    if (customerName.includes(search)) return true;
+    
+    // Search by email
+    const email = (customer.Emailadres || '').toLowerCase();
+    if (email.includes(search)) return true;
+    
+    // Search by phone number
+    const phone = (customer.Telefoonnummer || '').toLowerCase();
+    if (phone.includes(search)) return true;
+    
+    // Search by dog names
+    if (customer.Dogs && Array.isArray(customer.Dogs)) {
+      const hasMatchingDog = customer.Dogs.some(dog => {
+        const dogName = typeof dog === 'string' 
+          ? dog.toLowerCase() 
+          : ((dog.Name || dog.name || '') as string).toLowerCase();
+        return dogName.includes(search);
+      });
+      if (hasMatchingDog) return true;
+    }
+    
+    return false;
   });
+
+  // Sort customers based on current sort field and direction
+  const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+    if (!sortField) return 0;
+
+    let aValue: any;
+    let bValue: any;
+
+    switch (sortField) {
+      case 'customer':
+        aValue = (a.Contactpersoon || '').toLowerCase();
+        bValue = (b.Contactpersoon || '').toLowerCase();
+        break;
+      case 'lastAppointment':
+        // Use DaysSinceLastAppointment to sort
+        aValue = a.DaysSinceLastAppointment !== null && a.DaysSinceLastAppointment !== undefined
+          ? a.DaysSinceLastAppointment 
+          : Number.MAX_SAFE_INTEGER; // Customers without appointments go at the end (or beginning if desc)
+        bValue = b.DaysSinceLastAppointment !== null && b.DaysSinceLastAppointment !== undefined
+          ? b.DaysSinceLastAppointment 
+          : Number.MAX_SAFE_INTEGER;
+        break;
+      default:
+        return 0;
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(current => current === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <span className="ml-1 text-gray-400">↕</span>;
+    return <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>;
+  };
+
+  // Handle row navigation with click delay to detect double clicks
+  const handleRowClick = (customerId: string | number | undefined) => {
+    if (!customerId) return;
+    
+    // If already tracking a click, it's a double click
+    if (clickTimer) {
+      clearTimeout(clickTimer);
+      setClickTimer(null);
+      router.push(`/customers/${customerId}/edit`);
+    } else {
+      // Set a timeout to detect if this is a single click
+      const timer = setTimeout(() => {
+        setClickTimer(null);
+        router.push(`/customers/${customerId}`);
+      }, 250); // 250ms delay to detect double click
+      
+      setClickTimer(timer);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -57,7 +148,7 @@ export default function CustomersPage() {
       <div className="mb-6">
         <input
           type="text"
-          placeholder="Search customers..."
+          placeholder="Search by customer name, email, phone, or dog name..."
           className="input"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -93,8 +184,11 @@ export default function CustomersPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('customer')}
+                >
+                  Customer <SortIcon field="customer" />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contact
@@ -102,8 +196,11 @@ export default function CustomersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Dogs
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Appointment
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('lastAppointment')}
+                >
+                  Last Appointment <SortIcon field="lastAppointment" />
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -111,8 +208,12 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCustomers.map((customer) => (
-                <tr key={customer.Id}>
+              {sortedCustomers.map((customer) => (
+                <tr 
+                  key={customer.Id}
+                  onClick={() => handleRowClick(customer.Id)}
+                  className="cursor-pointer hover:bg-gray-50"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
                       {customer.Contactpersoon || ''}
@@ -128,12 +229,12 @@ export default function CustomersPage() {
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
                       {customer.Dogs && Array.isArray(customer.Dogs) && customer.Dogs.length > 0 ? (
-                        customer.Dogs.map((dogName, index) => (
+                        customer.Dogs.map((dog, index) => (
                           <span 
                             key={index}
                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                           >
-                            {dogName}
+                            {typeof dog === 'string' ? dog : (dog.Name || dog.name || 'Unnamed')}
                           </span>
                         ))
                       ) : (
@@ -158,20 +259,16 @@ export default function CustomersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <Link
-                      href={`/customers/${customer.Id}`}
-                      className="text-primary-600 hover:text-primary-900 mr-4"
-                    >
-                      View
-                    </Link>
-                    <Link
                       href={`/customers/${customer.Id}/edit`}
                       className="text-primary-600 hover:text-primary-900 mr-4"
+                      onClick={(e) => e.stopPropagation()} // Prevent row click
                     >
                       Edit
                     </Link>
                     <Link
                       href={`/appointments/new?customer_id=${customer.Id}`}
                       className="text-primary-600 hover:text-primary-900"
+                      onClick={(e) => e.stopPropagation()} // Prevent row click
                     >
                       Book
                     </Link>
