@@ -34,6 +34,8 @@ export const endpoints = {
     update: (id: number, data: any) => api.put(`/customers/${id}`, data),
     delete: (id: number) => api.delete(`/customers/${id}`),
     getDropdown: () => api.get('/dropdowns/customers'),
+    getActive: () => api.get('/customers/active'),
+    getActiveHistory: () => api.get('/customers/active/history'),
   },
   
   // Dogs

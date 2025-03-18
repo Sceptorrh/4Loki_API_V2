@@ -3,10 +3,70 @@ import { RouteHandler } from '../utils/routeHandler';
 import { customerSchema } from '../validation/schemas';
 import { validate } from '../middleware/validate';
 import { AppError } from '../middleware/errorHandler';
+import { getActiveCustomers, getActiveCustomersHistory } from '../controllers/customerController';
 
 const router = Router();
 const handler = new RouteHandler('Customer', customerSchema);
 const dogHandler = new RouteHandler('Dog');
+
+/**
+ * @swagger
+ * /customers/active:
+ *   get:
+ *     summary: Get active customers (customers with 2+ appointments and last appointment within 100 days)
+ *     tags: [Customers]
+ *     responses:
+ *       200:
+ *         description: List of active customers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   Id:
+ *                     type: integer
+ *                     description: Customer ID
+ *                   Contactpersoon:
+ *                     type: string
+ *                     description: Contact person name
+ *                   AppointmentCount:
+ *                     type: integer
+ *                     description: Number of appointments
+ *                   DaysSinceLastAppointment:
+ *                     type: integer
+ *                     description: Days since last appointment
+ *                   IsActive:
+ *                     type: boolean
+ *                     description: Flag indicating this is an active customer
+ */
+router.get('/active', getActiveCustomers);
+
+/**
+ * @swagger
+ * /customers/active/history:
+ *   get:
+ *     summary: Get historical data of active customers over the past year
+ *     tags: [Customers]
+ *     responses:
+ *       200:
+ *         description: Historical data of active customers by month
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   month:
+ *                     type: string
+ *                     description: Month in YYYY-MM format
+ *                   activeCustomers:
+ *                     type: integer
+ *                     description: Number of active customers for that month
+ */
+router.get('/active/history', getActiveCustomersHistory);
 
 /**
  * @swagger

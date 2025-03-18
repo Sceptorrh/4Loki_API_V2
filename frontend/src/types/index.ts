@@ -71,6 +71,8 @@ export interface Customer {
   DogCount?: number;
   Dogs?: (string | Dog)[];
   DaysSinceLastAppointment?: number;
+  AppointmentCount?: number;
+  IsActive?: boolean;
   
   // Legacy properties (keeping for backward compatibility)
   id?: number;

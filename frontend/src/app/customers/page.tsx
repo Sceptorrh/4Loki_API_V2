@@ -5,6 +5,8 @@ import { endpoints } from '@/lib/api';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Customer, Dog } from '@/types';
+import ActiveCustomers from './components/ActiveCustomers';
+import { FaCheckCircle } from 'react-icons/fa';
 
 type SortField = 'customer' | 'lastAppointment' | null;
 type SortDirection = 'asc' | 'desc';
@@ -12,6 +14,7 @@ type SortDirection = 'asc' | 'desc';
 export default function CustomersPage() {
   const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [activeCustomerIds, setActiveCustomerIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +42,18 @@ export default function CustomersPage() {
 
     fetchCustomers();
   }, []);
+
+  // Handle active customers list update
+  const handleActiveCustomersUpdate = (activeCustomers: Customer[]) => {
+    const ids = new Set(activeCustomers.map(c => c.Id as number));
+    setActiveCustomerIds(ids);
+  };
+
+  // Check if a customer is active
+  const isCustomerActive = (customerId: number | undefined): boolean => {
+    if (!customerId) return false;
+    return activeCustomerIds.has(customerId);
+  };
 
   // Filter customers based on search term
   const filteredCustomers = customers.filter(customer => {
@@ -145,6 +160,14 @@ export default function CustomersPage() {
         </Link>
       </div>
 
+      {/* Active Customers Component */}
+      {!loading && !error && customers.length > 0 && (
+        <ActiveCustomers 
+          customers={customers} 
+          onActiveListUpdated={handleActiveCustomersUpdate}
+        />
+      )}
+
       <div className="mb-6">
         <input
           type="text"
@@ -215,10 +238,17 @@ export default function CustomersPage() {
                   className="cursor-pointer hover:bg-gray-50"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {customer.Contactpersoon || ''}
+                    <div className="flex items-center">
+                      {isCustomerActive(customer.Id) && (
+                        <span className="text-green-500 mr-2" title="Active Customer">
+                          <FaCheckCircle />
+                        </span>
+                      )}
+                      <div className="text-sm font-medium text-gray-900">
+                        {customer.Contactpersoon || ''}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 ml-0">
                       {/* City and postal code not available in this API response */}
                     </div>
                   </td>
