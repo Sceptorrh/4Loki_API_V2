@@ -6,7 +6,12 @@ export const customerSchema = z.object({
   Emailadres: z.string().email('Invalid email address').optional(),
   Telefoonnummer: z.string().min(1, 'Phone number is required'),
   Notities: z.string().optional(),
-  IsAllowContactShare: z.string().optional(),
+  IsAllowContactShare: z.union([
+    z.enum(['yes', 'no', 'unknown']),
+    z.literal(null),
+    z.string().length(0).transform(() => null),
+    z.undefined().transform(() => null)
+  ]).optional().nullable(),
 });
 
 export const dogSchema = z.object({

@@ -262,7 +262,11 @@ export default function CustomerDetailPage() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Contact Sharing</p>
-              <p className="text-gray-900">{customer.IsAllowContactShare || 'Not specified'}</p>
+              <p className="text-gray-900">
+                {customer.IsAllowContactShare 
+                  ? customer.IsAllowContactShare.charAt(0).toUpperCase() + customer.IsAllowContactShare.slice(1) 
+                  : 'Not specified'}
+              </p>
             </div>
             {appointments.length >= 2 && (
               <div>

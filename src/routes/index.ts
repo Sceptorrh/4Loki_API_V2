@@ -9,6 +9,7 @@ import additionalHourRoutes from './additionalHourRoutes';
 import exportLogRoutes from './exportLogRoutes';
 import testDataRoutes from './testDataRoutes';
 import exportRoutes from './exportRoutes';
+import backupRoutes from './backupRoutes';
 
 export const setupRoutes = (app: Express) => {
   const apiPrefix = process.env.API_PREFIX || '/api/v1';
@@ -23,4 +24,5 @@ export const setupRoutes = (app: Express) => {
   app.use(`${apiPrefix}/export-logs`, exportLogRoutes);
   app.use(`${apiPrefix}/test-data`, testDataRoutes);
   app.use(`${apiPrefix}/exports`, exportRoutes);
+  app.use(`${apiPrefix}/backup`, backupRoutes);
 }; 

@@ -14,7 +14,8 @@ import {
   FiBell,
   FiMenu,
   FiX,
-  FiDownload
+  FiDownload,
+  FiDatabase
 } from 'react-icons/fi';
 
 const navItems = [
@@ -30,6 +31,7 @@ const navItems = [
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
   { name: 'Exports', href: '/exports', icon: FiDownload },
+  { name: 'Backup', href: '/backup', icon: FiDatabase },
   { name: 'Reports', href: '/reports', icon: FiBarChart2 },
 ];
 

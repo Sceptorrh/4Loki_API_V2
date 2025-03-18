@@ -122,7 +122,7 @@ const swaggerOptions = {
             CreatedOn: { type: 'string', format: 'date-time', description: 'Creation timestamp', example: '2024-03-07T10:00:00Z' },
             UpdatedOn: { type: 'string', format: 'date-time', description: 'Last update timestamp', example: '2024-03-07T10:00:00Z' },
             IsExported: { type: 'boolean', description: 'Export status', example: false },
-            IsAllowContactShare: { type: 'string', description: 'Contact sharing permission', example: 'YES' }
+            IsAllowContactShare: { type: 'string', description: 'Contact sharing permission', example: 'yes', enum: ['yes', 'no', 'unknown', null] }
           },
           required: ['Naam']
         },
@@ -482,7 +482,8 @@ const swaggerOptions = {
                 },
                 IsAllowContactShare: {
                   type: 'string',
-                  description: 'Whether customer allows contact sharing'
+                  description: 'Whether customer allows contact sharing',
+                  enum: ['yes', 'no', 'unknown', null]
                 }
               },
               required: ['Id', 'Naam', 'Contactpersoon']
@@ -625,7 +626,7 @@ const swaggerOptions = {
             Telefoonnummer: { type: 'string', description: 'Phone number', example: '+31612345678' },
             Notities: { type: 'string', description: 'Notes', example: 'Preferred appointment time: afternoon' },
             IsExported: { type: 'boolean', description: 'Export status', example: false },
-            IsAllowContactShare: { type: 'string', description: 'Contact sharing permission', example: 'YES' }
+            IsAllowContactShare: { type: 'string', description: 'Contact sharing permission', example: 'yes', enum: ['yes', 'no', 'unknown', null] }
           },
           required: ['Naam', 'Contactpersoon', 'Emailadres', 'Telefoonnummer']
         },

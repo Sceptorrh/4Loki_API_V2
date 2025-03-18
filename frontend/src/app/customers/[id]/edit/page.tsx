@@ -204,9 +204,9 @@ export default function EditCustomerPage() {
                 className="input"
               >
                 <option value="">Not specified</option>
-                <option value="YES">Yes</option>
-                <option value="NO">No</option>
-                <option value="Not asked">Not asked</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="unknown">Unknown</option>
               </select>
             </div>
             

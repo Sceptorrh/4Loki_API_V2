@@ -66,7 +66,7 @@ describe('Appointment API Endpoints', () => {
       Contactpersoon: 'Test Contact',
       Emailadres: 'test@example.com',
       Telefoonnummer: '0612345678',
-      IsAllowContactShare: 'YES'
+      IsAllowContactShare: 'yes'
     };
 
     const customerRes = await request(app)

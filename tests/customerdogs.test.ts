@@ -26,31 +26,38 @@ describe('API Endpoints', () => {
       const customers: Customer[] = [
         {
           Naam: 'John Doe',
-          Contactpersoon: 'John Doe',
-          Emailadres: 'john.doe@example.com',
+          Contactpersoon: 'John',
+          Emailadres: 'john@example.com',
           Telefoonnummer: '123456789',
-          IsAllowContactShare: 'YES'
+          IsAllowContactShare: 'yes'
         },
         {
           Naam: 'Jane Smith',
-          Contactpersoon: 'Jane Smith',
-          Emailadres: 'jane.smith@example.com',
+          Contactpersoon: 'Jane',
+          Emailadres: 'jane@example.com',
           Telefoonnummer: '987654321',
-          IsAllowContactShare: 'YES'
+          IsAllowContactShare: 'yes'
         },
         {
           Naam: 'Alice Johnson',
-          Contactpersoon: 'Alice Johnson',
-          Emailadres: 'alice.j@example.com',
-          Telefoonnummer: '555666777',
-          IsAllowContactShare: 'NO'
+          Contactpersoon: 'Alice',
+          Emailadres: 'alice@example.com',
+          Telefoonnummer: '456789123',
+          IsAllowContactShare: 'no'
         },
         {
           Naam: 'Bob Williams',
-          Contactpersoon: 'Bob Williams',
-          Emailadres: 'bob.w@example.com',
+          Contactpersoon: 'Bob',
+          Emailadres: 'bob@example.com',
           Telefoonnummer: '111222333',
-          IsAllowContactShare: 'YES'
+          IsAllowContactShare: 'yes'
+        },
+        {
+          Naam: 'Test Klant',
+          Contactpersoon: 'Test Contact',
+          Emailadres: 'test@example.com',
+          Telefoonnummer: '0612345678',
+          IsAllowContactShare: 'yes'
         }
       ];
 
@@ -73,14 +80,15 @@ describe('API Endpoints', () => {
         johnDoeId: insertedCustomers[0].Id!,
         janeSmithId: insertedCustomers[1].Id!,
         aliceJohnsonId: insertedCustomers[2].Id!,
-        bobWilliamsId: insertedCustomers[3].Id!
+        bobWilliamsId: insertedCustomers[3].Id!,
+        testKlantId: insertedCustomers[4].Id!
       };
 
       // Verify customers were inserted
       const checkCustomersRes = await request(app).get('/api/v1/customers/table');
       expect(checkCustomersRes.status).toBe(200);
       expect(Array.isArray(checkCustomersRes.body)).toBe(true);
-      expect(checkCustomersRes.body.length).toBe(4);
+      expect(checkCustomersRes.body.length).toBe(5);
 
       // Verify customer search works
       const searchRes = await request(app).get('/api/v1/customers/table?search=John Doe');
