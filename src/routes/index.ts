@@ -10,6 +10,7 @@ import exportLogRoutes from './exportLogRoutes';
 import testDataRoutes from './testDataRoutes';
 import exportRoutes from './exportRoutes';
 import backupRoutes from './backupRoutes';
+import navigationSettingsRoutes from './navigationSettingsRoutes';
 
 export const setupRoutes = (app: Express) => {
   const apiPrefix = process.env.API_PREFIX || '/api/v1';
@@ -25,4 +26,11 @@ export const setupRoutes = (app: Express) => {
   app.use(`${apiPrefix}/test-data`, testDataRoutes);
   app.use(`${apiPrefix}/exports`, exportRoutes);
   app.use(`${apiPrefix}/backup`, backupRoutes);
+  app.use(`${apiPrefix}/navigation-settings`, navigationSettingsRoutes);
+  
+  // Also register the route without the v1 to accommodate frontend API proxy
+  app.use('/api/navigation-settings', navigationSettingsRoutes);
+  
+  // Handle path with duplicate /api in it
+  app.use('/api/v1/api/navigation-settings', navigationSettingsRoutes);
 }; 

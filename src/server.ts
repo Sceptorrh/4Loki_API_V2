@@ -25,6 +25,8 @@ import reportsRoutes from './routes/reports';
 import { NextFunction, Request, Response } from 'express';
 import { Server } from 'http';
 import { convertDatesToUTC, convertDatesInResponse } from './middleware/dateHandler';
+import cron from 'node-cron';
+import { fetchAndSaveTravelTimes } from './utils/navigationService';
 
 const app = express();
 
@@ -35,15 +37,55 @@ let server: Server;
 const corsOptions = {
   origin: true, // Allow all origins in development
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   credentials: true,
-  maxAge: 86400 // 24 hours
+  maxAge: 86400, // 24 hours
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 };
 
 // Middleware
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "'unsafe-eval'",
+          "https://maps.googleapis.com",
+          "https://*.googleapis.com",
+          "https://*.gstatic.com"
+        ],
+        connectSrc: [
+          "'self'",
+          "https://maps.googleapis.com",
+          "https://*.googleapis.com",
+          "https://*.gstatic.com",
+          "https://maps.gstatic.com"
+        ],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://maps.googleapis.com",
+          "https://*.googleapis.com",
+          "https://*.gstatic.com",
+          "https://maps.gstatic.com"
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://maps.googleapis.com",
+          "https://*.googleapis.com",
+          "https://*.gstatic.com"
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com",
+          "https://*.gstatic.com"
+        ]
+      }
+    },
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" }
   })
@@ -165,7 +207,25 @@ export { app, server };
 export function startServer(port: number = parseInt(process.env.PORT || '3000')) {
   server = app.listen(port, () => {
     logger.info(`Server is running on port ${port}`);
+    
+    // Set up scheduler to update travel times every 5 minutes on weekdays between 5:30 AM and 10 PM
+    cron.schedule('*/5 5-22 * * 1-5', async () => {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      
+      // Only run if time is between 5:30 AM and 10:00 PM
+      if ((hour > 5 || (hour === 5 && minute >= 30)) && hour < 22) {
+        logger.info('Running travel time update job');
+        try {
+          await fetchAndSaveTravelTimes();
+        } catch (error) {
+          logger.error('Error in travel time update job:', error);
+        }
+      }
+    });
   });
+  
   return server;
 }
 

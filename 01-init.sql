@@ -629,4 +629,24 @@ ALTER TABLE `DogDogbreed` ADD CONSTRAINT `DogDogbreed_ibfk_2` FOREIGN KEY (`DogI
 ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_1` FOREIGN KEY (`ServiceId`) REFERENCES `Statics_Service` (`Id`);
 ALTER TABLE `ServiceAppointmentDog` ADD CONSTRAINT `ServiceAppointmentDog_ibfk_2` FOREIGN KEY (`AppointmentDogId`) REFERENCES `AppointmentDog` (`Id`);
 
+-- Create TravelTime table if it doesn't exist
+CREATE TABLE IF NOT EXISTS `TravelTime` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `IsHomeToWork` tinyint(1) NOT NULL,
+  `Duration` int(11) NOT NULL,
+  `Distance` int(11) DEFAULT NULL,
+  `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create NavigationSettings table if it doesn't exist
+CREATE TABLE IF NOT EXISTS `NavigationSettings` (
+  `Id` int(11) NOT NULL AUTO_INCREMENT,
+  `HomeAddress` varchar(255) NOT NULL,
+  `WorkAddress` varchar(255) NOT NULL,
+  `ApiKey` varchar(255) DEFAULT NULL,
+  `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

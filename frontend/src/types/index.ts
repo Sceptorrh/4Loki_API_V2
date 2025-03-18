@@ -135,4 +135,12 @@ export interface Service {
   Description?: string;
   Price: number;
   Order?: number;
+}
+
+export interface NavigationSettings {
+  Id: number;
+  HomeAddress: string;
+  WorkAddress: string;
+  ApiKey?: string;
+  UpdatedOn: Date;
 } 

@@ -81,6 +81,7 @@ export interface TravelTime {
   Id: number;
   IsHomeToWork: boolean;
   Duration: number;
+  Distance?: number;
   CreatedOn: Date;
 }
 
@@ -107,5 +108,13 @@ export interface ServiceAppointmentDog {
   AppointmentDogId: number;
   Price: number;
   CreatedOn: Date;
+  UpdatedOn: Date;
+}
+
+export interface NavigationSettings {
+  Id: number;
+  HomeAddress: string;
+  WorkAddress: string;
+  ApiKey?: string;
   UpdatedOn: Date;
 } 
