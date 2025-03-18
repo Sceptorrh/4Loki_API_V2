@@ -5,106 +5,35 @@ import { loadGoogleMaps } from '@/lib/googleMapsLoader';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import LocationMap from '@/components/LocationMap';
 
+interface TravelTime {
+  id: number;
+  isHomeToWork: boolean;
+  duration: number; // in seconds
+  distance: number; // in meters
+  createdOn: string;
+}
+
 export default function NavigationSettings() {
-  const [homeLocation, setHomeLocation] = useState('');
-  const [workLocation, setWorkLocation] = useState('');
-  const [homeCoords, setHomeCoords] = useState<google.maps.LatLngLiteral>();
-  const [workCoords, setWorkCoords] = useState<google.maps.LatLngLiteral>();
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [apiKeyLoading, setApiKeyLoading] = useState(true);
-  const [apiKeyError, setApiKeyError] = useState<string | null>(null);
+  const [homeAddress, setHomeAddress] = useState('');
+  const [workAddress, setWorkAddress] = useState('');
+  const [homeLocation, setHomeLocation] = useState<{ lat: number; lng: number } | undefined>();
+  const [workLocation, setWorkLocation] = useState<{ lat: number; lng: number } | undefined>();
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingTravelTimes, setIsUpdatingTravelTimes] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [travelTimesError, setTravelTimesError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [travelTimes, setTravelTimes] = useState<TravelTime[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkApiKeyStatus();
     loadExistingSettings();
+    loadTravelTimes();
   }, []);
-
-  useEffect(() => {
-    if (hasApiKey && !googleMapsLoaded) {
-      let mounted = true;
-      
-      const loadMaps = async () => {
-        try {
-          console.log('Fetching API key...');
-          const response = await fetch('/api/navigation-settings/api-key');
-          const data = await response.json();
-          
-          if (!mounted) return;
-          
-          if (!data.apiKey) {
-            throw new Error('No API key available');
-          }
-
-          console.log('Loading Google Maps...');
-          await loadGoogleMaps(data.apiKey);
-          console.log('Google Maps loaded successfully');
-          
-          if (!mounted) return;
-          
-          if (!window.google?.maps) {
-            throw new Error('Google Maps failed to load - maps object not available');
-          }
-          
-          setGoogleMapsLoaded(true);
-        } catch (error) {
-          console.error('Error loading Google Maps:', error);
-          if (mounted) {
-            setApiKeyError('Failed to load Google Maps');
-          }
-        }
-      };
-
-      loadMaps();
-      return () => {
-        mounted = false;
-      };
-    }
-  }, [hasApiKey, googleMapsLoaded]);
-
-  const checkApiKeyStatus = async () => {
-    try {
-      const response = await fetch('/api/navigation-settings/api-key-status');
-      const data = await response.json();
-      
-      console.log('API key status:', data);
-      setHasApiKey(data.hasServerApiKey);
-      
-      if (!data.hasServerApiKey) {
-        setApiKeyError('No API key configured. Please set up your Google API key.');
-      }
-    } catch (error) {
-      console.error('Error checking API key status:', error);
-      setApiKeyError('Failed to check API key status');
-    } finally {
-      setApiKeyLoading(false);
-    }
-  };
-
-  const handleHomeAddressChange = (address: string, placeData?: google.maps.places.PlaceResult) => {
-    setHomeLocation(address);
-    if (placeData?.geometry?.location) {
-      setHomeCoords({
-        lat: placeData.geometry.location.lat(),
-        lng: placeData.geometry.location.lng()
-      });
-    }
-  };
-
-  const handleWorkAddressChange = (address: string, placeData?: google.maps.places.PlaceResult) => {
-    setWorkLocation(address);
-    if (placeData?.geometry?.location) {
-      setWorkCoords({
-        lat: placeData.geometry.location.lat(),
-        lng: placeData.geometry.location.lng()
-      });
-    }
-  };
 
   const loadExistingSettings = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/navigation-settings');
       
       if (!response.ok) {
@@ -116,28 +45,66 @@ export default function NavigationSettings() {
       }
 
       const data = await response.json();
-      setHomeLocation(data.HomeAddress || '');
-      setWorkLocation(data.WorkAddress || '');
+      setHomeAddress(data.homeAddress || '');
+      setWorkAddress(data.workAddress || '');
+      
+      // If we have stored locations, set them
+      if (data.homeLatitude && data.homeLongitude) {
+        setHomeLocation({
+          lat: parseFloat(data.homeLatitude),
+          lng: parseFloat(data.homeLongitude)
+        });
+      }
+      
+      if (data.workLatitude && data.workLongitude) {
+        setWorkLocation({
+          lat: parseFloat(data.workLatitude),
+          lng: parseFloat(data.workLongitude)
+        });
+      }
     } catch (error) {
       console.error('Error loading settings:', error);
-      // Don't show error for missing settings
+      setSaveError('Failed to load settings');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const loadTravelTimes = async () => {
+    try {
+      const response = await fetch('/api/travel-times');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load travel times: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setTravelTimes(data);
+    } catch (error) {
+      console.error('Error loading travel times:', error);
+      setTravelTimesError('Failed to load travel times');
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setSaveError(null);
+    setSuccessMessage(null);
 
     try {
       const response = await fetch('/api/navigation-settings', {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          HomeAddress: homeLocation,
-          WorkAddress: workLocation,
+          homeAddress,
+          workAddress,
+          homeLatitude: homeLocation?.lat.toString() || null,
+          homeLongitude: homeLocation?.lng.toString() || null,
+          workLatitude: workLocation?.lat.toString() || null,
+          workLongitude: workLocation?.lng.toString() || null
         }),
       });
 
@@ -145,7 +112,12 @@ export default function NavigationSettings() {
         throw new Error(`Failed to save settings: ${response.status}`);
       }
 
-      // Settings saved successfully
+      setSuccessMessage('Settings saved successfully!');
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
     } catch (error) {
       console.error('Error saving settings:', error);
       setSaveError('Failed to save settings. Please try again.');
@@ -154,17 +126,98 @@ export default function NavigationSettings() {
     }
   };
 
-  if (apiKeyLoading) {
-    return <div className="p-4">Loading...</div>;
+  const updateTravelTimes = async () => {
+    if (!homeLocation || !workLocation) {
+      setTravelTimesError('Both home and work locations must be set');
+      return;
+    }
+
+    setIsUpdatingTravelTimes(true);
+    setTravelTimesError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch('/api/travel-times/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          homeLocation,
+          workLocation
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update travel times: ${response.status}`);
+      }
+
+      // Reload travel times
+      await loadTravelTimes();
+      setSuccessMessage('Travel times updated successfully!');
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 3000);
+    } catch (error) {
+      console.error('Error updating travel times:', error);
+      setTravelTimesError('Failed to update travel times. Please try again.');
+    } finally {
+      setIsUpdatingTravelTimes(false);
+    }
+  };
+
+  // Handle address selection
+  const handleHomeAddressChange = (value: string, placeData?: { lat: number; lng: number; display_name: string }) => {
+    setHomeAddress(value);
+    if (placeData) {
+      setHomeLocation({ lat: placeData.lat, lng: placeData.lng });
+    }
+  };
+
+  const handleWorkAddressChange = (value: string, placeData?: { lat: number; lng: number; display_name: string }) => {
+    setWorkAddress(value);
+    if (placeData) {
+      setWorkLocation({ lat: placeData.lat, lng: placeData.lng });
+    }
+  };
+
+  // Format duration in minutes:seconds
+  const formatDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  // Format distance in kilometers
+  const formatDistance = (meters: number): string => {
+    const kilometers = (meters / 1000).toFixed(1);
+    return `${kilometers} km`;
+  };
+
+  // Format date in human-readable format
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin h-8 w-8 border-2 border-indigo-500 rounded-full border-t-transparent"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Navigation Settings</h1>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Navigation Settings</h1>
       
-      {apiKeyError && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {apiKeyError}
+      {successMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {successMessage}
         </div>
       )}
 
@@ -174,111 +227,106 @@ export default function NavigationSettings() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            {googleMapsLoaded ? (
-              <AddressAutocomplete
-                id="home-address"
-                label="Home Address"
-                value={homeLocation}
-                onChange={handleHomeAddressChange}
-                required
-              />
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Home Address
-                </label>
-                <input
-                  type="text"
-                  value={homeLocation}
-                  onChange={(e) => setHomeLocation(e.target.value)}
-                  placeholder="Enter your home address"
-                  className="w-full p-2 border rounded"
-                  disabled={!hasApiKey}
-                />
-              </div>
-            )}
-          </div>
-
-          <div>
-            {googleMapsLoaded ? (
-              <AddressAutocomplete
-                id="work-address"
-                label="Work Address"
-                value={workLocation}
-                onChange={handleWorkAddressChange}
-                required
-              />
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Work Address
-                </label>
-                <input
-                  type="text"
-                  value={workLocation}
-                  onChange={(e) => setWorkLocation(e.target.value)}
-                  placeholder="Enter your work address"
-                  className="w-full p-2 border rounded"
-                  disabled={!hasApiKey}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4">
-          {googleMapsLoaded && window.google?.maps ? (
-            <LocationMap
-              key={`map-${homeLocation || 'none'}-${workLocation || 'none'}`}
-              homeLocation={homeCoords}
-              workLocation={workCoords}
-              homeAddress={homeLocation}
-              workAddress={workLocation}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-lg font-medium mb-4">Address Settings</h2>
+        
+        <form onSubmit={handleSaveSettings} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <AddressAutocomplete
+              id="homeAddress"
+              label="Home Address"
+              value={homeAddress}
+              onChange={handleHomeAddressChange}
+              required
             />
-          ) : (
-            <div className="w-full h-64 md:h-96 rounded-md border border-gray-300 relative">
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                <p className="text-gray-500">Loading map...</p>
-              </div>
-            </div>
-          )}
-        </div>
+            
+            <AddressAutocomplete
+              id="workAddress"
+              label="Work Address"
+              value={workAddress}
+              onChange={handleWorkAddressChange}
+              required
+            />
+          </div>
+        
+          <button
+            type="submit"
+            disabled={isSaving || !homeAddress || !workAddress}
+            className={`w-full py-2 px-4 rounded ${
+              isSaving || !homeAddress || !workAddress
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
+          >
+            {isSaving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </form>
+      </div>
 
-        <button
-          type="submit"
-          disabled={isSaving || !homeLocation || !workLocation}
-          className={`w-full py-2 px-4 rounded ${
-            isSaving || !homeLocation || !workLocation
-              ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-blue-500 hover:bg-blue-600 text-white'
-          }`}
-        >
-          {isSaving ? 'Saving...' : 'Save Settings'}
-        </button>
-      </form>
+      <LocationMap
+        homeLocation={homeLocation}
+        workLocation={workLocation}
+        homeAddress={homeAddress}
+        workAddress={workAddress}
+      />
 
-      {!hasApiKey && (
-        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
-          <h2 className="text-lg font-semibold text-yellow-800 mb-2">
-            Google API Key Setup Required
-          </h2>
-          <p className="text-yellow-700">
-            To use the navigation features, you need to set up a Google API key. Please follow these steps:
-          </p>
-          <ol className="list-decimal list-inside mt-2 space-y-2 text-yellow-700">
-            <li>Create a Google Cloud Project</li>
-            <li>Enable the required APIs (Maps JavaScript, Places, Directions)</li>
-            <li>Create an API key with appropriate restrictions</li>
-            <li>Add the API key to your server configuration</li>
-          </ol>
-          <p className="mt-2 text-yellow-700">
-            For detailed instructions, please refer to the API_KEY_SETUP.md file in the project root.
-          </p>
+      <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium">Travel Times</h2>
+          <button
+            onClick={updateTravelTimes}
+            disabled={isUpdatingTravelTimes || !homeLocation || !workLocation}
+            className={`py-2 px-4 rounded ${
+              isUpdatingTravelTimes || !homeLocation || !workLocation
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
+          >
+            {isUpdatingTravelTimes ? 'Updating...' : 'Update Travel Times'}
+          </button>
         </div>
-      )}
+        
+        {travelTimesError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {travelTimesError}
+          </div>
+        )}
+
+        {travelTimes.length === 0 ? (
+          <p className="text-gray-500 italic">No travel times available. Click "Update Travel Times" to calculate.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distance</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calculated At</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {travelTimes.map((travelTime) => (
+                  <tr key={travelTime.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {travelTime.isHomeToWork ? 'Home → Work' : 'Work → Home'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {formatDuration(travelTime.duration)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {formatDistance(travelTime.distance)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {formatDate(travelTime.createdOn)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

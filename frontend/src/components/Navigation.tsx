@@ -1,9 +1,9 @@
 'use client';
 
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
 import { 
   FiHome, 
   FiCalendar, 
@@ -37,7 +37,8 @@ const navItems = [
   { name: 'Navigation', href: '/navigation', icon: FiMap },
 ];
 
-export default function Navigation() {
+// This component is now only for the site navigation sidebar
+const Navigation: React.FC = () => {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -171,4 +172,6 @@ export default function Navigation() {
       </aside>
     </>
   );
-} 
+};
+
+export default Navigation; 

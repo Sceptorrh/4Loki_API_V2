@@ -644,7 +644,6 @@ CREATE TABLE IF NOT EXISTS `NavigationSettings` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `HomeAddress` varchar(255) NOT NULL,
   `WorkAddress` varchar(255) NOT NULL,
-  `ApiKey` varchar(255) DEFAULT NULL,
   `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
