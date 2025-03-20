@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, parseISO } from 'date-fns';
 import { FaChevronLeft, FaChevronRight, FaCalendarCheck, FaCalendarTimes, FaCalendarDay, FaClock, FaMoneyBillWave, FaCheck, FaCalendarAlt } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 
@@ -35,7 +35,26 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isHydrated, setIsHydrated] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedDate = window.localStorage.getItem('calendarMonth');
+        if (savedDate) {
+          const parsedDate = parseISO(savedDate);
+          if (!isNaN(parsedDate.getTime())) {
+            console.log('Using saved date from localStorage:', format(parsedDate, 'MMMM yyyy'));
+            setCurrentDate(parsedDate);
+          }
+        }
+      } catch (err) {
+        console.error('Error reading from localStorage:', err);
+      }
+      setIsHydrated(true);
+    }
+  }, []);
 
   const fetchAppointmentsByMonth = async (year: number, month: number) => {
     try {
@@ -55,17 +74,36 @@ export default function AppointmentsPage() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1; // JavaScript months are 0-indexed
     fetchAppointmentsByMonth(year, month);
-  }, [currentDate]);
+    
+    if (isHydrated) {
+      try {
+        const dateString = currentDate.toISOString();
+        window.localStorage.setItem('calendarMonth', dateString);
+        console.log('Saved date to localStorage:', dateString);
+      } catch (error) {
+        console.error('Error saving date to localStorage:', error);
+      }
+    }
+  }, [currentDate, isHydrated]);
 
   const goToPreviousMonth = () => {
-    setCurrentDate(prevDate => subMonths(prevDate, 1));
+    setCurrentDate(prevDate => {
+      const newDate = subMonths(prevDate, 1);
+      console.log('Navigating to previous month:', format(newDate, 'MMMM yyyy'));
+      return newDate;
+    });
   };
 
   const goToNextMonth = () => {
-    setCurrentDate(prevDate => addMonths(prevDate, 1));
+    setCurrentDate(prevDate => {
+      const newDate = addMonths(prevDate, 1);
+      console.log('Navigating to next month:', format(newDate, 'MMMM yyyy'));
+      return newDate;
+    });
   };
 
   const goToCurrentMonth = () => {
+    console.log('Returning to current month');
     setCurrentDate(new Date());
   };
 
@@ -253,27 +291,29 @@ export default function AppointmentsPage() {
   return (
     <div className="w-full h-screen flex flex-col px-1 py-1">
       <div className="flex justify-center items-center mb-1">
-        <button 
-          onClick={goToPreviousMonth} 
-          className="p-1 rounded-full hover:bg-gray-100"
-          aria-label="Previous month"
-        >
-          <FaChevronLeft />
-        </button>
-        <h2 
-          className="text-lg font-semibold mx-4 cursor-pointer hover:text-primary-600 transition-colors"
-          onClick={goToCurrentMonth}
-          title="Click to return to current month"
-        >
-          {format(currentDate, 'MMMM yyyy')}
-        </h2>
-        <button 
-          onClick={goToNextMonth} 
-          className="p-1 rounded-full hover:bg-gray-100"
-          aria-label="Next month"
-        >
-          <FaChevronRight />
-        </button>
+        <div className="flex items-center w-64 justify-between">
+          <button 
+            onClick={goToPreviousMonth} 
+            className="p-1 rounded-full hover:bg-gray-100 flex-shrink-0"
+            aria-label="Previous month"
+          >
+            <FaChevronLeft />
+          </button>
+          <h2 
+            className="text-lg font-semibold cursor-pointer hover:text-primary-600 transition-colors w-40 text-center"
+            onClick={goToCurrentMonth}
+            title="Click to return to current month"
+          >
+            {format(currentDate, 'MMMM yyyy')}
+          </h2>
+          <button 
+            onClick={goToNextMonth} 
+            className="p-1 rounded-full hover:bg-gray-100 flex-shrink-0"
+            aria-label="Next month"
+          >
+            <FaChevronRight />
+          </button>
+        </div>
       </div>
 
       {loading ? (

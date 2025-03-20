@@ -62,6 +62,7 @@ export default function EditAppointmentPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Status[]>([]);
+  const [warningBanner, setWarningBanner] = useState<string | null>(null);
   
   // Form state
   const [appointmentDate, setAppointmentDate] = useState<Date | null>(null);
@@ -107,6 +108,17 @@ export default function EditAppointmentPage() {
             services: dog.services // Store the services for each dog
           }))
         };
+        
+        // Check if appointment status allows editing
+        if (appointmentData.Status.Id !== 'Pln' && appointmentData.Status.Id !== 'Inv') {
+          router.push(`/appointments/${appointmentId}`);
+          return;
+        }
+
+        // Set warning banner for Inv status
+        if (appointmentData.Status.Id === 'Inv') {
+          setWarningBanner('Warning: This appointment is already invoiced. Editing may affect your financial records.');
+        }
         
         setAppointment(appointmentData);
         
@@ -265,6 +277,17 @@ export default function EditAppointmentPage() {
       setError('Please select at least one dog');
       return;
     }
+
+    // Validate again that appointment status allows editing
+    if (appointment?.Status.Id !== 'Pln' && appointment?.Status.Id !== 'Inv') {
+      setError('This appointment cannot be edited due to its current status');
+      return;
+    }
+    
+    // Additional confirmation for Inv status
+    if (appointment?.Status.Id === 'Inv' && !confirm('This appointment has already been invoiced. Are you sure you want to edit it? This may affect your financial records.')) {
+      return;
+    }
     
     try {
       setSaving(true);
@@ -367,6 +390,12 @@ export default function EditAppointmentPage() {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
           {error}
+        </div>
+      )}
+
+      {warningBanner && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md mb-6">
+          {warningBanner}
         </div>
       )}
       

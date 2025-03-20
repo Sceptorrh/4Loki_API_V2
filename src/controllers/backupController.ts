@@ -416,7 +416,6 @@ const sendProgressUpdate = (progress: number, message: string) => {
   }
   
   const update = JSON.stringify({ progress, message });
-  console.log(`Sending progress update: ${update} to ${progressEmitters.length} clients`);
   
   // Use a copy of the array to avoid modification during iteration
   const emitters = [...progressEmitters];
@@ -596,7 +595,6 @@ const formatTimeToMySql = (timeString: string | null | number | Date): string | 
   
   // If value is a Date object, extract the time part
   if (timeString instanceof Date) {
-    console.log(`Converting Date object to time: ${timeString}`);
     // Check if the date is around Excel epoch (1899-12-30)
     const year = timeString.getFullYear();
     if (year < 1910) {
@@ -679,7 +677,6 @@ const formatDateToMySql = (dateString: string | null | Date): string | null => {
   if (dateString instanceof Date) {
     // Check for old dates - return null for dates before 1910
     if (dateString.getFullYear() < 1910) {
-      console.log(`Converting old date to null: ${dateString}`);
       return null;
     }
     return dateString.toISOString().split('T')[0];
@@ -689,7 +686,6 @@ const formatDateToMySql = (dateString: string | null | Date): string | null => {
   if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     const year = parseInt(dateString.substring(0, 4), 10);
     if (year < 1910) {
-      console.log(`Converting old date string to null: ${dateString}`);
       return null;
     }
     return dateString;
@@ -701,7 +697,6 @@ const formatDateToMySql = (dateString: string | null | Date): string | null => {
     if (!isNaN(date.getTime())) {
       // Check for old dates - return null for dates before 1910
       if (date.getFullYear() < 1910) {
-        console.log(`Converting parsed old date to null: ${dateString}`);
         return null;
       }
       return date.toISOString().split('T')[0];
@@ -751,15 +746,12 @@ export const previewBackup = async (req: MulterRequest, res: Response) => {
       // Remove first empty element from headers array (ExcelJS quirk)
       headers.shift();
       
-      // Log original headers to help debug
-      console.log(`Original headers for table ${tableName}:`, headers);
 
       // Find the index of the CustomerId column (case insensitive)
       const customerIdIndex = headers.findIndex(h => 
         typeof h === 'string' && h.toLowerCase() === 'customerid'
       );
       
-      console.log(`CustomerID column index for ${tableName}: ${customerIdIndex}`);
 
       // Normalize headers to lowercase
       const normalizedHeaders = headers.map(header => 
@@ -774,7 +766,6 @@ export const previewBackup = async (req: MulterRequest, res: Response) => {
         // First get the raw CustomerId directly if it exists
         const rawCustomerId = customerIdIndex !== -1 ? row.getCell(customerIdIndex + 1).text : null;
         if (rawCustomerId && rawCustomerId.trim() !== '') {
-          console.log(`Row ${row.number}, ${tableName}, raw CustomerId: ${rawCustomerId}`);
           // Convert potential numeric string to number for database
           rowData['CustomerId'] = isNaN(Number(rawCustomerId)) ? rawCustomerId : Number(rawCustomerId);
         }
@@ -789,15 +780,13 @@ export const previewBackup = async (req: MulterRequest, res: Response) => {
             if (cell.type === 4) { // DateValue enum in ExcelJS
               // Handle date values
               value = cell.value; // Get the Date object
-              // Log all date/time values for debugging
-              console.log(`Found Date value in column ${header}: ${value}`);
             } else if (cell.type === 2 && typeof cell.value === 'number') { // NumberValue enum
               // For numeric values, check if this might be a time value (for time columns)
               const headerName = header.toLowerCase();
               if (headerName.includes('time') || headerName.includes('start') || headerName.includes('end')) {
                 // If the value is small (less than 1), it's likely a time value (fraction of day)
                 if (cell.value < 1) {
-                  console.log(`Potential time value found: ${cell.value} for header ${header}`);
+          
                   // Store the raw value - we'll format it during processing
                   value = cell.value;
                 } else {
@@ -860,7 +849,6 @@ export const previewBackup = async (req: MulterRequest, res: Response) => {
               } else if (mappedKey === 'TimeStart' || mappedKey === 'TimeEnd') {
                 // Pass the value directly to formatTimeToMySql which can now handle numeric values
                 properCaseRow[mappedKey] = formatTimeToMySql(value);
-                console.log(`${mappedKey} value: ${value}, formatted: ${properCaseRow[mappedKey]}`);
               } else {
                 properCaseRow[mappedKey] = value;
               }
@@ -896,9 +884,6 @@ export const previewBackup = async (req: MulterRequest, res: Response) => {
         if (!validationResult.valid) {
           validationResults.push(validationResult);
         }
-
-        // Log row data before validation
-        console.log(`Row data before validation for table ${tableName}:`, rowData);
 
         return rowData;
       });
@@ -998,8 +983,6 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
           `Processing table ${tableName} (${rows.length} records)`
         );
         
-        console.log(`Processing ${rows.length} rows for table ${tableName}`);
-        
         let rowCount = 0;
         for (const row of rows) {
           rowCount++;
@@ -1077,9 +1060,6 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
               rowDetails = { id: row.id || row.Id };
             }
             
-            // First log the original row for debugging
-            console.log(`Processing ${rowIdentifier}:`, row);
-            
             // Since we've already processed the customer_id in the preview stage,
             // we should keep it intact in the normalizedRow
             const normalizedRow: RowData = { ...row };
@@ -1139,8 +1119,7 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
               if (isPaidValue !== null) {
                 // Ensure it's properly converted to a boolean for MySQL
                 updatedRow.IsPaidInCash = convertNullValue(isPaidValue, 'IsPaidInCash');
-                
-                console.log(`Appointment ${updatedRow.Id || 'new'} IsPaidInCash set to:`, updatedRow.IsPaidInCash);
+
               }
               
               // Replace normalizedRow with updatedRow
@@ -1233,9 +1212,6 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
               Object.assign(normalizedRow, properCaseRow);
             }
             
-            // Log the CustomerId for debugging
-            console.log(`${tableName} row has CustomerId:`, normalizedRow.CustomerId);
-
             // Check for required fields based on table type
             if (tableNameLower === 'dog' && !normalizedRow['CustomerId']) {
               const errorMsg = `${rowIdentifier} is missing required CustomerId reference`;
@@ -1291,24 +1267,19 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
               continue;
             }
 
-            // Format dates for Appointment table
+            // Format Appointment times (where applicable)
             if (tableNameLower === 'appointment') {
-              // Format Date field to MySQL format (YYYY-MM-DD)
+              // Ensure Date is in MySQL format (YYYY-MM-DD)
               normalizedRow.Date = formatDateToMySql(normalizedRow.Date);
               
               // Format DateEnd field if it exists
               // Ensure old dates are converted to null
               normalizedRow.DateEnd = formatDateToMySql(normalizedRow.DateEnd);
               
-              // Log the raw time values before formatting
-              console.log(`Raw TimeStart: ${typeof normalizedRow.TimeStart} - ${normalizedRow.TimeStart}`);
-              console.log(`Raw TimeEnd: ${typeof normalizedRow.TimeEnd} - ${normalizedRow.TimeEnd}`);
-              
-              // Format TimeStart and TimeEnd to HH:MM:SS format
+              // Format TimeStart and TimeEnd
               normalizedRow.TimeStart = formatTimeToMySql(normalizedRow.TimeStart);
               normalizedRow.TimeEnd = formatTimeToMySql(normalizedRow.TimeEnd);
               
-              console.log(`Formatted appointment date: ${normalizedRow.Date}, timeStart: ${normalizedRow.TimeStart}, timeEnd: ${normalizedRow.TimeEnd}`);
             }
 
             // Format dates for Dog table
@@ -1405,9 +1376,6 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
             delete normalizedRow.created_at;
             delete normalizedRow.updated_at;
 
-            // Log the row data before insertion
-            console.log(`Inserting row into ${tableName}:`, normalizedRow);
-
             // Explicitly list columns and values
             const columns = Object.keys(normalizedRow).join(', ');
             const placeholders = Object.keys(normalizedRow).map(() => '?').join(', ');
@@ -1430,8 +1398,6 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
                 await connection.execute(`ALTER TABLE ${tableName} AUTO_INCREMENT = ${maxId + 1}`);
               }
               
-              // Log the result of the insertion
-              console.log(`Successfully inserted ${rowIdentifier}:`, result);
               
               // Update success counts
               const resultKey = tableToResultKey[tableNameLower];

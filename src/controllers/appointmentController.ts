@@ -892,4 +892,225 @@ export const revertAppointmentsToInvoiced = async (req: Request, res: Response) 
   } finally {
     connection.release();
   }
+};
+
+/**
+ * Get all appointments for a specific customer with dog services
+ */
+export const getAppointmentsByCustomerId = async (req: Request, res: Response) => {
+  try {
+    const customerId = parseInt(req.params.customerId);
+    
+    // First check if the customer exists
+    const [customer] = await db.execute(
+      'SELECT Id FROM Customer WHERE Id = ?',
+      [customerId]
+    );
+
+    if (!Array.isArray(customer) || customer.length === 0) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    // Get all appointments for this customer
+    const [appointments] = await db.execute(`
+      SELECT 
+        a.*,
+        s.Label as StatusLabel
+      FROM Appointment a
+      JOIN Statics_AppointmentStatus s ON a.AppointmentStatusId = s.Id
+      WHERE a.CustomerId = ?
+      ORDER BY a.Date DESC
+    `, [customerId]);
+    
+    // For each appointment, get the dogs and their services
+    const appointmentsWithDogServices = [];
+    
+    for (const appointment of (appointments as any[])) {
+      // Get dogs and services for this appointment
+      const [appointmentDogs] = await db.execute(`
+        SELECT 
+          ad.Id as AppointmentDogId,
+          ad.DogId,
+          d.Name as DogName
+        FROM AppointmentDog ad
+        JOIN Dog d ON ad.DogId = d.Id
+        WHERE ad.AppointmentId = ?
+      `, [appointment.Id]);
+      
+      // For each dog, get its services with prices
+      const dogsWithServices = [];
+      
+      for (const dog of (appointmentDogs as any[])) {
+        const [services] = await db.execute(`
+          SELECT 
+            sad.ServiceId,
+            sad.Price,
+            s.Name as ServiceName
+          FROM ServiceAppointmentDog sad
+          JOIN Statics_Service s ON sad.ServiceId = s.Id
+          WHERE sad.AppointmentDogId = ?
+        `, [dog.AppointmentDogId]);
+        
+        dogsWithServices.push({
+          DogId: dog.DogId,
+          DogName: dog.DogName,
+          services: services
+        });
+      }
+      
+      appointmentsWithDogServices.push({
+        ...appointment,
+        dogServices: dogsWithServices
+      });
+    }
+    
+    return res.status(200).json(appointmentsWithDogServices);
+  } catch (error) {
+    console.error('Error getting appointments by customer ID:', error);
+    return res.status(500).json({ message: 'Failed to retrieve customer appointments' });
+  }
+};
+
+// Get appointments for a specific date
+export const getAppointmentsByDate = async (req: Request, res: Response) => {
+  const connection = await db.getConnection();
+  
+  try {
+    const date = req.params.date;
+    
+    // Validate date format (YYYY-MM-DD)
+    if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+    
+    // Query to get all appointments for the date with customer and dog information
+    const [appointments] = await connection.execute(`
+      SELECT 
+        a.Id,
+        a.Date,
+        a.TimeStart,
+        a.TimeEnd,
+        a.ActualDuration,
+        a.CustomerId,
+        a.AppointmentStatusId as StatusId,
+        s.Label as StatusLabel,
+        c.Contactpersoon as CustomerName,
+        c.Emailadres as CustomerEmail,
+        c.Telefoonnummer as CustomerPhone
+      FROM Appointment a
+      JOIN Customer c ON a.CustomerId = c.Id
+      JOIN Statics_AppointmentStatus s ON a.AppointmentStatusId = s.Id
+      WHERE a.Date = ?
+      ORDER BY a.TimeStart ASC
+    `, [date]);
+    
+    // Enhanced appointments with dog information
+    const enhancedAppointments = [];
+    
+    for (const appointment of (appointments as any[])) {
+      // Get dogs for this appointment
+      const [dogServices] = await connection.execute(`
+        SELECT 
+          ad.DogId,
+          d.Name as DogName,
+          JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'ServiceId', s.Id,
+              'ServiceName', s.Name,
+              'Price', sad.Price
+            )
+          ) as services
+        FROM AppointmentDog ad
+        JOIN Dog d ON ad.DogId = d.Id
+        LEFT JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+        LEFT JOIN Statics_Service s ON sad.ServiceId = s.Id
+        WHERE ad.AppointmentId = ?
+        GROUP BY ad.DogId, d.Name
+      `, [appointment.Id]);
+      
+      // Parse the JSON services for each dog
+      const processedDogServices = (dogServices as any[]).map(dog => ({
+        DogId: dog.DogId,
+        DogName: dog.DogName,
+        services: JSON.parse(dog.services || '[]').filter((s: any) => s.ServiceId !== null)
+      }));
+      
+      // Calculate estimated duration based on services and past appointments
+      let estimatedDuration = 0;
+      
+      // Get all services for this appointment
+      const allServices = processedDogServices.flatMap(dog => dog.services);
+      
+      // If we have services, calculate estimated duration based on them
+      if (allServices.length > 0) {
+        // For simplicity, for each service add a standard time
+        // In a real application, you would calculate this based on historical data
+        const [standardDurations] = await connection.execute(`
+          SELECT Id, StandardDuration FROM Statics_Service
+          WHERE Id IN (${allServices.map(s => `'${s.ServiceId}'`).join(',')})
+        `);
+        
+        const durationMap = new Map();
+        (standardDurations as any[]).forEach(sd => {
+          durationMap.set(sd.Id, sd.StandardDuration || 30); // Default 30 minutes if not specified
+        });
+        
+        // Sum up standard durations for the estimate
+        allServices.forEach(service => {
+          estimatedDuration += durationMap.get(service.ServiceId) || 30;
+        });
+        
+        // Get past appointments for the dogs in this appointment to refine the estimate
+        const dogIds = processedDogServices.map(dog => dog.DogId);
+        if (dogIds.length > 0) {
+          const [pastAppointments] = await connection.execute(`
+            SELECT a.Id, a.ActualDuration, ad.DogId, s.Id as ServiceId
+            FROM Appointment a
+            JOIN AppointmentDog ad ON a.Id = ad.AppointmentId
+            JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+            JOIN Statics_Service s ON sad.ServiceId = s.Id
+            WHERE ad.DogId IN (${dogIds.join(',')})
+            AND a.Date < ?
+            ORDER BY a.Date DESC
+            LIMIT 10 
+          `, [date]);
+          
+          // If we have past appointment data, refine our estimate
+          if ((pastAppointments as any[]).length > 0) {
+            // Here we would typically do a more sophisticated analysis
+            // For simplicity, we'll just adjust based on the average of past actual durations
+            const totalActualDuration = (pastAppointments as any[]).reduce((sum, pa) => 
+              sum + (pa.ActualDuration || 0), 0);
+            
+            const avgActualDuration = totalActualDuration / (pastAppointments as any[]).length;
+            
+            // Adjust our estimate if we have a significant sample
+            if ((pastAppointments as any[]).length >= 2) {
+              // Blend the standard estimate with the historical average
+              estimatedDuration = Math.round((estimatedDuration + avgActualDuration) / 2);
+            }
+          }
+        }
+      } else {
+        // If no services, use the actual duration or a default
+        estimatedDuration = appointment.ActualDuration || 60;
+      }
+      
+      // Ensure minimum duration
+      estimatedDuration = Math.max(estimatedDuration, 60);
+      
+      enhancedAppointments.push({
+        ...appointment,
+        EstimatedDuration: estimatedDuration,
+        dogServices: processedDogServices
+      });
+    }
+    
+    res.json(enhancedAppointments);
+  } catch (error) {
+    console.error('Error fetching appointments by date:', error);
+    res.status(500).json({ message: 'Error fetching appointments by date' });
+  } finally {
+    connection.release();
+  }
 }; 

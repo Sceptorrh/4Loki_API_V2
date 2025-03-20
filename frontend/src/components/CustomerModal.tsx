@@ -1,58 +1,25 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { FaTimes } from 'react-icons/fa';
 import { endpoints } from '@/lib/api';
-import Link from 'next/link';
 
-export default function EditCustomerPage() {
-  const params = useParams();
-  const router = useRouter();
-  const customerId = Number(params.id);
-  
-  const [isLoading, setIsLoading] = useState(true);
+interface CustomerModalProps {
+  onClose: () => void;
+  onCustomerCreated: (customerId: number, customerName: string) => void;
+  preFilledName?: string;
+}
+
+export default function CustomerModal({ onClose, onCustomerCreated, preFilledName }: CustomerModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    name: '',
+    name: preFilledName || '',
     contact: '',
     email: '',
     phone: '',
     notes: '',
     is_allow_contact_share: ''
   });
-
-  useEffect(() => {
-    const fetchCustomer = async () => {
-      try {
-        setIsLoading(true);
-        const response = await endpoints.customers.getById(customerId);
-        console.log('Customer detail response:', response.data);
-        
-        // Initialize form with customer data
-        setFormData({
-          name: response.data.Naam || '',
-          contact: response.data.Contactpersoon || '',
-          email: response.data.Emailadres || '',
-          phone: response.data.Telefoonnummer || '',
-          notes: response.data.Notities || '',
-          is_allow_contact_share: response.data.IsAllowContactShare || ''
-        });
-        
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching customer:', err);
-        setError('Failed to load customer details. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (customerId) {
-      fetchCustomer();
-    }
-  }, [customerId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -82,34 +49,33 @@ export default function EditCustomerPage() {
         IsAllowContactShare: formData.is_allow_contact_share || undefined
       };
       
-      await endpoints.customers.update(customerId, apiData);
+      const response = await endpoints.customers.create(apiData);
       
-      // Redirect back to customer details
-      router.push(`/customers/${customerId}`);
+      // Pass the new customer data back to the parent component
+      onCustomerCreated(response.data.Id, formData.name);
+      
+      // Close the modal
+      onClose();
     } catch (err: any) {
-      console.error('Error updating customer:', err);
-      setError(err.response?.data?.message || 'Failed to update customer. Please try again.');
+      console.error('Error creating customer:', err);
+      setError(err.response?.data?.message || 'Failed to create customer. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading customer details...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Edit Customer</h1>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Create New Customer</h3>
+          <button 
+            onClick={onClose}
+            className="ml-auto text-gray-400 hover:text-gray-500"
+            aria-label="Close"
+          >
+            <FaTimes />
+          </button>
         </div>
 
         {error && (
@@ -118,7 +84,7 @@ export default function EditCustomerPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="card">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -130,7 +96,7 @@ export default function EditCustomerPage() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="input"
+                className="input w-full"
                 required
                 placeholder="Customer name or business name"
               />
@@ -159,9 +125,6 @@ export default function EditCustomerPage() {
                   Copy from Name
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                This is the person you'll make appointments with. Often the same as the Name.
-              </p>
             </div>
             
             <div>
@@ -174,7 +137,7 @@ export default function EditCustomerPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="input"
+                className="input w-full"
               />
             </div>
             
@@ -188,7 +151,7 @@ export default function EditCustomerPage() {
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="input"
+                className="input w-full"
               />
             </div>
             
@@ -236,22 +199,27 @@ export default function EditCustomerPage() {
                 name="notes"
                 value={formData.notes}
                 onChange={handleChange}
-                rows={4}
-                className="input"
+                rows={3}
+                className="input w-full"
+                placeholder="Any additional information about this customer"
               />
             </div>
           </div>
           
-          <div className="mt-8 flex justify-end space-x-3">
-            <Link href={`/customers/${customerId}`} className="btn btn-outline">
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-outline"
+            >
               Cancel
-            </Link>
+            </button>
             <button
               type="submit"
               className="btn btn-primary"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Saving...' : 'Save Changes'}
+              {isSubmitting ? 'Creating...' : 'Create Customer'}
             </button>
           </div>
         </form>

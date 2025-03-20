@@ -198,18 +198,35 @@ export default function NewCustomerPage() {
               <label htmlFor="is_allow_contact_share" className="block text-sm font-medium text-gray-700 mb-1">
                 Allow Contact Sharing
               </label>
-              <select
-                id="is_allow_contact_share"
-                name="is_allow_contact_share"
-                value={formData.is_allow_contact_share}
-                onChange={handleChange}
-                className="input"
-              >
-                <option value="">Not specified</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-                <option value="unknown">Unknown</option>
-              </select>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'yes', label: 'Yes' },
+                  { value: 'no', label: 'No' },
+                  { value: 'unknown', label: 'Unknown' }
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, is_allow_contact_share: option.value }))}
+                    className={`px-4 py-2 rounded-md border ${
+                      formData.is_allow_contact_share === option.value
+                        ? 'bg-primary-500 text-white border-primary-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                {formData.is_allow_contact_share && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, is_allow_contact_share: '' }))}
+                    className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="md:col-span-2">

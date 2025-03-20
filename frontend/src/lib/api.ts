@@ -26,6 +26,7 @@ export const endpoints = {
     getByYearMonth: (year: number, month: number) => api.get(`/appointments/year/${year}/month/${month}`),
     getByCustomerId: (customerId: number) => api.get(`/appointments/customer/${customerId}`),
     getInvoiceReady: () => api.get('/appointments/invoice-ready'),
+    getByDate: (date: string) => api.get(`/appointments/date/${date}`),
   },
   
   // Customers

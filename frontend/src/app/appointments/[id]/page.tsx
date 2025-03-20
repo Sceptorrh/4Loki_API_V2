@@ -97,6 +97,7 @@ export default function AppointmentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [finalDeleteConfirm, setFinalDeleteConfirm] = useState(false);
 
   useEffect(() => {
     const fetchAppointment = async () => {
@@ -164,8 +165,15 @@ export default function AppointmentDetailPage() {
   }, [appointmentId]);
 
   const handleDelete = async () => {
+    // First confirmation step
     if (!deleteConfirm) {
       setDeleteConfirm(true);
+      return;
+    }
+    
+    // For invoiced appointments, add an extra confirmation step
+    if (appointment?.Status.Id === 'Inv' && !finalDeleteConfirm) {
+      setFinalDeleteConfirm(true);
       return;
     }
     
@@ -182,6 +190,7 @@ export default function AppointmentDetailPage() {
 
   const cancelDelete = () => {
     setDeleteConfirm(false);
+    setFinalDeleteConfirm(false);
   };
 
   // Calculate total price for all services
@@ -241,9 +250,11 @@ export default function AppointmentDetailPage() {
           <Link href="/appointments" className="text-primary-600 hover:text-primary-900">
             Back to Appointments
           </Link>
-          <Link href={`/appointments/${appointmentId}/edit`} className="text-primary-600 hover:text-primary-900">
-            Edit
-          </Link>
+          {(appointment.Status.Id === 'Pln' || appointment.Status.Id === 'Inv') && (
+            <Link href={`/appointments/${appointmentId}/edit`} className="text-primary-600 hover:text-primary-900">
+              Edit
+            </Link>
+          )}
         </div>
       </div>
 
@@ -413,9 +424,33 @@ export default function AppointmentDetailPage() {
 
           {/* Delete Button */}
           <div className="mt-8 border-t pt-6">
-            {deleteConfirm ? (
+            {finalDeleteConfirm ? (
+              <div className="bg-red-100 border-2 border-red-500 rounded-md p-4 mb-4">
+                <p className="text-red-700 font-bold mb-3 text-lg">⚠️ FINAL WARNING ⚠️</p>
+                <p className="text-red-700 mb-3">You are about to permanently delete an <strong>INVOICED</strong> appointment. This may have serious implications for your accounting and business records.</p>
+                <p className="text-red-700 mb-3">Are you absolutely certain you want to proceed?</p>
+                <div className="flex space-x-3">
+                  <button 
+                    onClick={handleDelete} 
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-bold"
+                  >
+                    Yes, I Understand the Consequences
+                  </button>
+                  <button 
+                    onClick={cancelDelete} 
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : deleteConfirm ? (
               <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-                <p className="text-red-700 mb-3">Are you sure you want to delete this appointment?</p>
+                {appointment.Status.Id === 'Inv' ? (
+                  <p className="text-red-700 mb-3 font-bold">WARNING: This appointment has already been invoiced! Are you sure you want to delete it? This action cannot be undone and may affect your financial records.</p>
+                ) : (
+                  <p className="text-red-700 mb-3">Are you sure you want to delete this appointment? This action cannot be undone.</p>
+                )}
                 <div className="flex space-x-3">
                   <button 
                     onClick={handleDelete} 
@@ -432,12 +467,14 @@ export default function AppointmentDetailPage() {
                 </div>
               </div>
             ) : (
-              <button 
-                onClick={handleDelete} 
-                className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
-              >
-                Delete Appointment
-              </button>
+              (appointment.Status.Id === 'Pln' || appointment.Status.Id === 'Inv') && (
+                <button 
+                  onClick={handleDelete} 
+                  className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                >
+                  Delete Appointment
+                </button>
+              )
             )}
           </div>
         </div>

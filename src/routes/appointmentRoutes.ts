@@ -11,7 +11,9 @@ import {
   getInvoiceReadyAppointments,
   getExportReadyAppointments,
   markAppointmentsAsExported,
-  revertAppointmentsToInvoiced
+  revertAppointmentsToInvoiced,
+  getAppointmentsByCustomerId,
+  getAppointmentsByDate
 } from '../controllers/appointmentController';
 
 const router = Router();
@@ -340,7 +342,7 @@ router.delete('/', handler.deleteAll.bind(handler));
  * @swagger
  * /appointments/customer/{customerId}:
  *   get:
- *     summary: Get appointments by customer
+ *     summary: Get appointments by customer ID
  *     tags: [Appointments]
  *     parameters:
  *       - in: path
@@ -351,15 +353,45 @@ router.delete('/', handler.deleteAll.bind(handler));
  *         description: Customer ID
  *     responses:
  *       200:
- *         description: List of customer's appointments
+ *         description: List of appointments for the customer
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Appointment'
+ *       404:
+ *         description: No appointments found
  */
-router.get('/customer/:customerId', handler.getByCustomerId.bind(handler));
+router.get('/customer/:customerId', getAppointmentsByCustomerId);
+
+/**
+ * @swagger
+ * /appointments/date/{date}:
+ *   get:
+ *     summary: Get appointments for a specific date
+ *     tags: [Appointments]
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date in YYYY-MM-DD format
+ *     responses:
+ *       200:
+ *         description: List of appointments for the specified date
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Invalid date format
+ */
+router.get('/date/:date', getAppointmentsByDate);
 
 /**
  * @swagger
