@@ -40,7 +40,7 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   credentials: true,
   maxAge: 86400, // 24 hours
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'Content-Type', 'Connection']
 };
 
 // Middleware

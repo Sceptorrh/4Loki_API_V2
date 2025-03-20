@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FaDownload, FaUpload, FaExclamationTriangle, FaCheckCircle, FaTrash, FaAngleDown, FaAngleUp, FaTimesCircle } from 'react-icons/fa';
+import { FaDownload, FaUpload, FaExclamationTriangle, FaCheckCircle, FaTrash, FaAngleDown, FaAngleUp, FaTimesCircle, FaInfoCircle } from 'react-icons/fa';
 
 interface PreviewData {
   [key: string]: any[];
@@ -40,6 +40,7 @@ interface ImportReport {
         failed: number;
       };
     };
+    missingSheets?: string[];
   };
   errorsByTable: TableErrorReport[];
 }
@@ -148,6 +149,8 @@ export default function BackupPage() {
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importProgress, setImportProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
 
   const handleExport = async () => {
     try {
@@ -222,20 +225,103 @@ export default function BackupPage() {
   const handleImport = async () => {
     if (!selectedFile) return;
 
+    // Explicitly define the EventSource type
+    let eventSource: EventSource | null = null;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
+    // Helper function to safely close the EventSource
+    const closeEventSource = (source: EventSource | null) => {
+      if (source) {
+        try {
+          source.close();
+        } catch (err) {
+          console.error('Error closing EventSource:', err);
+        }
+        return null;
+      }
+      return null;
+    };
+
+    const setupEventSource = () => {
+      // Close existing connection if any
+      eventSource = closeEventSource(eventSource);
+
+      // Set up event source for progress updates with error handling
+      const eventSourceUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/import/progress`;
+      console.log('Connecting to EventSource:', eventSourceUrl);
+      
+      eventSource = new EventSource(eventSourceUrl);
+      
+      eventSource.onopen = () => {
+        console.log('EventSource connection opened');
+        retryCount = 0; // Reset retry count on successful connection
+      };
+      
+      eventSource.onmessage = (event) => {
+        console.log('Received progress update:', event.data);
+        try {
+          const data = JSON.parse(event.data);
+          if (data.progress !== undefined) {
+            setImportProgress(data.progress);
+            setProgressMessage(data.message || 'Importing...');
+            
+            // If we've reached 100%, close the connection
+            if (data.progress === 100) {
+              console.log('Import complete, closing EventSource');
+              eventSource = closeEventSource(eventSource);
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing progress data:', err);
+        }
+      };
+      
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', error);
+        
+        // Try to reconnect a few times
+        if (retryCount < MAX_RETRIES) {
+          retryCount++;
+          console.log(`Attempting to reconnect (attempt ${retryCount} of ${MAX_RETRIES})...`);
+          // Close current connection
+          eventSource = closeEventSource(eventSource);
+          // Wait a second before reconnecting
+          setTimeout(setupEventSource, 1000);
+        } else {
+          console.log('Max retry attempts reached, giving up on EventSource connection');
+          // Only close if we still have a reference
+          eventSource = closeEventSource(eventSource);
+          // Don't set an error here as the import might still be working
+        }
+      };
+    };
+
     try {
       setIsImporting(true);
       setError(null);
       setImportResult(null);
+      setImportProgress(0);
+      setProgressMessage('Starting import...');
+      
+      // Set up the EventSource connection
+      setupEventSource();
 
       const formData = new FormData();
       formData.append('file', selectedFile);
 
+      console.log('Starting import request');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/import`, {
         method: 'POST',
         body: formData,
         credentials: 'include'
       });
-
+      
+      console.log('Import request completed');
+      
+      // Close the event source if it's still open
+      eventSource = closeEventSource(eventSource);
+      
       const data = await response.json();
       
       if (!response.ok) {
@@ -245,9 +331,15 @@ export default function BackupPage() {
       setImportResult(data);
       setShowPreview(false);
       setSelectedFile(null);
+      setImportProgress(100);
+      setProgressMessage('Import complete');
     } catch (err: any) {
+      console.error('Import error:', err);
       setError(err.message);
+      setImportProgress(0);
     } finally {
+      // Make absolutely sure we close the EventSource
+      eventSource = closeEventSource(eventSource);
       setIsImporting(false);
     }
   };
@@ -420,6 +512,23 @@ export default function BackupPage() {
         </div>
       )}
 
+      {/* Import Progress Bar */}
+      {isImporting && (
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Import Progress</h2>
+          <div className="mb-2 flex justify-between">
+            <span>{progressMessage}</span>
+            <span>{importProgress}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-4">
+            <div 
+              className="bg-primary-600 h-4 rounded-full transition-all duration-300 ease-in-out" 
+              style={{ width: `${importProgress}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
       {/* Clear Database Confirmation Modal */}
       {showClearConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -466,6 +575,22 @@ export default function BackupPage() {
                 <span>{importResult.message}</span>
               </div>
               
+              {/* Display Missing Sheets Warning */}
+              {importResult.report?.summary?.missingSheets && 
+               importResult.report.summary.missingSheets.length > 0 && (
+                <div className="mt-4 bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md flex gap-2">
+                  <FaInfoCircle className="mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold">Some sheets were not imported:</p>
+                    <ul className="list-disc ml-5 mt-1">
+                      {importResult.report.summary.missingSheets.map((sheet: string, index: number) => (
+                        <li key={index}>{sheet}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              
               {/* Import Summary */}
               {importResult.report && (
                 <div className="mt-4 bg-white rounded-lg shadow-md p-6">
@@ -480,22 +605,43 @@ export default function BackupPage() {
                       <div className="text-sm text-gray-500">Records failed</div>
                     </div>
                     
-                    {/* Table-specific counts */}
-                    {Object.entries(importResult.report.summary.tables).map(([table, counts]) => (
-                      <div key={table} className="bg-gray-50 p-4 rounded-lg">
-                        <div className="text-lg font-medium">{table}</div>
-                        <div className="flex justify-between mt-2">
-                          <div>
-                            <div className="text-sm text-gray-500">Success</div>
-                            <div className="text-green-600 font-bold">{(counts as {success: number, failed: number}).success}</div>
+                    {/* Table-specific counts - show all tables */}
+                    {['Customer', 'Dog', 'Appointment', 'AppointmentDog', 'AdditionalHour', 'DogDogbreed', 'ServiceAppointmentDog'].map((tableName) => {
+                      // Get counts from import result if available, otherwise show zeros
+                      const counts = importResult.report.summary.tables[tableName] || { success: 0, failed: 0 };
+                      
+                      // Determine if this table was part of the import
+                      const isImported = !!importResult.report.summary.tables[tableName];
+                      const isMissing = importResult.report.summary.missingSheets?.includes(tableName);
+                      
+                      return (
+                        <div key={tableName} className="bg-gray-50 p-4 rounded-lg">
+                          <div className="text-lg font-medium flex items-center justify-between">
+                            {tableName}
+                            {isMissing && (
+                              <span title="Table was missing from import" className="text-yellow-500 ml-1">
+                                <FaInfoCircle size={14} />
+                              </span>
+                            )}
+                            {!isImported && !isMissing && (
+                              <span title="Table was not part of this import" className="text-gray-400 ml-1">
+                                <FaInfoCircle size={14} />
+                              </span>
+                            )}
                           </div>
-                          <div>
-                            <div className="text-sm text-gray-500">Failed</div>
-                            <div className="text-red-600 font-bold">{(counts as {success: number, failed: number}).failed}</div>
+                          <div className="flex justify-between mt-2">
+                            <div>
+                              <div className="text-sm text-gray-500">Success</div>
+                              <div className="text-green-600 font-bold">{counts.success}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-500">Failed</div>
+                              <div className="text-red-600 font-bold">{counts.failed}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

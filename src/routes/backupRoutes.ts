@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { generateBackup, importBackup, clearDatabase, previewBackup } from '../controllers/backupController';
+import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress } from '../controllers/backupController';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -50,6 +50,33 @@ router.get('/export', generateBackup);
  *         description: Server error
  */
 router.post('/preview', upload.single('file'), previewBackup);
+
+/**
+ * @swagger
+ * /api/backup/import/progress:
+ *   get:
+ *     summary: Get progress updates during import process using SSE
+ *     tags: [Backup]
+ *     responses:
+ *       200:
+ *         description: Stream of progress updates
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ */
+router.options('/import/progress', (req, res) => {
+  // Preflight response for CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Connection');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+  res.status(204).end();
+});
+
+router.get('/import/progress', importProgress);
 
 /**
  * @swagger

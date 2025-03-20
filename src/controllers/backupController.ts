@@ -4,6 +4,9 @@ import db from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
 
+// Track SSE clients for progress updates
+const progressEmitters: Response[] = [];
+
 // Define multer file interface
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -22,6 +25,10 @@ interface ImportResults {
   customers: { success: number; failed: number; errors: ErrorDetail[] };
   dogs: { success: number; failed: number; errors: ErrorDetail[] };
   appointments: { success: number; failed: number; errors: ErrorDetail[] };
+  appointmentDogs: { success: number; failed: number; errors: ErrorDetail[] };
+  additionalHours: { success: number; failed: number; errors: ErrorDetail[] };
+  dogDogbreeds: { success: number; failed: number; errors: ErrorDetail[] };
+  serviceAppointmentDogs: { success: number; failed: number; errors: ErrorDetail[] };
 }
 
 // List of tables to export/import
@@ -45,21 +52,24 @@ interface FieldValidation {
 
 const TABLE_SCHEMA: Record<string, FieldValidation[]> = {
   Customer: [
-    { name: 'naam', type: 'string', required: true, maxLength: 100 },
-    { name: 'contactpersoon', type: 'string', required: false, maxLength: 100 },
-    { name: 'emailadres', type: 'string', required: false, maxLength: 100 },
-    { name: 'telefoonnummer', type: 'string', required: false, maxLength: 20 },
+    { name: 'naam', type: 'string', required: true, maxLength: 255 },
+    { name: 'contactpersoon', type: 'string', required: false, maxLength: 255 },
+    { name: 'emailadres', type: 'string', required: false, maxLength: 255 },
+    { name: 'telefoonnummer', type: 'string', required: false, maxLength: 50 },
     { name: 'notities', type: 'string', required: false, maxLength: 500 },
-    { name: 'isallowcontactshare', type: 'string', required: false, maxLength: 7 },
+    { name: 'isallowcontactshare', type: 'string', required: false, maxLength: 10 },
     { name: 'createdon', type: 'date', required: false },
     { name: 'updatedon', type: 'date', required: false }
   ],
   Dog: [
-    { name: 'name', type: 'string', required: true, maxLength: 50 },
-    { name: 'breed', type: 'string', required: false, maxLength: 50 },
+    { name: 'name', type: 'string', required: true, maxLength: 255 },
+    { name: 'breed', type: 'string', required: false, maxLength: 255 },
     { name: 'Birthday', type: 'date', required: false },
     { name: 'weight', type: 'number', required: false },
-    { name: 'CustomerId', type: 'number', required: true }
+    { name: 'CustomerId', type: 'number', required: true },
+    { name: 'Allergies', type: 'string', required: false },
+    { name: 'ServiceNote', type: 'string', required: false },
+    { name: 'DogSizeId', type: 'string', required: false, maxLength: 50 }
   ],
   Appointment: [
     { name: 'Date', type: 'date', required: true },
@@ -68,10 +78,31 @@ const TABLE_SCHEMA: Record<string, FieldValidation[]> = {
     { name: 'DateEnd', type: 'date', required: false },
     { name: 'ActualDuration', type: 'number', required: false },
     { name: 'CustomerId', type: 'number', required: true },
-    { name: 'AppointmentStatusId', type: 'string', required: true, maxLength: 20 },
+    { name: 'AppointmentStatusId', type: 'string', required: true, maxLength: 50 },
     { name: 'Note', type: 'string', required: false, maxLength: 500 },
     { name: 'SerialNumber', type: 'number', required: false },
     { name: 'IsPaidInCash', type: 'boolean', required: false }
+  ],
+  AppointmentDog: [
+    { name: 'AppointmentId', type: 'number', required: true },
+    { name: 'DogId', type: 'number', required: true },
+    { name: 'Note', type: 'string', required: false }
+  ],
+  AdditionalHour: [
+    { name: 'HourTypeId', type: 'string', required: false, maxLength: 20 },
+    { name: 'Duration', type: 'number', required: true },
+    { name: 'Date', type: 'date', required: false },
+    { name: 'Description', type: 'string', required: false },
+    { name: 'IsExported', type: 'boolean', required: false }
+  ],
+  DogDogbreed: [
+    { name: 'DogId', type: 'number', required: true },
+    { name: 'DogbreedId', type: 'string', required: true, maxLength: 50 }
+  ],
+  ServiceAppointmentDog: [
+    { name: 'AppointmentDogId', type: 'number', required: true },
+    { name: 'ServiceId', type: 'string', required: true, maxLength: 50 },
+    { name: 'Price', type: 'number', required: false }
   ]
 };
 
@@ -144,6 +175,81 @@ const validateRow = (tableName: string, rowData: any, rowNumber: number): TableV
     }
   }
 
+  // Special handling for AppointmentDog table
+  if (tableName === 'AppointmentDog') {
+    // Check for AppointmentId
+    const hasAppointmentId = 
+      rowData.AppointmentId !== undefined || 
+      rowData.appointmentid !== undefined || 
+      rowData.appointmentId !== undefined;
+      
+    if (!hasAppointmentId || 
+        (rowData.AppointmentId === null && 
+         rowData.appointmentid === null && 
+         rowData.appointmentId === null)) {
+      errors.push({
+        field: 'AppointmentId',
+        error: `AppointmentDog record is missing required appointment ID reference`,
+        value: null
+      });
+    }
+    
+    // Check for DogId
+    const hasDogId = 
+      rowData.DogId !== undefined || 
+      rowData.dogid !== undefined || 
+      rowData.dogId !== undefined;
+      
+    if (!hasDogId || 
+        (rowData.DogId === null && 
+         rowData.dogid === null && 
+         rowData.dogId === null)) {
+      errors.push({
+        field: 'DogId',
+        error: `AppointmentDog record is missing required dog ID reference`,
+        value: null
+      });
+    }
+  }
+
+  // Special handling for ServiceAppointmentDog table
+  if (tableName === 'ServiceAppointmentDog') {
+    // Check for AppointmentDogId
+    const hasAppointmentDogId = 
+      rowData.AppointmentDogId !== undefined || 
+      rowData.appointmentdogid !== undefined || 
+      rowData.appointmentDogId !== undefined;
+      
+    if (!hasAppointmentDogId || 
+        (rowData.AppointmentDogId === null && 
+         rowData.appointmentdogid === null && 
+         rowData.appointmentDogId === null)) {
+      errors.push({
+        field: 'AppointmentDogId',
+        error: `ServiceAppointmentDog record is missing required appointmentDog ID reference`,
+        value: null
+      });
+    }
+    
+    // Check for ServiceId
+    const hasServiceId = 
+      rowData.ServiceId !== undefined || 
+      rowData.serviceid !== undefined || 
+      rowData.serviceId !== undefined;
+      
+    if (!hasServiceId || 
+        (rowData.ServiceId === null && 
+         rowData.serviceid === null && 
+         rowData.serviceId === null)) {
+      errors.push({
+        field: 'ServiceId',
+        error: `ServiceAppointmentDog record is missing required service ID reference`,
+        value: null
+      });
+    }
+  }
+
+  // Regular schema validation for all fields
   for (const field of schema) {
     // Check if the field exists in any case form
     const fieldName = field.name;
@@ -235,6 +341,104 @@ const normalizedRow: RowData = {};
 
 // Ensure validationResults is initialized
 const validationResults: any[] = [];
+
+/**
+ * Handle SSE connection for import progress
+ */
+export const importProgress = (req: Request, res: Response) => {
+  console.log('New SSE connection established');
+  
+  // Set SSE headers with proper CORS headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Connection');
+  res.flushHeaders();
+
+  // Add this client to emitters list
+  progressEmitters.push(res);
+  console.log(`Total connected clients: ${progressEmitters.length}`);
+
+  // Send initial progress
+  const initialUpdate = { progress: 0, message: 'Waiting for import to start...' };
+  console.log('Sending initial progress:', initialUpdate);
+  
+  try {
+    res.write(`data: ${JSON.stringify(initialUpdate)}\n\n`);
+    // Flush the data immediately
+    if (typeof res.flush === 'function') {
+      res.flush();
+    }
+  } catch (err) {
+    console.error('Error sending initial progress:', err);
+  }
+
+  // Handle client disconnect
+  req.on('close', () => {
+    console.log('Client disconnected');
+    const index = progressEmitters.indexOf(res);
+    if (index !== -1) {
+      progressEmitters.splice(index, 1);
+      console.log(`Remaining connected clients: ${progressEmitters.length}`);
+    }
+  });
+
+  // Set a timeout ping to keep the connection alive
+  const keepAlivePing = setInterval(() => {
+    try {
+      res.write(': ping\n\n');
+      if (typeof res.flush === 'function') {
+        res.flush();
+      }
+    } catch (err) {
+      console.error('Error sending keep-alive ping:', err);
+      clearInterval(keepAlivePing);
+    }
+  }, 25000); // Send a ping every 25 seconds
+
+  // Clean up the interval on client disconnect
+  req.on('close', () => {
+    clearInterval(keepAlivePing);
+  });
+};
+
+/**
+ * Send progress update to all connected clients
+ */
+const sendProgressUpdate = (progress: number, message: string) => {
+  if (progressEmitters.length === 0) {
+    console.log('No connected clients to send progress update to');
+    return;
+  }
+  
+  const update = JSON.stringify({ progress, message });
+  console.log(`Sending progress update: ${update} to ${progressEmitters.length} clients`);
+  
+  // Use a copy of the array to avoid modification during iteration
+  const emitters = [...progressEmitters];
+  
+  emitters.forEach((emitter, index) => {
+    try {
+      emitter.write(`data: ${update}\n\n`);
+      // Flush the data immediately
+      if (typeof emitter.flush === 'function') {
+        emitter.flush();
+      }
+    } catch (err) {
+      console.error(`Error sending progress to client ${index}:`, err);
+      // Remove the failed emitter from the original array
+      const failedIndex = progressEmitters.indexOf(emitter);
+      if (failedIndex !== -1) {
+        progressEmitters.splice(failedIndex, 1);
+        console.log(`Removed disconnected client. Remaining clients: ${progressEmitters.length}`);
+      }
+    }
+  });
+};
 
 /**
  * Generate a data backup of all non-static tables
@@ -729,8 +933,36 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
     const results: ImportResults = {
       customers: { success: 0, failed: 0, errors: [] },
       dogs: { success: 0, failed: 0, errors: [] },
-      appointments: { success: 0, failed: 0, errors: [] }
+      appointments: { success: 0, failed: 0, errors: [] },
+      appointmentDogs: { success: 0, failed: 0, errors: [] },
+      additionalHours: { success: 0, failed: 0, errors: [] },
+      dogDogbreeds: { success: 0, failed: 0, errors: [] },
+      serviceAppointmentDogs: { success: 0, failed: 0, errors: [] }
     };
+
+    // Track missing sheets
+    const missingSheets: string[] = [];
+    
+    // Check for expected tables that aren't in the preview data
+    NON_STATIC_TABLES.forEach(tableName => {
+      if (!previewDataStore[tableName]) {
+        missingSheets.push(tableName);
+      }
+    });
+
+    // Initialize progress tracking
+    let totalRecords = 0;
+    let processedRecords = 0;
+    
+    // Count total records for progress tracking
+    Object.values(previewDataStore).forEach(tableData => {
+      totalRecords += tableData.length;
+    });
+    
+    console.log(`Total records to import: ${totalRecords}`);
+    
+    // Send initial progress update
+    sendProgressUpdate(0, `Starting import process... (0/${totalRecords} records)`);
 
     // Get a connection from the pool
     const connection = await db.getConnection();
@@ -738,14 +970,48 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
     try {
       // Start transaction
       await connection.beginTransaction();
+      
+      sendProgressUpdate(1, 'Transaction started');
 
       // Process each table from preview data
+      let tableCount = 0;
+      const totalTables = Object.keys(previewDataStore).length;
+      
+      // Map table names to result keys
+      const tableToResultKey: Record<string, keyof ImportResults> = {
+        'customer': 'customers',
+        'dog': 'dogs',
+        'appointment': 'appointments',
+        'appointmentdog': 'appointmentDogs',
+        'additionalhour': 'additionalHours',
+        'dogdogbreed': 'dogDogbreeds',
+        'serviceappointmentdog': 'serviceAppointmentDogs'
+      };
+      
       for (const tableName in previewDataStore) {
+        tableCount++;
         const tableNameLower = tableName.toLowerCase();
         const rows = previewDataStore[tableName];
+        
+        sendProgressUpdate(
+          Math.max(1, Math.min(5, Math.floor((tableCount / totalTables) * 5))),
+          `Processing table ${tableName} (${rows.length} records)`
+        );
+        
         console.log(`Processing ${rows.length} rows for table ${tableName}`);
         
+        let rowCount = 0;
         for (const row of rows) {
+          rowCount++;
+          processedRecords++;
+          
+          // Update progress for EACH record
+          const progressPercentage = Math.max(5, Math.min(95, Math.floor((processedRecords / totalRecords) * 90) + 5));
+          sendProgressUpdate(
+            progressPercentage, 
+            `Importing ${tableName} record ${rowCount}/${rows.length} (${processedRecords}/${totalRecords} total)`
+          );
+          
           try {
             // Create a row identifier for better error reporting
             let rowIdentifier = '';
@@ -776,6 +1042,35 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
                 id: row.id || row.Id,
                 customerId: row.CustomerId || 'missing',
                 status: row.AppointmentStatusId || row.appointmentstatusid
+              };
+            } else if (tableNameLower === 'appointmentdog') {
+              rowIdentifier = `AppointmentDog (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'}, DogId: ${row.DogId || row.dogid || 'missing'})`;
+              rowDetails = {
+                id: row.id || row.Id,
+                appointmentId: row.AppointmentId || row.appointmentid,
+                dogId: row.DogId || row.dogid
+              };
+            } else if (tableNameLower === 'additionalhour') {
+              rowIdentifier = `AdditionalHour (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'})`;
+              rowDetails = {
+                id: row.id || row.Id,
+                appointmentId: row.AppointmentId || row.appointmentid,
+                duration: row.Duration || row.duration
+              };
+            } else if (tableNameLower === 'dogdogbreed') {
+              rowIdentifier = `DogDogbreed (DogId: ${row.DogId || row.dogid || 'missing'}, DogbreedId: ${row.DogbreedId || row.dogbreedid || row.dogBreedId || 'missing'})`;
+              rowDetails = {
+                id: row.id || row.Id,
+                dogId: row.DogId || row.dogid,
+                dogbreedId: row.DogbreedId || row.dogbreedid || row.dogBreedId
+              };
+            } else if (tableNameLower === 'serviceappointmentdog') {
+              rowIdentifier = `ServiceAppointmentDog (AppointmentDogId: ${row.AppointmentDogId || row.appointmentdogid || 'missing'}, ServiceId: ${row.ServiceId || row.serviceid || 'missing'})`;
+              rowDetails = {
+                id: row.id || row.Id,
+                appointmentDogId: row.AppointmentDogId || row.appointmentdogid,
+                serviceId: row.ServiceId || row.serviceid,
+                price: row.Price || row.price
               };
             } else {
               rowIdentifier = `Row in ${tableName}`;
@@ -884,6 +1179,58 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
               // Replace normalizedRow with properCaseRow
               Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
               Object.assign(normalizedRow, properCaseRow);
+            } else if (tableNameLower === 'appointmentdog') {
+              // Field name mapping from Excel/JSON to database schema
+              const fieldMapping: Record<string, string> = {
+                'id': 'Id',
+                'appointmentid': 'AppointmentId',
+                'dogid': 'DogId'
+              };
+              
+              // Create a new object with properly capitalized field names
+              const properCaseRow: RowData = {};
+              
+              // Ensure fields have proper casing
+              Object.keys(normalizedRow).forEach(key => {
+                const lowerKey = key.toLowerCase();
+                if (fieldMapping[lowerKey]) {
+                  // Use the proper field name from mapping
+                  properCaseRow[fieldMapping[lowerKey]] = normalizedRow[key];
+                } else if (!Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
+                  // Keep original if no mapping exists and it's not already a mapped field
+                  properCaseRow[key] = normalizedRow[key];
+                }
+              });
+              
+              // Replace normalizedRow with properCaseRow
+              Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
+              Object.assign(normalizedRow, properCaseRow);
+            } else if (tableNameLower === 'additionalhour') {
+              // Field name mapping from Excel/JSON to database schema
+              const fieldMapping: Record<string, string> = {
+                'id': 'Id',
+                'appointmentid': 'AppointmentId',
+                'duration': 'Duration'
+              };
+              
+              // Create a new object with properly capitalized field names
+              const properCaseRow: RowData = {};
+              
+              // Ensure fields have proper casing
+              Object.keys(normalizedRow).forEach(key => {
+                const lowerKey = key.toLowerCase();
+                if (fieldMapping[lowerKey]) {
+                  // Use the proper field name from mapping
+                  properCaseRow[fieldMapping[lowerKey]] = normalizedRow[key];
+                } else if (!Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
+                  // Keep original if no mapping exists and it's not already a mapped field
+                  properCaseRow[key] = normalizedRow[key];
+                }
+              });
+              
+              // Replace normalizedRow with properCaseRow
+              Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
+              Object.assign(normalizedRow, properCaseRow);
             }
             
             // Log the CustomerId for debugging
@@ -935,19 +1282,11 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
                 errorType: 'validation_error'
               };
               
-              switch (tableNameLower) {
-                case 'customer':
-                  results.customers.failed++;
-                  results.customers.errors.push(detailedError);
-                  break;
-                case 'dog':
-                  results.dogs.failed++;
-                  results.dogs.errors.push(detailedError);
-                  break;
-                case 'appointment':
-                  results.appointments.failed++;
-                  results.appointments.errors.push(detailedError);
-                  break;
+              // Update failure count based on table
+              const resultKey = tableToResultKey[tableNameLower];
+              if (resultKey) {
+                results[resultKey].failed++;
+                results[resultKey].errors.push(detailedError);
               }
               continue;
             }
@@ -1095,16 +1434,9 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
               console.log(`Successfully inserted ${rowIdentifier}:`, result);
               
               // Update success counts
-              switch (tableNameLower) {
-                case 'customer':
-                  results.customers.success++;
-                  break;
-                case 'dog':
-                  results.dogs.success++;
-                  break;
-                case 'appointment':
-                  results.appointments.success++;
-                  break;
+              const resultKey = tableToResultKey[tableNameLower];
+              if (resultKey) {
+                results[resultKey].success++;
               }
             } catch (dbError: any) {
               // Create a detailed database error message
@@ -1119,20 +1451,11 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
                 errorType: 'database_error'
               };
               
-              // Add to appropriate error collection
-              switch (tableNameLower) {
-                case 'customer':
-                  results.customers.failed++;
-                  results.customers.errors.push(detailedError);
-                  break;
-                case 'dog':
-                  results.dogs.failed++;
-                  results.dogs.errors.push(detailedError);
-                  break;
-                case 'appointment':
-                  results.appointments.failed++;
-                  results.appointments.errors.push(detailedError);
-                  break;
+              // Update failure count based on table
+              const resultKey = tableToResultKey[tableNameLower];
+              if (resultKey) {
+                results[resultKey].failed++;
+                results[resultKey].errors.push(detailedError);
               }
             }
           } catch (error: any) {
@@ -1164,6 +1487,35 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
                   id: row.id || row.Id,
                   customerId: row.CustomerId
                 };
+              } else if (tableNameLower === 'appointmentdog') {
+                rowIdentifier = `AppointmentDog (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'}, DogId: ${row.DogId || row.dogid || 'missing'})`;
+                rowDetails = {
+                  id: row.id || row.Id,
+                  appointmentId: row.AppointmentId || row.appointmentid,
+                  dogId: row.DogId || row.dogid
+                };
+              } else if (tableNameLower === 'additionalhour') {
+                rowIdentifier = `AdditionalHour (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'})`;
+                rowDetails = {
+                  id: row.id || row.Id,
+                  appointmentId: row.AppointmentId || row.appointmentid,
+                  duration: row.Duration || row.duration
+                };
+              } else if (tableNameLower === 'dogdogbreed') {
+                rowIdentifier = `DogDogbreed (DogId: ${row.DogId || row.dogid || 'missing'}, DogbreedId: ${row.DogbreedId || row.dogbreedid || row.dogBreedId || 'missing'})`;
+                rowDetails = {
+                  id: row.id || row.Id,
+                  dogId: row.DogId || row.dogid,
+                  dogbreedId: row.DogbreedId || row.dogbreedid || row.dogBreedId
+                };
+              } else if (tableNameLower === 'serviceappointmentdog') {
+                rowIdentifier = `ServiceAppointmentDog (AppointmentDogId: ${row.AppointmentDogId || row.appointmentdogid || 'missing'}, ServiceId: ${row.ServiceId || row.serviceid || 'missing'})`;
+                rowDetails = {
+                  id: row.id || row.Id,
+                  appointmentDogId: row.AppointmentDogId || row.appointmentdogid,
+                  serviceId: row.ServiceId || row.serviceid,
+                  price: row.Price || row.price
+                };
               } else {
                 rowIdentifier = `Row in ${tableName}`;
                 rowDetails = { id: row.id || row.Id };
@@ -1184,19 +1536,10 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
             };
             
             // Update failure count based on table
-            switch (tableNameLower) {
-              case 'customer':
-                results.customers.failed++;
-                results.customers.errors.push(detailedError);
-                break;
-              case 'dog':
-                results.dogs.failed++;
-                results.dogs.errors.push(detailedError);
-                break;
-              case 'appointment':
-                results.appointments.failed++;
-                results.appointments.errors.push(detailedError);
-                break;
+            const resultKey = tableToResultKey[tableNameLower];
+            if (resultKey) {
+              results[resultKey].failed++;
+              results[resultKey].errors.push(detailedError);
             }
           }
         }
@@ -1204,6 +1547,7 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
 
       // Commit transaction
       await connection.commit();
+      sendProgressUpdate(98, 'Finalizing import...');
 
       // Clear preview data after import
       previewDataStore = {};
@@ -1212,8 +1556,8 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
       const detailedReport = {
         summary: {
           total: {
-            success: results.customers.success + results.dogs.success + results.appointments.success,
-            failed: results.customers.failed + results.dogs.failed + results.appointments.failed
+            success: Object.values(results).reduce((sum, result) => sum + result.success, 0),
+            failed: Object.values(results).reduce((sum, result) => sum + result.failed, 0)
           },
           tables: {
             'Customer': { 
@@ -1227,8 +1571,25 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
             'Appointment': { 
               success: results.appointments.success, 
               failed: results.appointments.failed 
+            },
+            'AppointmentDog': {
+              success: results.appointmentDogs.success,
+              failed: results.appointmentDogs.failed
+            },
+            'AdditionalHour': {
+              success: results.additionalHours.success,
+              failed: results.additionalHours.failed
+            },
+            'DogDogbreed': {
+              success: results.dogDogbreeds.success,
+              failed: results.dogDogbreeds.failed
+            },
+            'ServiceAppointmentDog': {
+              success: results.serviceAppointmentDogs.success,
+              failed: results.serviceAppointmentDogs.failed
             }
-          }
+          },
+          missingSheets: missingSheets.length > 0 ? missingSheets : undefined
         },
         // Format errors to be more readable for frontend display
         errorsByTable: [
@@ -1246,6 +1607,26 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
             tableName: 'Appointment',
             count: results.appointments.failed,
             items: results.appointments.errors
+          },
+          {
+            tableName: 'AppointmentDog',
+            count: results.appointmentDogs.failed,
+            items: results.appointmentDogs.errors
+          },
+          {
+            tableName: 'AdditionalHour',
+            count: results.additionalHours.failed,
+            items: results.additionalHours.errors
+          },
+          {
+            tableName: 'DogDogbreed',
+            count: results.dogDogbreeds.failed,
+            items: results.dogDogbreeds.errors
+          },
+          {
+            tableName: 'ServiceAppointmentDog',
+            count: results.serviceAppointmentDogs.failed,
+            items: results.serviceAppointmentDogs.errors
           }
         ].filter(tableReport => tableReport.count > 0) // Only include tables with errors
       };
@@ -1263,6 +1644,13 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
         statusMessage = `Import partially successful: ${totalSuccess} records imported, ${totalFailed} records failed.`;
       }
 
+      if (missingSheets.length > 0) {
+        statusMessage += ` (${missingSheets.length} sheets were not imported)`;
+      }
+
+      // Send final progress update
+      sendProgressUpdate(100, `Import completed: ${processedRecords} records processed`);
+
       res.json({
         status: totalFailed > 0 ? 'partial' : 'success',
         message: statusMessage,
@@ -1272,6 +1660,9 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
       // Rollback transaction on error
       await connection.rollback();
       console.error('Transaction error:', error);
+      
+      // Update progress on error
+      sendProgressUpdate(0, `Import failed: ${error.message}`);
       
       // Also send error details to frontend
       res.status(500).json({ 
@@ -1286,6 +1677,10 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
     }
   } catch (error: any) {
     console.error('Import error:', error);
+    
+    // Update progress on error
+    sendProgressUpdate(0, `Import failed: ${error.message}`);
+    
     res.status(500).json({ 
       status: 'error',
       message: 'Failed to import backup',
