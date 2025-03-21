@@ -926,7 +926,7 @@ export default function NewAppointmentPage() {
                     </div>
                   </div>
                 )}
-
+                
                 <AppointmentSchedule
                   appointmentDate={appointmentDate}
                   setAppointmentDate={setAppointmentDate}

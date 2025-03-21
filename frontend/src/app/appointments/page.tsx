@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, parseISO } from 'date-fns';
-import { FaChevronLeft, FaChevronRight, FaCalendarCheck, FaCalendarTimes, FaCalendarDay, FaClock, FaMoneyBillWave, FaCheck, FaCalendarAlt } from 'react-icons/fa';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, parseISO, startOfWeek, addDays } from 'date-fns';
+import { FaChevronLeft, FaChevronRight, FaCalendarCheck, FaCalendarTimes, FaCalendarDay, FaClock, FaMoneyBillWave, FaCheck, FaCalendarAlt, FaCalendarWeek } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
+import WeekView from '@/components/appointments/WeekView';
 
 interface Dog {
   DogId: number;
@@ -36,6 +37,7 @@ export default function AppointmentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isHydrated, setIsHydrated] = useState(false);
+  const [viewType, setViewType] = useState<'month' | 'week'>('month');
   const router = useRouter();
 
   useEffect(() => {
@@ -48,6 +50,13 @@ export default function AppointmentsPage() {
             console.log('Using saved date from localStorage:', format(parsedDate, 'MMMM yyyy'));
             setCurrentDate(parsedDate);
           }
+        }
+        
+        // Restore saved view type preference
+        const savedViewType = window.localStorage.getItem('calendarViewType');
+        if (savedViewType && (savedViewType === 'month' || savedViewType === 'week')) {
+          console.log('Using saved view type from localStorage:', savedViewType);
+          setViewType(savedViewType as 'month' | 'week');
         }
       } catch (err) {
         console.error('Error reading from localStorage:', err);
@@ -86,18 +95,34 @@ export default function AppointmentsPage() {
     }
   }, [currentDate, isHydrated]);
 
+  // Update localStorage when view type changes
+  useEffect(() => {
+    if (isHydrated) {
+      try {
+        window.localStorage.setItem('calendarViewType', viewType);
+        console.log('Saved view type to localStorage:', viewType);
+      } catch (error) {
+        console.error('Error saving view type to localStorage:', error);
+      }
+    }
+  }, [viewType, isHydrated]);
+
   const goToPreviousMonth = () => {
     setCurrentDate(prevDate => {
-      const newDate = subMonths(prevDate, 1);
-      console.log('Navigating to previous month:', format(newDate, 'MMMM yyyy'));
+      const newDate = viewType === 'month' 
+        ? subMonths(prevDate, 1) 
+        : addDays(prevDate, -7); // Go back one week in week view
+      console.log(`Navigating to previous ${viewType}:`, format(newDate, 'MMMM yyyy'));
       return newDate;
     });
   };
 
   const goToNextMonth = () => {
     setCurrentDate(prevDate => {
-      const newDate = addMonths(prevDate, 1);
-      console.log('Navigating to next month:', format(newDate, 'MMMM yyyy'));
+      const newDate = viewType === 'month' 
+        ? addMonths(prevDate, 1) 
+        : addDays(prevDate, 7); // Go forward one week in week view
+      console.log(`Navigating to next ${viewType}:`, format(newDate, 'MMMM yyyy'));
       return newDate;
     });
   };
@@ -288,14 +313,23 @@ export default function AppointmentsPage() {
     );
   };
 
+  // Render the appropriate view based on viewType
+  const renderView = () => {
+    if (viewType === 'month') {
+      return renderCalendar();
+    } else {
+      return <WeekView currentDate={currentDate} appointments={appointments} />;
+    }
+  };
+
   return (
     <div className="w-full h-screen flex flex-col px-1 py-1">
-      <div className="flex justify-center items-center mb-1">
+      <div className="flex justify-between items-center mb-1">
         <div className="flex items-center w-64 justify-between">
           <button 
             onClick={goToPreviousMonth} 
             className="p-1 rounded-full hover:bg-gray-100 flex-shrink-0"
-            aria-label="Previous month"
+            aria-label={viewType === 'month' ? "Previous month" : "Previous week"}
           >
             <FaChevronLeft />
           </button>
@@ -304,14 +338,40 @@ export default function AppointmentsPage() {
             onClick={goToCurrentMonth}
             title="Click to return to current month"
           >
-            {format(currentDate, 'MMMM yyyy')}
+            {viewType === 'month' 
+              ? format(currentDate, 'MMMM yyyy') 
+              : `Week of ${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'd MMM')}`}
           </h2>
           <button 
             onClick={goToNextMonth} 
             className="p-1 rounded-full hover:bg-gray-100 flex-shrink-0"
-            aria-label="Next month"
+            aria-label={viewType === 'month' ? "Next month" : "Next week"}
           >
             <FaChevronRight />
+          </button>
+        </div>
+        
+        {/* View toggle buttons */}
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setViewType('month')}
+            className={`px-3 py-1 rounded-md text-sm flex items-center ${
+              viewType === 'month' 
+                ? 'bg-primary-100 text-primary-800 border border-primary-300' 
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            <FaCalendarAlt className="mr-1" /> Month
+          </button>
+          <button
+            onClick={() => setViewType('week')}
+            className={`px-3 py-1 rounded-md text-sm flex items-center ${
+              viewType === 'week' 
+                ? 'bg-primary-100 text-primary-800 border border-primary-300' 
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            <FaCalendarWeek className="mr-1" /> Week
           </button>
         </div>
       </div>
@@ -355,7 +415,7 @@ export default function AppointmentsPage() {
         </div>
       ) : (
         <div className="flex-grow overflow-hidden flex flex-col">
-          {renderCalendar()}
+          {renderView()}
         </div>
       )}
     </div>

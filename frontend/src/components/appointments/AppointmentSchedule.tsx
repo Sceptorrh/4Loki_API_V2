@@ -742,11 +742,29 @@ export default function AppointmentSchedule({
             {/* Current appointment selection */}
             {currentApptInfo && (
               <div 
-                className="absolute bg-blue-100 border-2 border-blue-400 rounded-sm z-20 left-[70px] right-4 current-appointment"
+                className="absolute border-2 rounded-sm z-20 left-[70px] right-4 current-appointment"
                 style={{ 
                   top: `${currentApptInfo.startPosition * 20}px`,
-                  height: `${Math.max(currentApptInfo.duration * 20, 20)}px`,
-                  cursor: isDragging ? 'grabbing' : 'grab'
+                  height: `${Math.max(currentApptInfo.duration * 20, 30)}px`, /* Increased minimum height */
+                  cursor: isDragging ? 'grabbing' : 'grab',
+                  backgroundColor: (() => {
+                    const actualDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+                    const ratio = actualDuration / totalDuration;
+                    
+                    if (ratio >= 1.2) return 'rgba(220, 252, 231, 0.8)'; // green-100
+                    if (ratio >= 0.95) return 'rgba(243, 244, 246, 0.8)'; // gray-100
+                    if (ratio >= 0.8) return 'rgba(254, 240, 215, 0.8)'; // orange-100
+                    return 'rgba(254, 226, 226, 0.8)'; // red-100
+                  })(),
+                  borderColor: (() => {
+                    const actualDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+                    const ratio = actualDuration / totalDuration;
+                    
+                    if (ratio >= 1.2) return '#86efac'; // green-300
+                    if (ratio >= 0.95) return '#d1d5db'; // gray-300
+                    if (ratio >= 0.8) return '#fdba74'; // orange-300
+                    return '#fca5a5'; // red-300
+                  })()
                 }}
                 onMouseDown={(e) => {
                   // Don't handle if clicked on one of the handles
@@ -766,7 +784,18 @@ export default function AppointmentSchedule({
                 }}
               >
                 <div 
-                  className="absolute top-0 left-0 right-0 h-5 bg-blue-400 cursor-ns-resize z-30 current-appointment-handle-start"
+                  className="absolute top-0 left-0 right-0 h-4 cursor-ns-resize z-30 current-appointment-handle-start"
+                  style={{
+                    backgroundColor: (() => {
+                      const actualDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+                      const ratio = actualDuration / totalDuration;
+                      
+                      if (ratio >= 1.2) return '#86efac'; // green-300
+                      if (ratio >= 0.95) return '#d1d5db'; // gray-300
+                      if (ratio >= 0.8) return '#fdba74'; // orange-300
+                      return '#fca5a5'; // red-300
+                    })()
+                  }}
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     handleAppointmentMouseDown(e, 'start');
@@ -776,9 +805,28 @@ export default function AppointmentSchedule({
                     handleAppointmentTouchStart(e, 'start');
                   }}
                   title="Drag to adjust start time"
-                />
+                >
+                  <div className="w-full flex justify-center">
+                    <svg className="h-2 w-6 text-white opacity-70" viewBox="0 0 24 8" fill="currentColor">
+                      <rect x="0" y="0" width="24" height="2" rx="1" />
+                      <rect x="0" y="3" width="24" height="2" rx="1" />
+                      <rect x="0" y="6" width="24" height="2" rx="1" />
+                    </svg>
+                  </div>
+                </div>
                 <div 
-                  className="absolute bottom-0 left-0 right-0 h-5 bg-blue-400 cursor-ns-resize z-30 current-appointment-handle-end"
+                  className="absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize z-30 current-appointment-handle-end"
+                  style={{
+                    backgroundColor: (() => {
+                      const actualDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+                      const ratio = actualDuration / totalDuration;
+                      
+                      if (ratio >= 1.2) return '#86efac'; // green-300
+                      if (ratio >= 0.95) return '#d1d5db'; // gray-300
+                      if (ratio >= 0.8) return '#fdba74'; // orange-300
+                      return '#fca5a5'; // red-300
+                    })()
+                  }}
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     handleAppointmentMouseDown(e, 'end');
@@ -788,10 +836,52 @@ export default function AppointmentSchedule({
                     handleAppointmentTouchStart(e, 'end');
                   }}
                   title="Drag to adjust end time"
-                />
-                <div className="text-xs p-1 text-blue-800 flex justify-between font-medium mt-6">
-                  <span>{format(startTime, 'HH:mm')}-{format(endTime, 'HH:mm')}</span>
-                  <span>{formatDuration(Math.floor((endTime.getTime() - startTime.getTime()) / 60000))}</span>
+                >
+                  <div className="w-full flex justify-center">
+                    <svg className="h-2 w-6 text-white opacity-70" viewBox="0 0 24 8" fill="currentColor">
+                      <rect x="0" y="0" width="24" height="2" rx="1" />
+                      <rect x="0" y="3" width="24" height="2" rx="1" />
+                      <rect x="0" y="6" width="24" height="2" rx="1" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="text-xs p-1 flex flex-col font-medium mt-5 mb-5">
+                  <div className="flex justify-between">
+                    <span className="font-bold">{format(startTime, 'HH:mm')}-{format(endTime, 'HH:mm')}</span>
+                    <span className="font-bold">{formatDuration(Math.floor((endTime.getTime() - startTime.getTime()) / 60000))}</span>
+                  </div>
+                  {totalDuration > 0 && (
+                    <div className="flex justify-between items-center mt-1">
+                      <span>Needed: {formatDuration(totalDuration)}</span>
+                      {(() => {
+                        const actualDuration = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+                        const ratio = actualDuration / totalDuration;
+                        
+                        let label = '';
+                        let badgeClass = '';
+                        
+                        if (ratio >= 1.2) {
+                          label = 'Comfortable';
+                          badgeClass = 'bg-green-200 text-green-800 border border-green-300';
+                        } else if (ratio >= 0.95) {
+                          label = 'Realistic';
+                          badgeClass = 'bg-gray-200 text-gray-800 border border-gray-300';
+                        } else if (ratio >= 0.8) {
+                          label = 'Tight';
+                          badgeClass = 'bg-orange-200 text-orange-800 border border-orange-300';
+                        } else {
+                          label = 'Unrealistic';
+                          badgeClass = 'bg-red-200 text-red-800 border border-red-300';
+                        }
+                        
+                        return (
+                          <span className={`text-xs px-2 py-0.5 rounded ${badgeClass}`}>
+                            {label}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -900,7 +990,7 @@ export default function AppointmentSchedule({
   return (
     <div className="mt-6 border-t pt-6">
       <h3 className="text-lg font-medium text-gray-900 mb-4">Schedule</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Date Selection */}
         <div>
           <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
@@ -917,75 +1007,6 @@ export default function AppointmentSchedule({
             placeholderText="Select a weekday"
           />
           <p className="text-xs text-gray-500 mt-1">Weekends are not available for appointments</p>
-        </div>
-        
-        {/* Time Selection */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-1">
-              Start Time *
-            </label>
-            <DatePicker
-              id="startTime"
-              selected={startTime}
-              onChange={(time: Date) => {
-                setStartTime(time);
-                
-                // Set end time based on calculated total duration
-                const newEndTime = new Date(time);
-                newEndTime.setMinutes(time.getMinutes() + totalDuration);
-                
-                // Make sure the end time is within limits
-                const lastPossibleTime = new Date(time);
-                lastPossibleTime.setHours(21, 0, 0, 0);
-                
-                if (newEndTime > lastPossibleTime) {
-                  setEndTime(lastPossibleTime);
-                } else {
-                  setEndTime(newEndTime);
-                }
-              }}
-              showTimeSelect
-              showTimeSelectOnly
-              timeIntervals={15}
-              timeCaption="Time"
-              dateFormat="HH:mm"
-              timeFormat="HH:mm"
-              includeTimes={generateTimeOptions()}
-              minTime={setHours(setMinutes(new Date(), 0), 8)}
-              maxTime={setHours(setMinutes(new Date(), 0), 21)}
-              className="w-full p-2 border border-gray-300 rounded-md"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
-              End Time *
-            </label>
-            <DatePicker
-              id="endTime"
-              selected={endTime}
-              onChange={(time: Date) => setEndTime(time)}
-              showTimeSelect
-              showTimeSelectOnly
-              timeIntervals={15}
-              timeCaption="Time"
-              dateFormat="HH:mm"
-              timeFormat="HH:mm"
-              includeTimes={generateTimeOptions()}
-              minTime={startTime}
-              maxTime={setHours(setMinutes(new Date(), 0), 21)}
-              className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
-              required
-              disabled={!startTime}
-            />
-          </div>
-          <div className="col-span-2 -mt-1">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500">Duration: {formatDuration(Math.floor((endTime.getTime() - startTime.getTime()) / 60000))}</span>
-              <span className="text-xs text-gray-500">Estimated needed: {formatDuration(totalDuration)}</span>
-            </div>
-          </div>
         </div>
       </div>
       
