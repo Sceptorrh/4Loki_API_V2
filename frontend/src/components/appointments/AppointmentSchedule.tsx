@@ -180,6 +180,49 @@ export default function AppointmentSchedule({
     }
   };
 
+  // Add debugging in useEffect
+  useEffect(() => {
+    console.log('Component mounted or updated');
+    
+    // Debugging events
+    const debugMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        console.log('Global mouse move detected while dragging');
+      }
+    };
+    
+    document.addEventListener('mousemove', debugMouseMove);
+    
+    // Always ensure any lingering ghost is removed on mount or update
+    const existingGhost = document.getElementById('appointment-ghost');
+    if (existingGhost) {
+      console.log('Removing lingering ghost element from previous operation');
+      existingGhost.remove();
+    }
+    
+    return () => {
+      console.log('Component unmounting, cleaning up event listeners');
+      document.removeEventListener('mousemove', debugMouseMove);
+      
+      // Clean up any lingering handlers when unmounting
+      const ghost = document.getElementById('appointment-ghost');
+      if (ghost) ghost.remove();
+      
+      // Clean up any global handlers
+      if ((window as any).appointmentDragHandlers) {
+        const { onMouseMove, onMouseUp } = (window as any).appointmentDragHandlers;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      }
+      
+      if ((window as any).appointmentTouchDragHandlers) {
+        const { onTouchMove, onTouchEnd } = (window as any).appointmentTouchDragHandlers;
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', onTouchEnd);
+      }
+    };
+  }, [isDragging]); // Added isDragging as a dependency to update debug listeners
+
   // Completely reworked mouse handler for appointment dragging
   const handleAppointmentMouseDown = (e: React.MouseEvent, type: 'start' | 'end' | 'both') => {
     e.preventDefault();
@@ -220,6 +263,7 @@ export default function AppointmentSchedule({
     // Remove any existing ghost
     const existingGhost = document.getElementById('appointment-ghost');
     if (existingGhost) {
+      console.log('Removing existing ghost element');
       existingGhost.remove();
     }
     
@@ -245,6 +289,7 @@ export default function AppointmentSchedule({
     const endPos = (initialEndMinutes - 8 * 60) / 15 * 20;
     ghost.style.top = startPos + 'px';
     ghost.style.height = (endPos - startPos) + 'px';
+    ghost.style.display = 'block'; // Ensure display is initially set
     ghost.innerHTML = `${format(initialStartTime, 'HH:mm')} - ${format(initialEndTime, 'HH:mm')}`;
     
     calendarContainer.appendChild(ghost);
@@ -337,10 +382,15 @@ export default function AppointmentSchedule({
       setIsDragging(false);
       setDragType(null);
       
-      // Remove ghost
-      const ghost = document.getElementById('appointment-ghost');
-      if (ghost) {
-        ghost.remove();
+      // Remove ghost - ensure it's always removed
+      try {
+        const ghost = document.getElementById('appointment-ghost');
+        if (ghost) {
+          console.log('Removing ghost after drag end');
+          ghost.remove();
+        }
+      } catch (err) {
+        console.error('Error removing ghost element:', err);
       }
       
       // Remove event listeners
@@ -400,6 +450,7 @@ export default function AppointmentSchedule({
     
     const existingGhost = document.getElementById('appointment-ghost');
     if (existingGhost) {
+      console.log('Removing existing ghost element before touch drag');
       existingGhost.remove();
     }
     
@@ -521,10 +572,15 @@ export default function AppointmentSchedule({
       setIsDragging(false);
       setDragType(null);
       
-      // Remove ghost
-      const ghost = document.getElementById('appointment-ghost');
-      if (ghost) {
-        ghost.remove();
+      // Remove ghost - ensure it's always removed
+      try {
+        const ghost = document.getElementById('appointment-ghost');
+        if (ghost) {
+          console.log('Removing ghost after touch drag end');
+          ghost.remove();
+        }
+      } catch (err) {
+        console.error('Error removing ghost element:', err);
       }
       
       // Remove event listeners
@@ -551,42 +607,6 @@ export default function AppointmentSchedule({
     document.addEventListener('touchend', onTouchEnd, { capture: true });
     document.addEventListener('touchcancel', onTouchEnd, { capture: true });
   };
-
-  // Add debugging in useEffect
-  useEffect(() => {
-    console.log('Component mounted or updated');
-    
-    // Debugging events
-    const debugMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        console.log('Global mouse move detected while dragging');
-      }
-    };
-    
-    document.addEventListener('mousemove', debugMouseMove);
-    
-    return () => {
-      console.log('Component unmounting, cleaning up event listeners');
-      document.removeEventListener('mousemove', debugMouseMove);
-      
-      // Clean up any lingering handlers when unmounting
-      const ghost = document.getElementById('appointment-ghost');
-      if (ghost) ghost.remove();
-      
-      // Clean up any global handlers
-      if ((window as any).appointmentDragHandlers) {
-        const { onMouseMove, onMouseUp } = (window as any).appointmentDragHandlers;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-      }
-      
-      if ((window as any).appointmentTouchDragHandlers) {
-        const { onTouchMove, onTouchEnd } = (window as any).appointmentTouchDragHandlers;
-        document.removeEventListener('touchmove', onTouchMove);
-        document.removeEventListener('touchend', onTouchEnd);
-      }
-    };
-  }, [isDragging]); // Added isDragging as a dependency to update debug listeners
 
   // Function to render the day-view calendar
   const renderDayCalendar = () => {
