@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { format, setHours, setMinutes, getDay } from 'date-fns';
@@ -34,8 +34,6 @@ interface AppointmentScheduleProps {
   dragType: 'start' | 'end' | 'both' | null;
   setDragType: (type: 'start' | 'end' | 'both' | null) => void;
   checkForOverlappingAppointments: () => void;
-  handleAppointmentMouseDown: (e: React.MouseEvent, type: 'start' | 'end' | 'both') => void;
-  handleAppointmentTouchStart: (e: React.TouchEvent, type: 'start' | 'end' | 'both') => void;
   selectedDogIds: number[];
   totalDuration: number;
 }
@@ -54,8 +52,6 @@ export default function AppointmentSchedule({
   dragType,
   setDragType,
   checkForOverlappingAppointments,
-  handleAppointmentMouseDown,
-  handleAppointmentTouchStart,
   selectedDogIds,
   totalDuration
 }: AppointmentScheduleProps) {
@@ -117,6 +113,418 @@ export default function AppointmentSchedule({
     // Check for overlaps
     setTimeout(() => checkForOverlappingAppointments(), 0);
   };
+
+  // Completely reworked mouse handler for appointment dragging
+  const handleAppointmentMouseDown = (e: React.MouseEvent, type: 'start' | 'end' | 'both') => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Mouse down event triggered');
+    
+    // Set dragging state
+    setIsDragging(true);
+    setDragType(type);
+    
+    // Store initial mouse position
+    const initialMouseY = e.clientY;
+    
+    // Store initial appointment times
+    const initialStartTime = new Date(startTime);
+    const initialEndTime = new Date(endTime);
+    
+    // Calculate initial position and height
+    const initialStartMinutes = initialStartTime.getHours() * 60 + initialStartTime.getMinutes();
+    const initialEndMinutes = initialEndTime.getHours() * 60 + initialEndTime.getMinutes();
+    
+    // Add a global drag state to the window object to ensure we maintain context
+    const dragState = {
+      initialMouseY,
+      initialStartTime: new Date(initialStartTime),
+      initialEndTime: new Date(initialEndTime),
+      dragging: true,
+      type
+    };
+    
+    (window as any).currentDragState = dragState;
+    
+    // Create and show ghost element
+    const calendarContainer = document.querySelector('.calendar-container');
+    if (!calendarContainer) return;
+    
+    // Remove any existing ghost
+    const existingGhost = document.getElementById('appointment-ghost');
+    if (existingGhost) {
+      existingGhost.remove();
+    }
+    
+    // Create ghost element
+    const ghost = document.createElement('div');
+    ghost.id = 'appointment-ghost';
+    ghost.style.position = 'absolute';
+    ghost.style.left = '70px';
+    ghost.style.right = '4px';
+    ghost.style.backgroundColor = 'rgba(255, 0, 0, 0.5)';
+    ghost.style.border = '3px solid red';
+    ghost.style.zIndex = '9999';
+    ghost.style.pointerEvents = 'none';
+    ghost.style.padding = '5px';
+    ghost.style.color = 'white';
+    ghost.style.fontWeight = 'bold';
+    ghost.style.fontSize = '14px';
+    ghost.style.textAlign = 'center';
+    ghost.style.boxShadow = '0 0 15px red';
+    
+    // Initial position
+    const startPos = (initialStartMinutes - 8 * 60) / 15 * 20;
+    const endPos = (initialEndMinutes - 8 * 60) / 15 * 20;
+    ghost.style.top = startPos + 'px';
+    ghost.style.height = (endPos - startPos) + 'px';
+    ghost.innerHTML = `${format(initialStartTime, 'HH:mm')} - ${format(initialEndTime, 'HH:mm')}`;
+    
+    calendarContainer.appendChild(ghost);
+    
+    function onMouseMove(moveEvent: MouseEvent) {
+      const dragState = (window as any).currentDragState;
+      if (!dragState || !dragState.dragging) return;
+      
+      const deltaY = moveEvent.clientY - dragState.initialMouseY;
+      const timeSlotsMoved = Math.round(deltaY / 20);
+      const minutesMoved = timeSlotsMoved * 15;
+      
+      let newStartTime = new Date(dragState.initialStartTime);
+      let newEndTime = new Date(dragState.initialEndTime);
+      
+      if (dragState.type === 'start') {
+        newStartTime.setMinutes(dragState.initialStartTime.getMinutes() + minutesMoved);
+        if (newStartTime.getHours() < 8) newStartTime.setHours(8, 0, 0, 0);
+        if (newStartTime >= newEndTime) newStartTime = new Date(newEndTime.getTime() - 15 * 60000);
+      } else if (dragState.type === 'end') {
+        newEndTime.setMinutes(dragState.initialEndTime.getMinutes() + minutesMoved);
+        if (newEndTime.getHours() >= 21) newEndTime.setHours(21, 0, 0, 0);
+        if (newEndTime <= newStartTime) newEndTime = new Date(newStartTime.getTime() + 15 * 60000);
+      } else {
+        newStartTime.setMinutes(dragState.initialStartTime.getMinutes() + minutesMoved);
+        newEndTime.setMinutes(dragState.initialEndTime.getMinutes() + minutesMoved);
+        
+        if (newStartTime.getHours() < 8) {
+          const diff = 8 * 60 - (newStartTime.getHours() * 60 + newStartTime.getMinutes());
+          newStartTime.setHours(8, 0, 0, 0);
+          newEndTime.setMinutes(newEndTime.getMinutes() + diff);
+        }
+        
+        if (newEndTime.getHours() >= 21) {
+          const diff = (newEndTime.getHours() * 60 + newEndTime.getMinutes()) - 21 * 60;
+          newEndTime.setHours(21, 0, 0, 0);
+          newStartTime.setMinutes(newStartTime.getMinutes() - diff);
+        }
+      }
+      
+      const newStartMinutes = newStartTime.getHours() * 60 + newStartTime.getMinutes();
+      const newEndMinutes = newEndTime.getHours() * 60 + newEndTime.getMinutes();
+      
+      const newStartPos = (newStartMinutes - 8 * 60) / 15 * 20;
+      const newEndPos = (newEndMinutes - 8 * 60) / 15 * 20;
+      
+      const ghost = document.getElementById('appointment-ghost');
+      if (ghost) {
+        ghost.style.top = newStartPos + 'px';
+        ghost.style.height = (newEndPos - newStartPos) + 'px';
+        ghost.style.display = 'block';
+        ghost.innerHTML = `${format(newStartTime, 'HH:mm')} - ${format(newEndTime, 'HH:mm')}`;
+      }
+      
+      // Store positions in drag state but DO NOT update React state
+      // This is crucial to prevent re-renders during dragging
+      dragState._tempStartTime = newStartTime;
+      dragState._tempEndTime = newEndTime;
+    }
+    
+    function onMouseUp() {
+      const dragState = (window as any).currentDragState;
+      if (!dragState) return;
+      
+      console.log('Drag ended, finalizing position');
+      
+      // Use the temporarily stored times from dragging
+      const startTimeToUse = dragState._tempStartTime || startTime;
+      const endTimeToUse = dragState._tempEndTime || endTime;
+      
+      // Snap times to 15-minute intervals
+      const snappedStartTime = snapTo15Minutes(startTimeToUse);
+      const snappedEndTime = snapTo15Minutes(endTimeToUse);
+      
+      // Ensure times are within bounds
+      if (snappedStartTime.getHours() < 8) {
+        snappedStartTime.setHours(8, 0, 0, 0);
+      }
+      if (snappedEndTime.getHours() >= 21) {
+        snappedEndTime.setHours(21, 0, 0, 0);
+      }
+      
+      // Ensure minimum 15-minute duration
+      if (snappedEndTime.getTime() - snappedStartTime.getTime() < 15 * 60000) {
+        snappedEndTime.setTime(snappedStartTime.getTime() + 15 * 60000);
+      }
+      
+      // Reset drag state
+      (window as any).currentDragState = null;
+      setIsDragging(false);
+      setDragType(null);
+      
+      // Remove ghost
+      const ghost = document.getElementById('appointment-ghost');
+      if (ghost) {
+        ghost.remove();
+      }
+      
+      // Remove event listeners
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      
+      // Wait until all drag state is reset before updating React state
+      // This prevents the infinite loop of state updates
+      setTimeout(() => {
+        console.log('Updating state after drag with final position');
+        setStartTime(snappedStartTime);
+        setEndTime(snappedEndTime);
+        
+        // Check for overlaps without triggering auto-scheduling
+        setTimeout(() => checkForOverlappingAppointments(), 100);
+      }, 10);
+    }
+    
+    (window as any).appointmentDragHandlers = {
+      onMouseMove,
+      onMouseUp
+    };
+    
+    document.addEventListener('mousemove', onMouseMove, true);
+    document.addEventListener('mouseup', onMouseUp, true);
+  };
+
+  // Fix touch handler too
+  const handleAppointmentTouchStart = (e: React.TouchEvent, type: 'start' | 'end' | 'both') => {
+    e.stopPropagation();
+    
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+    
+    console.log('Touch start event triggered');
+    
+    setIsDragging(true);
+    setDragType(type);
+    
+    const touch = e.touches[0];
+    const initialTouchY = touch.clientY;
+    
+    const initialStartTime = new Date(startTime);
+    const initialEndTime = new Date(endTime);
+    
+    const dragState = {
+      initialTouchY,
+      initialStartTime: new Date(initialStartTime),
+      initialEndTime: new Date(initialEndTime),
+      dragging: true,
+      type
+    };
+    
+    (window as any).currentTouchDragState = dragState;
+    
+    const calendarContainer = document.querySelector('.calendar-container');
+    if (!calendarContainer) return;
+    
+    const existingGhost = document.getElementById('appointment-ghost');
+    if (existingGhost) {
+      existingGhost.remove();
+    }
+    
+    const ghost = document.createElement('div');
+    ghost.id = 'appointment-ghost';
+    ghost.style.position = 'absolute';
+    ghost.style.left = '70px';
+    ghost.style.right = '4px';
+    ghost.style.backgroundColor = 'rgba(255, 0, 0, 0.5)';
+    ghost.style.border = '3px solid red';
+    ghost.style.zIndex = '9999';
+    ghost.style.pointerEvents = 'none';
+    ghost.style.padding = '5px';
+    ghost.style.color = 'white';
+    ghost.style.fontWeight = 'bold';
+    ghost.style.fontSize = '14px';
+    ghost.style.textAlign = 'center';
+    ghost.style.boxShadow = '0 0 15px red';
+    
+    const initialStartMinutes = initialStartTime.getHours() * 60 + initialStartTime.getMinutes();
+    const initialEndMinutes = initialEndTime.getHours() * 60 + initialEndTime.getMinutes();
+    const startPos = (initialStartMinutes - 8 * 60) / 15 * 20;
+    const endPos = (initialEndMinutes - 8 * 60) / 15 * 20;
+    ghost.style.top = startPos + 'px';
+    ghost.style.height = (endPos - startPos) + 'px';
+    ghost.style.display = 'block';
+    ghost.innerHTML = `${format(initialStartTime, 'HH:mm')} - ${format(initialEndTime, 'HH:mm')}`;
+    
+    calendarContainer.appendChild(ghost);
+    
+    function onTouchMove(moveEvent: TouchEvent) {
+      const dragState = (window as any).currentTouchDragState;
+      if (!dragState || !dragState.dragging) return;
+      
+      moveEvent.preventDefault();
+      
+      const touch = moveEvent.touches[0];
+      const deltaY = touch.clientY - dragState.initialTouchY;
+      const timeSlotsMoved = Math.round(deltaY / 20);
+      const minutesMoved = timeSlotsMoved * 15;
+      
+      let newStartTime = new Date(dragState.initialStartTime);
+      let newEndTime = new Date(dragState.initialEndTime);
+      
+      if (dragState.type === 'start') {
+        newStartTime.setMinutes(dragState.initialStartTime.getMinutes() + minutesMoved);
+        if (newStartTime.getHours() < 8) newStartTime.setHours(8, 0, 0, 0);
+        if (newStartTime >= newEndTime) newStartTime = new Date(newEndTime.getTime() - 15 * 60000);
+      } else if (dragState.type === 'end') {
+        newEndTime.setMinutes(dragState.initialEndTime.getMinutes() + minutesMoved);
+        if (newEndTime.getHours() >= 21) newEndTime.setHours(21, 0, 0, 0);
+        if (newEndTime <= newStartTime) newEndTime = new Date(newStartTime.getTime() + 15 * 60000);
+      } else {
+        newStartTime.setMinutes(dragState.initialStartTime.getMinutes() + minutesMoved);
+        newEndTime.setMinutes(dragState.initialEndTime.getMinutes() + minutesMoved);
+        
+        if (newStartTime.getHours() < 8) {
+          const diff = 8 * 60 - (newStartTime.getHours() * 60 + newStartTime.getMinutes());
+          newStartTime.setHours(8, 0, 0, 0);
+          newEndTime.setMinutes(newEndTime.getMinutes() + diff);
+        }
+        
+        if (newEndTime.getHours() >= 21) {
+          const diff = (newEndTime.getHours() * 60 + newEndTime.getMinutes()) - 21 * 60;
+          newEndTime.setHours(21, 0, 0, 0);
+          newStartTime.setMinutes(newStartTime.getMinutes() - diff);
+        }
+      }
+      
+      const newStartMinutes = newStartTime.getHours() * 60 + newStartTime.getMinutes();
+      const newEndMinutes = newEndTime.getHours() * 60 + newEndTime.getMinutes();
+      
+      const newStartPos = (newStartMinutes - 8 * 60) / 15 * 20;
+      const newEndPos = (newEndMinutes - 8 * 60) / 15 * 20;
+      
+      const ghost = document.getElementById('appointment-ghost');
+      if (ghost) {
+        ghost.style.top = newStartPos + 'px';
+        ghost.style.height = (newEndPos - newStartPos) + 'px';
+        ghost.style.display = 'block';
+        ghost.innerHTML = `${format(newStartTime, 'HH:mm')} - ${format(newEndTime, 'HH:mm')}`;
+      }
+      
+      // Store the times in the drag state object for use when drag ends
+      // Don't update React state during dragging to prevent re-renders
+      dragState._tempStartTime = newStartTime;
+      dragState._tempEndTime = newEndTime;
+    }
+    
+    function onTouchEnd() {
+      const dragState = (window as any).currentTouchDragState;
+      if (!dragState) return;
+      
+      console.log('Touch drag ended, finalizing position');
+      
+      // Use the temporarily stored times from dragging
+      const startTimeToUse = dragState._tempStartTime || startTime;
+      const endTimeToUse = dragState._tempEndTime || endTime;
+      
+      // Snap times to 15-minute intervals
+      const snappedStartTime = snapTo15Minutes(startTimeToUse);
+      const snappedEndTime = snapTo15Minutes(endTimeToUse);
+      
+      // Ensure times are within bounds
+      if (snappedStartTime.getHours() < 8) {
+        snappedStartTime.setHours(8, 0, 0, 0);
+      }
+      if (snappedEndTime.getHours() >= 21) {
+        snappedEndTime.setHours(21, 0, 0, 0);
+      }
+      
+      // Ensure minimum 15-minute duration
+      if (snappedEndTime.getTime() - snappedStartTime.getTime() < 15 * 60000) {
+        snappedEndTime.setTime(snappedStartTime.getTime() + 15 * 60000);
+      }
+      
+      // Reset drag state
+      (window as any).currentTouchDragState = null;
+      setIsDragging(false);
+      setDragType(null);
+      
+      // Remove ghost
+      const ghost = document.getElementById('appointment-ghost');
+      if (ghost) {
+        ghost.remove();
+      }
+      
+      // Remove event listeners
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+      document.removeEventListener('touchcancel', onTouchEnd);
+      
+      // Wait until all drag state is reset before updating React state
+      // This prevents the infinite loop of state updates
+      setTimeout(() => {
+        console.log('Updating state after touch drag with final position');
+        setStartTime(snappedStartTime);
+        setEndTime(snappedEndTime);
+        
+        // Check for overlaps without triggering auto-scheduling
+        setTimeout(() => checkForOverlappingAppointments(), 100);
+      }, 10);
+    }
+    
+    (window as any).appointmentTouchDragHandlers = {
+      onTouchMove,
+      onTouchEnd
+    };
+    
+    document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
+    document.addEventListener('touchend', onTouchEnd, { capture: true });
+    document.addEventListener('touchcancel', onTouchEnd, { capture: true });
+  };
+
+  // Add debugging in useEffect
+  useEffect(() => {
+    console.log('Component mounted or updated');
+    
+    // Debugging events
+    const debugMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        console.log('Global mouse move detected while dragging');
+      }
+    };
+    
+    document.addEventListener('mousemove', debugMouseMove);
+    
+    return () => {
+      console.log('Component unmounting, cleaning up event listeners');
+      document.removeEventListener('mousemove', debugMouseMove);
+      
+      // Clean up any lingering handlers when unmounting
+      const ghost = document.getElementById('appointment-ghost');
+      if (ghost) ghost.remove();
+      
+      // Clean up any global handlers
+      if ((window as any).appointmentDragHandlers) {
+        const { onMouseMove, onMouseUp } = (window as any).appointmentDragHandlers;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      }
+      
+      if ((window as any).appointmentTouchDragHandlers) {
+        const { onTouchMove, onTouchEnd } = (window as any).appointmentTouchDragHandlers;
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', onTouchEnd);
+      }
+    };
+  }, [isDragging]); // Added isDragging as a dependency to update debug listeners
 
   // Function to render the day-view calendar
   const renderDayCalendar = () => {
