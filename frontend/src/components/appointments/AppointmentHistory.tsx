@@ -52,8 +52,10 @@ export default function AppointmentHistory({
   onServiceStatsCalculated
 }: AppointmentHistoryProps) {
   const [previousAppointments, setPreviousAppointments] = useState<PreviousAppointment[]>([]);
+  const [sortedAppointments, setSortedAppointments] = useState<PreviousAppointment[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [dogServiceStats, setDogServiceStats] = useState<Record<number, ServiceStat[]>>({});
+  const [viewAll, setViewAll] = useState<boolean>(false);
 
   // Fetch previous appointments when customer is selected
   useEffect(() => {
@@ -208,6 +210,36 @@ export default function AppointmentHistory({
     }
   };
 
+  // Sort appointments by date (newest first) and add intervals
+  useEffect(() => {
+    if (previousAppointments && previousAppointments.length > 0) {
+      const sorted = [...previousAppointments].sort((a, b) => {
+        return new Date(b.Date).getTime() - new Date(a.Date).getTime();
+      });
+
+      // Calculate intervals between appointments
+      const appointmentsWithIntervals = sorted.map((appointment, index, array) => {
+        let interval = undefined;
+        if (index < array.length - 1) {
+          const currentDate = new Date(appointment.Date);
+          const prevDate = new Date(array[index + 1].Date);
+          const diffTime = Math.abs(currentDate.getTime() - prevDate.getTime());
+          interval = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert to days
+        }
+        return { ...appointment, interval };
+      });
+
+      setSortedAppointments(appointmentsWithIntervals);
+    } else {
+      setSortedAppointments([]);
+    }
+  }, [previousAppointments]);
+
+  // Calculate days between new appointment and most recent appointment
+  const daysSinceLastAppointment = sortedAppointments.length > 0
+    ? Math.ceil(Math.abs(appointmentDate.getTime() - new Date(sortedAppointments[0].Date).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
   if (loading) {
     return (
       <div className="text-center p-4 bg-gray-50 rounded-md">
@@ -216,7 +248,7 @@ export default function AppointmentHistory({
     );
   }
 
-  if (!previousAppointments || previousAppointments.length === 0) {
+  if (!sortedAppointments || sortedAppointments.length === 0) {
     return (
       <div className="text-center p-4 bg-gray-50 rounded-md">
         <p className="text-gray-500">No previous appointments found</p>
@@ -224,31 +256,10 @@ export default function AppointmentHistory({
     );
   }
 
-  // Sort appointments by date (newest first)
-  const sortedAppointments = [...previousAppointments].sort((a, b) => {
-    return new Date(b.Date).getTime() - new Date(a.Date).getTime();
-  });
-
-  // Calculate days between new appointment and most recent appointment
-  let daysSinceLastAppointment = null;
-  if (sortedAppointments.length > 0) {
-    const lastAppointmentDate = new Date(sortedAppointments[0].Date);
-    const newAppointmentDate = appointmentDate;
-    const diffTime = Math.abs(newAppointmentDate.getTime() - lastAppointmentDate.getTime());
-    daysSinceLastAppointment = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }
-
-  // Calculate intervals between appointments
-  const appointmentsWithIntervals = sortedAppointments.map((appointment, index, array) => {
-    let interval = null;
-    if (index < array.length - 1) {
-      const currentDate = new Date(appointment.Date);
-      const prevDate = new Date(array[index + 1].Date);
-      const diffTime = Math.abs(currentDate.getTime() - prevDate.getTime());
-      interval = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert to days
-    }
-    return { ...appointment, interval };
-  });
+  // Display either all appointments or just the first 2 based on viewAll state
+  const displayedAppointments = viewAll 
+    ? sortedAppointments
+    : sortedAppointments.slice(0, 2);
 
   return (
     <div className="space-y-4">
@@ -260,8 +271,8 @@ export default function AppointmentHistory({
           </div>
         )}
       </div>
-      <div className="max-h-[600px] overflow-y-auto pr-2">
-        {appointmentsWithIntervals.map((appointment, index) => {
+      <div className={`${viewAll ? 'max-h-[600px] overflow-y-auto' : ''} pr-2`}>
+        {displayedAppointments.map((appointment, index) => {
           // Calculate total price for this appointment
           let totalPrice = 0;
           
@@ -323,6 +334,18 @@ export default function AppointmentHistory({
             </div>
           );
         })}
+        
+        {sortedAppointments.length > 2 && (
+          <div className="flex justify-center my-2">
+            <button
+              type="button"
+              onClick={() => setViewAll(!viewAll)}
+              className="text-primary-600 text-sm py-1 px-3 border border-primary-300 rounded-md hover:bg-primary-50 transition-colors"
+            >
+              {viewAll ? 'Show less' : `View all ${sortedAppointments.length} appointments`}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

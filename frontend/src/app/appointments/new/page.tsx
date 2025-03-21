@@ -111,13 +111,11 @@ export default function NewAppointmentPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showDogModal, setShowDogModal] = useState(false);
+  const [userAdjustedTime, setUserAdjustedTime] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dogServiceStats, setDogServiceStats] = useState<Record<number, ServiceStat[]>>({});
   const [dailyAppointments, setDailyAppointments] = useState<DailyAppointment[]>([]);
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragType, setDragType] = useState<'start' | 'end' | 'both' | null>(null);
-  // Add state to track if auto-scheduling has already happened
-  const [hasAutoScheduled, setHasAutoScheduled] = useState<boolean>(false);
+  const [appointmentsFetched, setAppointmentsFetched] = useState<boolean>(false);
 
   // Fetch customers, dogs, and statuses on component mount
   useEffect(() => {
@@ -397,39 +395,24 @@ export default function NewAppointmentPage() {
     }
   }, [dogServiceStats, services]);
 
-  // Update end time when selected services change
+  // Update end time when selected services change, but only if the user hasn't manually adjusted it
   useEffect(() => {
-    // Skip calculations during dragging
-    if (isDragging) {
-      console.log('Skipping service duration calculation during drag');
-      return;
-    }
-    
-    // Only update if start time is already set and we have dogs and services selected
-    if (startTime && selectedDogIds.length > 0 && Object.values(dogServices).some(services => services.length > 0)) {
-      if (dailyAppointments.length > 0) {
-        console.log('Calculating service duration with existing appointments');
-        const result = autoScheduleAppointment(
-          dailyAppointments,
-          selectedDogIds,
-          dogServices,
-          dogServiceStats,
-          services,
-          startTime
-        );
+    // Only update if start time is already set, we have dogs and services selected, 
+    // and the user hasn't manually adjusted the time
+    if (startTime && selectedDogIds.length > 0 && 
+        Object.values(dogServices).some(services => services.length > 0) && 
+        !userAdjustedTime) {
+      console.log('Calculating duration for services');
+      
+      // Calculate total duration for all services
+      const totalDuration = getEstimatedDuration(selectedDogIds, dogServices, dogServiceStats, services);
+      
+      if (totalDuration > 0) {
+        console.log(`Total estimated duration: ${totalDuration} minutes`);
         
-        if (result) {
-          setStartTime(result.startTime);
-          setEndTime(result.endTime);
-        }
-      } else {
-        console.log('Calculating service duration without existing appointments');
-        const totalDuration = getEstimatedDuration(selectedDogIds, dogServices, dogServiceStats, services);
-        
-        console.log(`Total calculated duration from getEstimatedDuration: ${totalDuration} minutes`);
-        
+        // Create a new end time based on the start time plus duration
         const newEndTime = new Date(startTime);
-        newEndTime.setMinutes(startTime.getMinutes() + totalDuration);
+        newEndTime.setMinutes(newEndTime.getMinutes() + totalDuration);
         
         const lastPossibleTime = new Date(startTime);
         lastPossibleTime.setHours(21, 0, 0, 0);
@@ -443,7 +426,7 @@ export default function NewAppointmentPage() {
         console.log(`Setting end time to ${format(newEndTime, 'HH:mm')} based on duration of ${totalDuration} minutes`);
       }
     }
-  }, [selectedDogIds, dogServices, startTime, dailyAppointments, isDragging]);
+  }, [selectedDogIds, dogServices, startTime, dailyAppointments, userAdjustedTime]);
 
   // Calculate total price of all services
   const calculateTotalPrice = () => {
@@ -616,138 +599,20 @@ export default function NewAppointmentPage() {
   
   // Function to handle when appointments are fetched
   const handleAppointmentsFetched = () => {
-    console.log("Appointments fetched, checking if we need to auto-schedule");
-    
-    // Only recalculate if we have dogs/services selected and we're using the default start time (9:00)
-    const isDefaultTime = startTime && startTime.getHours() === 9 && startTime.getMinutes() === 0;
-    
-    if (dailyAppointments.length > 0 && 
-        selectedDogIds.length > 0 && 
-        Object.values(dogServices).some(services => services.length > 0) &&
-        isDefaultTime && 
-        !isDragging) {
-      console.log('Auto-scheduling based on appointments being fetched');
-      const result = autoScheduleAppointment(
-        dailyAppointments,
-        selectedDogIds,
-        dogServices,
-        dogServiceStats,
-        services,
-        startTime
-      );
-      
-      if (result) {
-        setStartTime(result.startTime);
-        setEndTime(result.endTime);
-      }
-    }
-    
-    // Check if we need to auto-select services for dogs
-    if (selectedDogIds.length > 0 && Object.keys(dogServiceStats).length > 0) {
-      console.log("Checking if dogs need services after appointments fetched");
-      
-      // Find dogs that don't have services yet
-      const dogsNeedingServices = selectedDogIds.filter(dogId => 
-        !dogServices[dogId] || dogServices[dogId].length === 0
-      );
-      
-      if (dogsNeedingServices.length > 0) {
-        console.log("Found dogs needing services:", dogsNeedingServices);
-        
-        dogsNeedingServices.forEach(dogId => {
-          console.log(`Auto-selecting services for dog ID ${dogId}`);
-          const stats = dogServiceStats[dogId];
-          
-          if (stats && stats.length > 0) {
-            console.log(`Found stats for dog ID ${dogId}:`, stats);
-            // Check services with usage more than 75%
-            const frequentServices = stats.filter(stat => stat.percentage >= 75);
-            console.log("Frequent services (>=75%):", frequentServices);
-            
-            if (frequentServices.length > 0) {
-              // Auto-select frequent services
-              const servicesToAdd: DogService[] = [];
-              
-              frequentServices.forEach(stat => {
-                // Find the service
-                const serviceInfo = services.find(s => s.Id === stat.ServiceId);
-                if (!serviceInfo) {
-                  console.log(`Service ID ${stat.ServiceId} not found in services list`);
-                  return;
-                }
-                
-                console.log(`Auto-selecting service ${serviceInfo.Name} with ID ${stat.ServiceId}`);
-                
-                // Select the service with the latest price (first in the sorted prices array)
-                const latestPrice = stat.prices.length > 0 
-                  ? stat.prices[0].price  // First price is the most recent
-                  : serviceInfo.StandardPrice;
-                
-                console.log(`Using price: ${latestPrice}`);
-                
-                // Add to services to be added
-                servicesToAdd.push({
-                  ServiceId: stat.ServiceId,
-                  Price: Number(latestPrice)
-                });
-              });
-              
-              // Update dog services all at once
-              if (servicesToAdd.length > 0) {
-                setDogServices(current => ({
-                  ...current,
-                  [dogId]: servicesToAdd
-                }));
-              }
-            } else {
-              // If no frequent services, select 'trimmen' by default
-              const trimService = services.find(s => s.Name.toLowerCase().includes('trimmen'));
-              if (trimService) {
-                console.log(`No frequent services found, selecting default 'trimmen' service: ${trimService.Id}`);
-                setDogServices(current => ({
-                  ...current,
-                  [dogId]: [{
-                    ServiceId: trimService.Id,
-                    Price: Number(trimService.StandardPrice)
-                  }]
-                }));
-              } else {
-                console.log("Could not find a trimmen service for default selection");
-              }
-            }
-          } else {
-            // If no stats, select 'trimmen' by default
-            const trimService = services.find(s => s.Name.toLowerCase().includes('trimmen'));
-            if (trimService) {
-              console.log(`No stats found for dog, selecting default 'trimmen' service: ${trimService.Id}`);
-              setDogServices(current => ({
-                ...current,
-                [dogId]: [{
-                  ServiceId: trimService.Id,
-                  Price: Number(trimService.StandardPrice)
-                }]
-              }));
-            } else {
-              console.log("Could not find a trimmen service for default selection");
-            }
-          }
-        });
-      }
-    }
+    setAppointmentsFetched(true);
   };
 
-  // Auto-schedule based on daily appointments - only when not dragging
+  // Monitor daily appointments changes
   useEffect(() => {
-    if (isDragging) return;
     console.log('Daily appointments changed, may need to auto-schedule');
-    // Skip auto-scheduling here as it's now handled in handleAppointmentsFetched
-  }, [dailyAppointments, isDragging]);
+    // Auto-scheduling logic can be added here if needed in the future
+  }, [dailyAppointments]);
 
-  // Auto-select services for dogs when dog service stats are updated or a new dog is selected
+  // Monitor dog service stats and selected dog changes
   useEffect(() => {
     console.log('Dog service stats or selectedDogIds changed');
-    // Skip auto-selection of services here as it's now handled in handleAppointmentsFetched
-  }, [dogServiceStats, selectedDogIds, services]);
+    // Auto-selection of services logic can be added here if needed in the future
+  }, [dogServiceStats, selectedDogIds]);
 
   // Add debugging in useEffect
   useEffect(() => {
@@ -800,6 +665,17 @@ export default function NewAppointmentPage() {
       setSelectedCustomerId(null);
       setCustomerDogs([]);
     }
+  };
+
+  // Create custom setStartTime and setEndTime functions that track manual adjustments
+  const handleStartTimeChange = (time: Date) => {
+    setUserAdjustedTime(true);
+    setStartTime(time);
+  };
+
+  const handleEndTimeChange = (time: Date) => {
+    setUserAdjustedTime(true);
+    setEndTime(time);
   };
 
   return (
@@ -881,65 +757,15 @@ export default function NewAppointmentPage() {
                   />
                 </div>
                 
-                {/* Summary */}
-                {selectedDogIds.length > 0 && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Appointment Summary</h3>
-                    
-                    <div className="space-y-2">
-                      {selectedDogIds.map(dogId => {
-                        const dog = customerDogs.find(d => (d.Id || d.id) === dogId);
-                        const dogServicesList = dogServices[dogId] || [];
-                        let dogTotal = 0;
-                        
-                        dogServicesList.forEach(service => {
-                          dogTotal += Number(service.Price);
-                        });
-                        
-                        return (
-                          <div key={dogId} className="border-b border-gray-200 pb-2">
-                            <div className="font-medium">{dog?.Name || dog?.name || `Dog #${dogId}`}</div>
-                            {dogServicesList.length > 0 ? (
-                              <div className="pl-4 text-sm">
-                                {dogServicesList.map(dogService => {
-                                  // Find the service info from the global services array
-                                  const serviceInfo = services.find(s => s.Id === dogService.ServiceId);
-                                  return (
-                                    <div key={dogService.ServiceId} className="flex justify-between">
-                                      <span>{serviceInfo ? serviceInfo.Name : dogService.ServiceId}</span>
-                                      <span>€{Number(dogService.Price).toFixed(2)}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className="pl-4 text-sm text-red-500">No services selected</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                      
-                      <div className="flex justify-between font-bold pt-2">
-                        <span>Total</span>
-                        <span>€{calculateTotalPrice()}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
                 <AppointmentSchedule
                   appointmentDate={appointmentDate}
                   setAppointmentDate={setAppointmentDate}
                   startTime={startTime}
-                  setStartTime={setStartTime}
+                  setStartTime={handleStartTimeChange}
                   endTime={endTime}
-                  setEndTime={setEndTime}
+                  setEndTime={handleEndTimeChange}
                   dailyAppointments={dailyAppointments}
                   setDailyAppointments={setDailyAppointments}
-                  isDragging={isDragging}
-                  setIsDragging={setIsDragging}
-                  dragType={dragType}
-                  setDragType={setDragType}
                   selectedDogIds={selectedDogIds}
                   totalDuration={getEstimatedDuration(selectedDogIds, dogServices, dogServiceStats, services)}
                   onAppointmentsFetched={handleAppointmentsFetched}
@@ -963,11 +789,59 @@ export default function NewAppointmentPage() {
         {/* Past Appointments Column */}
         <div className="lg:w-1/3 mt-6 lg:mt-0">
           {selectedCustomerId ? (
-            <AppointmentHistory 
-              customerId={selectedCustomerId} 
-              appointmentDate={appointmentDate}
-              onServiceStatsCalculated={handleServiceStatsCalculated}
-            />
+            <>
+              <AppointmentHistory 
+                customerId={selectedCustomerId} 
+                appointmentDate={appointmentDate}
+                onServiceStatsCalculated={handleServiceStatsCalculated}
+              />
+              
+              {/* Moved Appointment Summary to here */}
+              {selectedDogIds.length > 0 && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-md border border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Appointment Summary</h3>
+                  
+                  <div className="space-y-2">
+                    {selectedDogIds.map(dogId => {
+                      const dog = customerDogs.find(d => (d.Id || d.id) === dogId);
+                      const dogServicesList = dogServices[dogId] || [];
+                      let dogTotal = 0;
+                      
+                      dogServicesList.forEach(service => {
+                        dogTotal += Number(service.Price);
+                      });
+                      
+                      return (
+                        <div key={dogId} className="border-b border-gray-200 pb-2">
+                          <div className="font-medium">{dog?.Name || dog?.name || `Dog #${dogId}`}</div>
+                          {dogServicesList.length > 0 ? (
+                            <div className="pl-4 text-sm">
+                              {dogServicesList.map(dogService => {
+                                // Find the service info from the global services array
+                                const serviceInfo = services.find(s => s.Id === dogService.ServiceId);
+                                return (
+                                  <div key={dogService.ServiceId} className="flex justify-between">
+                                    <span>{serviceInfo ? serviceInfo.Name : dogService.ServiceId}</span>
+                                    <span>€{Number(dogService.Price).toFixed(2)}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="pl-4 text-sm text-red-500">No services selected</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    
+                    <div className="flex justify-between font-bold pt-2">
+                      <span>Total</span>
+                      <span>€{calculateTotalPrice()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center p-4 bg-gray-50 rounded-md">
               <p className="text-gray-500">Select a customer to view past appointments</p>
