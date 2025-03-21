@@ -71,7 +71,7 @@ export function getEstimatedDuration(
           const duration1 = stats.durations[0].duration;
           const duration2 = stats.durations[1].duration;
           
-          console.log(`Analyzing durations for service ${service.ServiceId}: ${duration1}min and ${duration2}min`);
+          // console.log(`Analyzing durations for service ${service.ServiceId}: ${duration1}min and ${duration2}min`);
           
           // Find the 15-minute intervals these durations belong to
           const interval1 = Math.round(duration1 / 15) * 15;
@@ -79,15 +79,15 @@ export function getEstimatedDuration(
           
           // Calculate average
           const avgDuration = (duration1 + duration2) / 2;
-          console.log(`Average duration: ${avgDuration}min`);
+          // console.log(`Average duration: ${avgDuration}min`);
           
           // Round to nearest 15-minute interval
           const nearestInterval = Math.round(avgDuration / 15) * 15;
-          console.log(`Nearest 15-min interval: ${nearestInterval}min`);
+          // console.log(`Nearest 15-min interval: ${nearestInterval}min`);
           
           // If the average is already a 15-minute interval, use it
           if (Math.abs(avgDuration - nearestInterval) < 1) {
-            console.log(`Average ${avgDuration} is already close to 15-min interval ${nearestInterval}`);
+            // console.log(`Average ${avgDuration} is already close to 15-min interval ${nearestInterval}`);
             totalDuration += nearestInterval;
           }
           // If we have two different 15-minute intervals, use the higher one if it's closer to a more recent duration
@@ -98,12 +98,12 @@ export function getEstimatedDuration(
             
             // If most recent appointment used a higher duration than the second most recent
             if (duration1 > duration2) {
-              console.log(`Most recent duration ${duration1} (${interval1}) > second most recent ${duration2} (${interval2})`);
+              // console.log(`Most recent duration ${duration1} (${interval1}) > second most recent ${duration2} (${interval2})`);
               totalDuration += interval1;
             } 
             // If third appointment exists and matches either of the first two
             else if (interval3 !== null && (interval3 === interval1 || interval3 === interval2)) {
-              console.log(`Using matching interval from history: ${interval3 === interval1 ? interval1 : interval2}`);
+              // console.log(`Using matching interval from history: ${interval3 === interval1 ? interval1 : interval2}`);
               totalDuration += (interval3 === interval1) ? interval1 : interval2;
             }
             // Otherwise use the higher interval if the average is closer to it
@@ -116,17 +116,17 @@ export function getEstimatedDuration(
               const distToLower = Math.abs(avgDuration - lowerInterval);
               
               if (distToHigher <= distToLower) {
-                console.log(`Average ${avgDuration} is closer to higher interval ${higherInterval}`);
+                // console.log(`Average ${avgDuration} is closer to higher interval ${higherInterval}`);
                 totalDuration += higherInterval;
               } else {
-                console.log(`Average ${avgDuration} is closer to lower interval ${lowerInterval}`);
+                // console.log(`Average ${avgDuration} is closer to lower interval ${lowerInterval}`);
                 totalDuration += lowerInterval;
               }
             }
           } 
           // If both durations round to the same 15-minute interval, use that
           else {
-            console.log(`Both durations round to the same interval: ${interval1}`);
+            // console.log(`Both durations round to the same interval: ${interval1}`);
             totalDuration += interval1;
           }
         } else {
@@ -135,7 +135,7 @@ export function getEstimatedDuration(
           const roundedDuration = Math.round(singleDuration / 15) * 15;
           
           totalDuration += roundedDuration;
-          console.log(`Using single available duration for service ${service.ServiceId}: ${roundedDuration}min (from ${singleDuration}min)`);
+          // console.log(`Using single available duration for service ${service.ServiceId}: ${roundedDuration}min (from ${singleDuration}min)`);
         }
       } else {
         // If no history for this specific service, use the service's standard duration if available
@@ -146,11 +146,11 @@ export function getEstimatedDuration(
           const roundedDuration = Math.round(standardDuration / 15) * 15;
           
           totalDuration += roundedDuration;
-          console.log(`Using standard duration for service ${service.ServiceId}: ${roundedDuration}min (from ${standardDuration}min)`);
+          // console.log(`Using standard duration for service ${service.ServiceId}: ${roundedDuration}min (from ${standardDuration}min)`);
         } else {
           // No history or standard duration, use default (30 minutes)
           totalDuration += 30;
-          console.log(`Using default duration (30 min) for service ${service.ServiceId}`);
+          // console.log(`Using default duration (30 min) for service ${service.ServiceId}`);
         }
       }
     });
@@ -224,11 +224,11 @@ export function calculateBestTimeSlot(appointments: DailyAppointment[], estimate
     estimatedDuration = estimatedDuration - durationRemainder + 15;
   }
   
-  console.log(`Using rounded estimated duration: ${estimatedDuration} minutes`);
+  // console.log(`Using rounded estimated duration: ${estimatedDuration} minutes`);
   
   // Default start time at 9:00 AM if no appointments exist
   if (!appointments || appointments.length === 0) {
-    console.log('No existing appointments, defaulting to 9:00 AM');
+    // console.log('No existing appointments, defaulting to 9:00 AM');
     const defaultTime = new Date();
     defaultTime.setHours(9, 0, 0, 0);
     return defaultTime;
@@ -246,7 +246,7 @@ export function calculateBestTimeSlot(appointments: DailyAppointment[], estimate
 
   // Sort by start time
   timeRanges.sort((a, b) => a.start - b.start);
-  console.log('Time ranges:', timeRanges);
+  // console.log('Time ranges:', timeRanges);
 
   // Start of workday (8:00 AM) in minutes from midnight
   const workdayStart = 8 * 60;
@@ -298,7 +298,7 @@ export function calculateBestTimeSlot(appointments: DailyAppointment[], estimate
     }
   }
 
-  console.log('Available slots:', availableSlots);
+  // console.log('Available slots:', availableSlots);
 
   // Find the best slot
   if (availableSlots.length > 0) {
@@ -325,7 +325,7 @@ export function calculateBestTimeSlot(appointments: DailyAppointment[], estimate
     // Convert to Date object
     const startTime = new Date();
     startTime.setHours(Math.floor(bestSlot.start / 60), bestSlot.start % 60, 0, 0);
-    console.log('Using best available slot:', bestSlot, 'as time:', startTime.toLocaleTimeString());
+    // console.log('Using best available slot:', bestSlot, 'as time:', startTime.toLocaleTimeString());
     return startTime;
   }
 
@@ -400,4 +400,64 @@ export function findOverlappingAppointments(
       existingEndMinutes
     );
   });
+}
+
+/**
+ * Auto-schedule an appointment based on existing appointments and estimated duration
+ * @param appointments Array of existing appointments for the day
+ * @param selectedDogIds Array of selected dog IDs
+ * @param dogServices Record of dog services mapped by dog ID
+ * @param dogServiceStats Record of service statistics mapped by dog ID
+ * @param services Array of available services
+ * @param currentStartTime Current start time (to check if we should auto-schedule)
+ * @returns Object containing the new start and end times, or null if auto-scheduling should not occur
+ */
+export function autoScheduleAppointment(
+  appointments: DailyAppointment[],
+  selectedDogIds: number[],
+  dogServices: Record<number, DogService[]>,
+  dogServiceStats: Record<number, ServiceStat[]>,
+  services: Service[],
+  currentStartTime: Date
+): { startTime: Date; endTime: Date } | null {
+  // Only auto-schedule if we have appointments data and dogs/services selected
+  if (appointments.length === 0 || selectedDogIds.length === 0 || 
+      !Object.values(dogServices).some(services => services.length > 0)) {
+    return null;
+  }
+
+  // Only auto-schedule if current time is 9:00
+  const currentHour = currentStartTime.getHours();
+  const currentMinute = currentStartTime.getMinutes();
+  if (currentHour !== 9 || currentMinute !== 0) {
+    return null;
+  }
+
+  // Calculate estimated duration
+  const estimatedDuration = getEstimatedDuration(
+    selectedDogIds,
+    dogServices,
+    dogServiceStats,
+    services
+  );
+
+  // Find best start time
+  const bestStartTime = calculateBestTimeSlot(appointments, estimatedDuration);
+  
+  // Calculate end time
+  const endTime = new Date(bestStartTime);
+  endTime.setMinutes(bestStartTime.getMinutes() + estimatedDuration);
+  
+  // Ensure end time is within limits
+  const lastPossibleTime = new Date(bestStartTime);
+  lastPossibleTime.setHours(21, 0, 0, 0);
+  
+  if (endTime > lastPossibleTime) {
+    endTime.setHours(21, 0, 0, 0);
+  }
+
+  return {
+    startTime: bestStartTime,
+    endTime: endTime
+  };
 } 

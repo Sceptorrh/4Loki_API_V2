@@ -10,7 +10,7 @@ import { format, addHours, setHours, setMinutes, getDay } from 'date-fns';
 import CustomerModal from '@/components/CustomerModal';
 import DogModal from '@/components/DogModal';
 import { FaTimes, FaPlus } from 'react-icons/fa';
-import { getEstimatedDuration, calculateBestTimeSlot, generateTimeOptions, snapTo15Minutes, findOverlappingAppointments } from '@/lib/appointments';
+import { getEstimatedDuration, calculateBestTimeSlot, generateTimeOptions, snapTo15Minutes, findOverlappingAppointments, autoScheduleAppointment } from '@/lib/appointments';
 
 interface CustomerDropdownItem {
   id: number;
@@ -574,11 +574,31 @@ export default function NewAppointmentPage() {
 
   // Update end time when selected services change
   useEffect(() => {
+    // Skip calculations during dragging
+    if (isDragging) {
+      console.log('Skipping service duration calculation during drag');
+      return;
+    }
+    
     // Only update if start time is already set and we have dogs and services selected
     if (startTime && selectedDogIds.length > 0 && Object.values(dogServices).some(services => services.length > 0)) {
       if (dailyAppointments.length > 0) {
-        findBestTimeSlot();
+        console.log('Calculating service duration with existing appointments');
+        const result = autoScheduleAppointment(
+          dailyAppointments,
+          selectedDogIds,
+          dogServices,
+          dogServiceStats,
+          services,
+          startTime
+        );
+        
+        if (result) {
+          setStartTime(result.startTime);
+          setEndTime(result.endTime);
+        }
       } else {
+        console.log('Calculating service duration without existing appointments');
         const totalDuration = getEstimatedDuration(selectedDogIds, dogServices, dogServiceStats, services);
         
         console.log(`Total calculated duration from getEstimatedDuration: ${totalDuration} minutes`);
@@ -598,7 +618,7 @@ export default function NewAppointmentPage() {
         console.log(`Setting end time to ${format(newEndTime, 'HH:mm')} based on duration of ${totalDuration} minutes`);
       }
     }
-  }, [selectedDogIds, dogServices, startTime, dailyAppointments]);
+  }, [selectedDogIds, dogServices, startTime, dailyAppointments, isDragging]);
 
   // Calculate total price of all services
   const calculateTotalPrice = () => {
@@ -1086,45 +1106,6 @@ export default function NewAppointmentPage() {
       
       console.log('Processed appointments for UI:', processedAppointments);
       setDailyAppointments(processedAppointments || []);
-      
-      // Only auto-schedule if:
-      // 1. It hasn't been done before
-      // 2. We're not currently dragging
-      // 3. The current time is the default time (9:00)
-      if (!hasAutoScheduled && !isDragging) {
-        const currentHour = startTime.getHours();
-        const currentMinute = startTime.getMinutes();
-        
-        // Only auto-schedule if we're at the default time (9:00)
-        if (currentHour === 9 && currentMinute === 0) {
-          // Auto-schedule if we have services selected
-          if (selectedDogIds.length > 0 && Object.values(dogServices).some(services => services.length > 0)) {
-            findBestTimeSlot(processedAppointments);
-            setHasAutoScheduled(true);
-          }
-          // Otherwise only schedule if it's the default time
-          else {
-            // Set a default of 60 minutes since no services are selected
-            const defaultTime = calculateBestTimeSlot(processedAppointments, 60);
-            setStartTime(defaultTime);
-            
-            // Set default end time 60 minutes later
-            const defaultEndTime = new Date(defaultTime);
-            defaultEndTime.setMinutes(defaultTime.getMinutes() + 60);
-            
-            // Make sure the end time is within limits
-            const lastPossibleTime = new Date(defaultTime);
-            lastPossibleTime.setHours(21, 0, 0, 0);
-            
-            if (defaultEndTime > lastPossibleTime) {
-              setEndTime(lastPossibleTime);
-            } else {
-              setEndTime(defaultEndTime);
-            }
-            setHasAutoScheduled(true);
-          }
-        }
-      }
     } catch (err) {
       console.error('Error fetching daily appointments:', err);
       setDailyAppointments([]);
@@ -1133,23 +1114,36 @@ export default function NewAppointmentPage() {
 
   // Add a useEffect to update the schedule whenever the dailyAppointments change
   useEffect(() => {
-    // Only recalculate if:
-    // 1. We have appointments data
-    // 2. We have dogs/services selected
-    // 3. We're not currently dragging
-    // 4. We're at the default time (9:00)
+    // Skip calculations during dragging
+    if (isDragging) {
+      console.log('Skipping daily appointments auto-scheduling during drag');
+      return;
+    }
+    
+    // Only recalculate if we have appointments data and dogs/services selected
+    // and we're using the default start time (9:00)
+    const isDefaultTime = startTime && startTime.getHours() === 9 && startTime.getMinutes() === 0;
+    
     if (dailyAppointments.length > 0 && 
         selectedDogIds.length > 0 && 
         Object.values(dogServices).some(services => services.length > 0) &&
-        !isDragging) {
-      const currentHour = startTime.getHours();
-      const currentMinute = startTime.getMinutes();
+        isDefaultTime) {
+      console.log('Auto-scheduling based on daily appointments change');
+      const result = autoScheduleAppointment(
+        dailyAppointments,
+        selectedDogIds,
+        dogServices,
+        dogServiceStats,
+        services,
+        startTime
+      );
       
-      if (currentHour === 9 && currentMinute === 0) {
-        findBestTimeSlot();
+      if (result) {
+        setStartTime(result.startTime);
+        setEndTime(result.endTime);
       }
     }
-  }, [dailyAppointments]);
+  }, [dailyAppointments, selectedDogIds, dogServices, startTime, services, dogServiceStats, isDragging]);
 
   // Function to calculate the best time slot for a new appointment
   const findBestTimeSlot = (appointments = dailyAppointments, force = false) => {
@@ -1194,6 +1188,12 @@ export default function NewAppointmentPage() {
 
   // Function to render the day-view calendar
   const renderDayCalendar = () => {
+    // Instead of showing a placeholder, we'll use a cached view during dragging
+    if (isDragging) {
+      console.log('Using optimized calendar render during drag');
+      // Proceed with rendering, but avoid expensive calculations
+    }
+    
     console.log('Rendering day calendar with appointments:', dailyAppointments);
     // Set up time slots from 8:00 to 21:00 in 15-minute intervals
     const timeSlots = [];
@@ -1209,14 +1209,14 @@ export default function NewAppointmentPage() {
 
     // Function to get appointment display color based on duration feasibility
     const getAppointmentColor = (appointment: DailyAppointment) => {
-      console.log('Getting color for appointment:', appointment.Id, 'ActualDuration:', appointment.ActualDuration, 'EstimatedDuration:', appointment.EstimatedDuration);
+      // console.log('Getting color for appointment:', appointment.Id, 'ActualDuration:', appointment.ActualDuration, 'EstimatedDuration:', appointment.EstimatedDuration);
       
       if (!appointment.ActualDuration || !appointment.EstimatedDuration) {
         return 'bg-gray-100 border-gray-300';
       }
       
       const ratio = appointment.ActualDuration / appointment.EstimatedDuration;
-      console.log('Duration ratio:', ratio);
+      // console.log('Duration ratio:', ratio);
       
       if (ratio >= 1.2) {
         return 'bg-green-100 border-green-300';
@@ -1473,21 +1473,35 @@ export default function NewAppointmentPage() {
 
   // Check for overlaps whenever start or end time changes
   useEffect(() => {
+    // Skip overlap checks during dragging to prevent unnecessary calculations
+    if (isDragging) {
+      console.log('Skipping overlap check during drag');
+      return;
+    }
+    
     if (startTime && endTime && dailyAppointments.length > 0) {
+      console.log('Checking for overlapping appointments');
       const overlaps = findOverlappingAppointments(dailyAppointments, startTime, endTime);
       setOverlappingAppointments(overlaps);
     } else {
       setOverlappingAppointments([]);
     }
-  }, [startTime, endTime, dailyAppointments]);
+  }, [startTime, endTime, dailyAppointments, isDragging]);
 
   // Function to check if the current appointment overlaps with existing appointments
   const checkForOverlappingAppointments = () => {
+    // Don't check for overlaps during dragging
+    if (isDragging) {
+      console.log('Skipping manual overlap check during drag');
+      return;
+    }
+    
     if (!startTime || !endTime || dailyAppointments.length === 0) {
       setOverlappingAppointments([]);
       return;
     }
 
+    console.log('Manually checking for overlaps');
     const currentStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
     const currentEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
 
@@ -1503,15 +1517,6 @@ export default function NewAppointmentPage() {
     });
 
     setOverlappingAppointments(overlaps);
-  };
-
-  // Function to snap a time to the nearest 15-minute interval
-  const snapTo15Minutes = (time: Date): Date => {
-    const minutes = time.getMinutes();
-    const snappedMinutes = Math.round(minutes / 15) * 15;
-    const newTime = new Date(time);
-    newTime.setMinutes(snappedMinutes);
-    return newTime;
   };
 
   // Function to handle clicking on a time slot
@@ -1686,21 +1691,25 @@ export default function NewAppointmentPage() {
         ghost.innerHTML = `${format(newStartTime, 'HH:mm')} - ${format(newEndTime, 'HH:mm')}`;
       }
       
-      setStartTime(newStartTime);
-      setEndTime(newEndTime);
+      // Store positions in drag state but DO NOT update React state
+      // This is crucial to prevent re-renders during dragging
+      dragState._tempStartTime = newStartTime;
+      dragState._tempEndTime = newEndTime;
     }
     
     function onMouseUp() {
       const dragState = (window as any).currentDragState;
       if (!dragState) return;
       
-      // Get the current times from state
-      const currentStartTime = new Date(startTime);
-      const currentEndTime = new Date(endTime);
+      console.log('Drag ended, finalizing position');
       
-      // Snap both times to 15-minute intervals
-      const snappedStartTime = snapTo15Minutes(currentStartTime);
-      const snappedEndTime = snapTo15Minutes(currentEndTime);
+      // Use the temporarily stored times from dragging
+      const startTimeToUse = dragState._tempStartTime || startTime;
+      const endTimeToUse = dragState._tempEndTime || endTime;
+      
+      // Snap times to 15-minute intervals
+      const snappedStartTime = snapTo15Minutes(startTimeToUse);
+      const snappedEndTime = snapTo15Minutes(endTimeToUse);
       
       // Ensure times are within bounds
       if (snappedStartTime.getHours() < 8) {
@@ -1714,10 +1723,6 @@ export default function NewAppointmentPage() {
       if (snappedEndTime.getTime() - snappedStartTime.getTime() < 15 * 60000) {
         snappedEndTime.setTime(snappedStartTime.getTime() + 15 * 60000);
       }
-      
-      // Update state with snapped times
-      setStartTime(snappedStartTime);
-      setEndTime(snappedEndTime);
       
       // Reset drag state
       (window as any).currentDragState = null;
@@ -1734,8 +1739,16 @@ export default function NewAppointmentPage() {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       
-      // Check for overlaps without triggering auto-scheduling
-      setTimeout(() => checkForOverlappingAppointments(), 0);
+      // Wait until all drag state is reset before updating React state
+      // This prevents the infinite loop of state updates
+      setTimeout(() => {
+        console.log('Updating state after drag with final position');
+        setStartTime(snappedStartTime);
+        setEndTime(snappedEndTime);
+        
+        // Check for overlaps without triggering auto-scheduling
+        setTimeout(() => checkForOverlappingAppointments(), 100);
+      }, 10);
     }
     
     (window as any).appointmentDragHandlers = {
@@ -1864,21 +1877,25 @@ export default function NewAppointmentPage() {
         ghost.innerHTML = `${format(newStartTime, 'HH:mm')} - ${format(newEndTime, 'HH:mm')}`;
       }
       
-      setStartTime(newStartTime);
-      setEndTime(newEndTime);
+      // Store the times in the drag state object for use when drag ends
+      // Don't update React state during dragging to prevent re-renders
+      dragState._tempStartTime = newStartTime;
+      dragState._tempEndTime = newEndTime;
     }
     
     function onTouchEnd() {
       const dragState = (window as any).currentTouchDragState;
       if (!dragState) return;
       
-      // Get the current times from state
-      const currentStartTime = new Date(startTime);
-      const currentEndTime = new Date(endTime);
+      console.log('Touch drag ended, finalizing position');
       
-      // Snap both times to 15-minute intervals
-      const snappedStartTime = snapTo15Minutes(currentStartTime);
-      const snappedEndTime = snapTo15Minutes(currentEndTime);
+      // Use the temporarily stored times from dragging
+      const startTimeToUse = dragState._tempStartTime || startTime;
+      const endTimeToUse = dragState._tempEndTime || endTime;
+      
+      // Snap times to 15-minute intervals
+      const snappedStartTime = snapTo15Minutes(startTimeToUse);
+      const snappedEndTime = snapTo15Minutes(endTimeToUse);
       
       // Ensure times are within bounds
       if (snappedStartTime.getHours() < 8) {
@@ -1892,10 +1909,6 @@ export default function NewAppointmentPage() {
       if (snappedEndTime.getTime() - snappedStartTime.getTime() < 15 * 60000) {
         snappedEndTime.setTime(snappedStartTime.getTime() + 15 * 60000);
       }
-      
-      // Update state with snapped times
-      setStartTime(snappedStartTime);
-      setEndTime(snappedEndTime);
       
       // Reset drag state
       (window as any).currentTouchDragState = null;
@@ -1913,8 +1926,16 @@ export default function NewAppointmentPage() {
       document.removeEventListener('touchend', onTouchEnd);
       document.removeEventListener('touchcancel', onTouchEnd);
       
-      // Check for overlaps without triggering auto-scheduling
-      setTimeout(() => checkForOverlappingAppointments(), 0);
+      // Wait until all drag state is reset before updating React state
+      // This prevents the infinite loop of state updates
+      setTimeout(() => {
+        console.log('Updating state after touch drag with final position');
+        setStartTime(snappedStartTime);
+        setEndTime(snappedEndTime);
+        
+        // Check for overlaps without triggering auto-scheduling
+        setTimeout(() => checkForOverlappingAppointments(), 100);
+      }, 10);
     }
     
     (window as any).appointmentTouchDragHandlers = {
@@ -2095,12 +2116,36 @@ export default function NewAppointmentPage() {
 
   // Add a useEffect to update the schedule whenever the dailyAppointments change
   useEffect(() => {
-    // Only recalculate if we have appointments data and dogs/services selected
-    if (dailyAppointments.length > 0 && selectedDogIds.length > 0 && 
-        Object.values(dogServices).some(services => services.length > 0)) {
-      findBestTimeSlot();
+    // Skip calculations during dragging
+    if (isDragging) {
+      console.log('Skipping daily appointments auto-scheduling during drag');
+      return;
     }
-  }, [dailyAppointments]);
+    
+    // Only recalculate if we have appointments data and dogs/services selected
+    // and we're using the default start time (9:00)
+    const isDefaultTime = startTime && startTime.getHours() === 9 && startTime.getMinutes() === 0;
+    
+    if (dailyAppointments.length > 0 && 
+        selectedDogIds.length > 0 && 
+        Object.values(dogServices).some(services => services.length > 0) &&
+        isDefaultTime) {
+      console.log('Auto-scheduling based on daily appointments change');
+      const result = autoScheduleAppointment(
+        dailyAppointments,
+        selectedDogIds,
+        dogServices,
+        dogServiceStats,
+        services,
+        startTime
+      );
+      
+      if (result) {
+        setStartTime(result.startTime);
+        setEndTime(result.endTime);
+      }
+    }
+  }, [dailyAppointments, selectedDogIds, dogServices, startTime, services, dogServiceStats, isDragging]);
 
   // Add a reset function to re-enable auto-scheduling if needed
   const resetAutoScheduling = () => {

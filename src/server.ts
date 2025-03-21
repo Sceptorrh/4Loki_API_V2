@@ -35,12 +35,13 @@ let server: Server;
 
 // CORS configuration - Remove Authorization header
 const corsOptions = {
-  origin: true, // Allow all origins in development
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+  origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
   credentials: true,
-  maxAge: 86400, // 24 hours
-  exposedHeaders: ['Content-Range', 'X-Content-Range', 'Content-Type', 'Connection']
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 };
 
 // Middleware
@@ -55,14 +56,18 @@ app.use(
           "'unsafe-eval'",
           "https://maps.googleapis.com",
           "https://*.googleapis.com",
-          "https://*.gstatic.com"
+          "https://*.gstatic.com",
+          "http://localhost:3000",
+          "http://localhost:3001"
         ],
         connectSrc: [
           "'self'",
           "https://maps.googleapis.com",
           "https://*.googleapis.com",
           "https://*.gstatic.com",
-          "https://maps.gstatic.com"
+          "https://maps.gstatic.com",
+          "http://localhost:3000",
+          "http://localhost:3001"
         ],
         imgSrc: [
           "'self'",
@@ -70,14 +75,18 @@ app.use(
           "https://maps.googleapis.com",
           "https://*.googleapis.com",
           "https://*.gstatic.com",
-          "https://maps.gstatic.com"
+          "https://maps.gstatic.com",
+          "http://localhost:3000",
+          "http://localhost:3001"
         ],
         styleSrc: [
           "'self'",
           "'unsafe-inline'",
           "https://maps.googleapis.com",
           "https://*.googleapis.com",
-          "https://*.gstatic.com"
+          "https://*.gstatic.com",
+          "http://localhost:3000",
+          "http://localhost:3001"
         ],
         fontSrc: [
           "'self'",
@@ -87,7 +96,8 @@ app.use(
       }
     },
     crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" }
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: false
   })
 );
 app.use(cors(corsOptions));
