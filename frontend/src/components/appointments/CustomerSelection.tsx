@@ -19,6 +19,7 @@ interface CustomerSelectionProps {
   setSearchTerm: (term: string) => void;
   setSelectedCustomerId: (id: number | null) => void;
   setShowCustomerModal: (show: boolean) => void;
+  onCustomerSelected?: (customer: { id: number; dogs: any[] } | null) => void;
 }
 
 export default function CustomerSelection({
@@ -27,7 +28,8 @@ export default function CustomerSelection({
   searchTerm,
   setSearchTerm,
   setSelectedCustomerId,
-  setShowCustomerModal
+  setShowCustomerModal,
+  onCustomerSelected
 }: CustomerSelectionProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,23 @@ export default function CustomerSelection({
   const handleCustomerChange = (customerId: number) => {
     setSelectedCustomerId(customerId);
     setDropdownOpen(false);
+    setSearchTerm('');
+    
+    // Call onCustomerSelected callback if provided
+    if (onCustomerSelected) {
+      const selectedCustomer = customers.find(c => c.id === customerId) || null;
+      onCustomerSelected(selectedCustomer);
+    }
+  };
+
+  const clearCustomer = () => {
+    setSelectedCustomerId(null);
+    setSearchTerm('');
+    
+    // Call onCustomerSelected callback with null if provided
+    if (onCustomerSelected) {
+      onCustomerSelected(null);
+    }
   };
 
   // Filter customers based on search term
@@ -98,10 +117,7 @@ export default function CustomerSelection({
               <button 
                 type="button"
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                onClick={() => {
-                  setSelectedCustomerId(null);
-                  setSearchTerm('');
-                }}
+                onClick={clearCustomer}
               >
                 <FaTimes size={16} />
               </button>

@@ -4,7 +4,20 @@ import { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { format, setHours, setMinutes, getDay } from 'date-fns';
-import { generateTimeOptions, snapTo15Minutes, findOverlappingAppointments } from '@/lib/appointments';
+import { generateTimeOptions, snapTo15Minutes } from '@/lib/appointments';
+import { endpoints } from '@/lib/api';
+
+// Format duration from minutes to hours and minutes
+const formatDuration = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  if (hours === 0) {
+    return `${remainingMinutes}m`;
+  }
+  
+  return `${hours}h ${remainingMinutes}m`;
+};
 
 interface DailyAppointment {
   Id: number;
@@ -27,15 +40,15 @@ interface AppointmentScheduleProps {
   setStartTime: (time: Date) => void;
   endTime: Date;
   setEndTime: (time: Date) => void;
+  setDailyAppointments: (appointments: DailyAppointment[]) => void;
   dailyAppointments: DailyAppointment[];
-  overlappingAppointments: DailyAppointment[];
   isDragging: boolean;
   setIsDragging: (isDragging: boolean) => void;
   dragType: 'start' | 'end' | 'both' | null;
   setDragType: (type: 'start' | 'end' | 'both' | null) => void;
-  checkForOverlappingAppointments: () => void;
   selectedDogIds: number[];
   totalDuration: number;
+  onAppointmentsFetched?: () => void;
 }
 
 export default function AppointmentSchedule({
@@ -45,21 +58,77 @@ export default function AppointmentSchedule({
   setStartTime,
   endTime,
   setEndTime,
+  setDailyAppointments,
   dailyAppointments,
-  overlappingAppointments,
   isDragging,
   setIsDragging,
   dragType,
   setDragType,
-  checkForOverlappingAppointments,
   selectedDogIds,
-  totalDuration
+  totalDuration,
+  onAppointmentsFetched
 }: AppointmentScheduleProps) {
   // Function to filter out weekends
   const isWeekday = (date: Date) => {
     const day = getDay(date);
     return day !== 0 && day !== 6; // 0 is Sunday, 6 is Saturday
   };
+
+  // Fetch appointments for the selected date
+  const fetchDailyAppointments = async (date: Date) => {
+    try {
+      const formattedDate = format(date, 'yyyy-MM-dd');
+      console.log('Fetching appointments for date:', formattedDate);
+      const response = await endpoints.appointments.getByDate(formattedDate);
+      console.log('Daily appointments API response:', response);
+      
+      // Process the response data to format it correctly for our UI
+      const processedAppointments = response.data.map((appointment: any) => {
+        // Extract dog names from dogServices
+        console.log('Processing appointment:', appointment);
+        const dogNames = appointment.dogServices?.map((dog: any) => dog.DogName) || [];
+        
+        return {
+          Id: appointment.Id,
+          CustomerId: appointment.CustomerId,
+          CustomerName: appointment.CustomerName || "Unknown Customer",
+          Date: appointment.Date,
+          TimeStart: appointment.TimeStart,
+          TimeEnd: appointment.TimeEnd,
+          StatusId: appointment.StatusId,
+          StatusLabel: appointment.StatusLabel,
+          ActualDuration: appointment.ActualDuration || 0,
+          EstimatedDuration: appointment.EstimatedDuration || appointment.ActualDuration || 60,
+          Dogs: dogNames
+        };
+      });
+      
+      console.log('Processed appointments for UI:', processedAppointments);
+      setDailyAppointments(processedAppointments || []);
+      
+      // Notify parent component that appointments were fetched
+      if (onAppointmentsFetched) {
+        console.log('Notifying parent that appointments were fetched');
+        onAppointmentsFetched();
+      }
+    } catch (err) {
+      console.error('Error fetching daily appointments:', err);
+      setDailyAppointments([]);
+      
+      // Even on error, notify the parent that the fetch operation completed
+      if (onAppointmentsFetched) {
+        console.log('Notifying parent that appointments fetch completed (with error)');
+        onAppointmentsFetched();
+      }
+    }
+  };
+
+  // Update appointments when date changes
+  useEffect(() => {
+    if (appointmentDate) {
+      fetchDailyAppointments(appointmentDate);
+    }
+  }, [appointmentDate]);
 
   // Function to handle clicking on a time slot
   const handleTimeSlotClick = (e: React.MouseEvent) => {
@@ -109,9 +178,6 @@ export default function AppointmentSchedule({
     } else {
       setEndTime(newEndTime);
     }
-    
-    // Check for overlaps
-    setTimeout(() => checkForOverlappingAppointments(), 0);
   };
 
   // Completely reworked mouse handler for appointment dragging
@@ -288,8 +354,6 @@ export default function AppointmentSchedule({
         setStartTime(snappedStartTime);
         setEndTime(snappedEndTime);
         
-        // Check for overlaps without triggering auto-scheduling
-        setTimeout(() => checkForOverlappingAppointments(), 100);
       }, 10);
     }
     
@@ -475,8 +539,6 @@ export default function AppointmentSchedule({
         setStartTime(snappedStartTime);
         setEndTime(snappedEndTime);
         
-        // Check for overlaps without triggering auto-scheduling
-        setTimeout(() => checkForOverlappingAppointments(), 100);
       }, 10);
     }
     
@@ -614,21 +676,6 @@ export default function AppointmentSchedule({
           }
         </h3>
 
-        {/* Show warning if there's an overlap */}
-        {overlappingAppointments.length > 0 && (
-          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md mb-3">
-            <div className="font-bold">Warning: Appointment Overlap Detected</div>
-            <p>Your selected time slot overlaps with {overlappingAppointments.length} existing appointment(s):</p>
-            <ul className="ml-5 list-disc">
-              {overlappingAppointments.map(appt => (
-                <li key={appt.Id}>
-                  {appt.CustomerName} ({appt.TimeStart.substring(0, 5)}-{appt.TimeEnd.substring(0, 5)}) - {appt.Dogs.join(', ')}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
         {dailyAppointments.length === 0 && !currentApptInfo ? (
           <p className="text-gray-500 text-center py-4 border rounded-md">No appointments scheduled for this date</p>
         ) : (
@@ -744,7 +791,7 @@ export default function AppointmentSchedule({
                 />
                 <div className="text-xs p-1 text-blue-800 flex justify-between font-medium mt-6">
                   <span>{format(startTime, 'HH:mm')}-{format(endTime, 'HH:mm')}</span>
-                  <span>{Math.floor((endTime.getTime() - startTime.getTime()) / 60000)} min</span>
+                  <span>{formatDuration(Math.floor((endTime.getTime() - startTime.getTime()) / 60000))}</span>
                 </div>
               </div>
             )}
@@ -935,8 +982,8 @@ export default function AppointmentSchedule({
           </div>
           <div className="col-span-2 -mt-1">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500">Duration: {Math.floor((endTime.getTime() - startTime.getTime()) / 60000)} min</span>
-              <span className="text-xs text-gray-500">Estimated needed: {totalDuration} min</span>
+              <span className="text-xs text-gray-500">Duration: {formatDuration(Math.floor((endTime.getTime() - startTime.getTime()) / 60000))}</span>
+              <span className="text-xs text-gray-500">Estimated needed: {formatDuration(totalDuration)}</span>
             </div>
           </div>
         </div>

@@ -41,35 +41,131 @@ interface ServiceStat {
   percentage: number;
 }
 
-interface DogSelectionProps {
+interface DogServiceSelectionProps {
   selectedCustomerId: number | null;
   customerDogs: Dog[];
   selectedDogIds: number[];
-  handleDogSelection: (dogId: number) => void;
+  setSelectedDogIds: React.Dispatch<React.SetStateAction<number[]>>;
   dogServices: Record<number, DogService[]>;
+  setDogServices: React.Dispatch<React.SetStateAction<Record<number, DogService[]>>>;
   dogNotes: Record<number, string>;
+  setDogNotes: React.Dispatch<React.SetStateAction<Record<number, string>>>;
   dogServiceStats: Record<number, ServiceStat[]>;
   services: Service[];
-  handleDogNoteChange: (dogId: number, note: string) => void;
-  handleServiceSelection: (dogId: number, serviceId: string, isSelected: boolean) => void;
-  handleServicePriceChange: (dogId: number, serviceId: string, price: number) => void;
   setShowDogModal: (show: boolean) => void;
+  onDogSelectionChanged?: () => void;
 }
 
-export default function DogSelection({
+export default function DogServiceSelection({
   selectedCustomerId,
   customerDogs,
   selectedDogIds,
-  handleDogSelection,
+  setSelectedDogIds,
   dogServices,
+  setDogServices,
   dogNotes,
+  setDogNotes,
   dogServiceStats,
   services,
-  handleDogNoteChange,
-  handleServiceSelection,
-  handleServicePriceChange,
-  setShowDogModal
-}: DogSelectionProps) {
+  setShowDogModal,
+  onDogSelectionChanged
+}: DogServiceSelectionProps) {
+  
+  const handleDogSelection = (dogId: number, isSelected: boolean) => {
+    let newSelectedDogIds;
+    if (isSelected) {
+      // Add dog ID if it's not already in the array
+      newSelectedDogIds = [...selectedDogIds, dogId];
+    } else {
+      // Remove dog ID
+      newSelectedDogIds = selectedDogIds.filter((id) => id !== dogId);
+      
+      // Also remove services for this dog
+      const newDogServices = { ...dogServices };
+      delete newDogServices[dogId];
+      setDogServices(newDogServices);
+      
+      // Remove notes for this dog
+      const newDogNotes = { ...dogNotes };
+      delete newDogNotes[dogId];
+      setDogNotes(newDogNotes);
+    }
+    
+    // Set the new selected dog IDs
+    setSelectedDogIds(newSelectedDogIds);
+    
+    // Call the callback if it exists
+    if (onDogSelectionChanged) {
+      onDogSelectionChanged();
+    }
+  };
+
+  const handleDogNoteChange = (dogId: number, note: string) => {
+    setDogNotes(current => ({
+      ...current,
+      [dogId]: note
+    }));
+  };
+
+  const handleServiceSelection = (dogId: number, serviceId: string, isSelected: boolean) => {
+    if (isSelected) {
+      // Find the service to get its standard price
+      const serviceInfo = services.find(s => s.Id === serviceId);
+      if (!serviceInfo) return;
+      
+      // Add service with standard price
+      const newService = {
+        ServiceId: serviceId,
+        Price: Number(serviceInfo.StandardPrice)
+      };
+      
+      setDogServices(current => ({
+        ...current,
+        [dogId]: [...(current[dogId] || []), newService]
+      }));
+      
+      console.log(`Added service ${serviceId} with price ${serviceInfo.StandardPrice}`);
+    } else {
+      // Remove service
+      setDogServices(current => {
+        const dogServicesCopy = [...(current[dogId] || [])];
+        const index = dogServicesCopy.findIndex(s => s.ServiceId === serviceId);
+        if (index !== -1) {
+          dogServicesCopy.splice(index, 1);
+        }
+        return {
+          ...current,
+          [dogId]: dogServicesCopy
+        };
+      });
+    }
+  };
+
+  const handleServicePriceChange = (dogId: number, serviceId: string, price: number) => {
+    console.log(`Updating price for dog ${dogId}, service ${serviceId} to ${price}`);
+    
+    setDogServices(current => {
+      const dogServicesCopy = [...(current[dogId] || [])];
+      const index = dogServicesCopy.findIndex(s => s.ServiceId === serviceId);
+      
+      if (index !== -1) {
+        console.log(`Found service at index ${index}, current price: ${dogServicesCopy[index].Price}`);
+        dogServicesCopy[index] = {
+          ...dogServicesCopy[index],
+          Price: Number(price)
+        };
+        console.log(`Updated price to: ${dogServicesCopy[index].Price}`);
+      } else {
+        console.log(`Service not found in dog's services`);
+      }
+      
+      return {
+        ...current,
+        [dogId]: dogServicesCopy
+      };
+    });
+  };
+
   // Render service selection for a specific dog
   const renderServiceSelection = (dogId: number, service: Service) => {
     const isServiceSelected = dogServices[dogId]?.some(s => s.ServiceId === service.Id) || false;
@@ -253,7 +349,7 @@ export default function DogSelection({
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={() => handleDogSelection(dogId)}
+                    onChange={(e) => handleDogSelection(dogId, e.target.checked)}
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                     id={`dog-${dogId}`}
                   />
