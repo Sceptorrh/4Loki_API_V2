@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaPlus } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
 
 interface CustomerDropdownItem {
   id: number;
@@ -31,6 +32,7 @@ export default function CustomerSelection({
   setShowCustomerModal,
   onCustomerSelected
 }: CustomerSelectionProps) {
+  const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +128,7 @@ export default function CustomerSelection({
           <button
             type="button"
             className="ml-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
-            onClick={() => setShowCustomerModal(true)}
+            onClick={() => router.push('/appointments/new')}
           >
             <FaPlus className="mr-1" size={14} /> New
           </button>
