@@ -535,4 +535,91 @@ router.put('/:id', handler.update.bind(handler));
  */
 router.delete('/:id', handler.delete.bind(handler));
 
+/**
+ * @swagger
+ * /travel-times/import:
+ *   post:
+ *     summary: Import travel times from Excel file
+ *     tags: [TravelTime]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               travelTimes:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     Direction:
+ *                       type: string
+ *                     Duration:
+ *                       type: number
+ *                     Distance:
+ *                       type: number
+ *                     Date:
+ *                       type: string
+ *                       format: date-time
+ *     responses:
+ *       201:
+ *         description: Travel times imported successfully
+ *       400:
+ *         description: Invalid input data
+ *       500:
+ *         description: Server error
+ */
+router.post('/import', async (req: Request, res: Response) => {
+  try {
+    const { travelTimes } = req.body;
+    
+    if (!Array.isArray(travelTimes)) {
+      return res.status(400).json({ message: 'travelTimes must be an array' });
+    }
+
+    // Validate each travel time record
+    for (const record of travelTimes) {
+      if (!record.Direction || !record.Duration || !record.Distance || !record.Date) {
+        return res.status(400).json({ 
+          message: 'Each record must have Direction, Duration, Distance, and Date fields' 
+        });
+      }
+    }
+
+    const totalRecords = travelTimes.length;
+    const batchSize = 500;
+    const batches = Math.ceil(totalRecords / batchSize);
+    let processedRecords = 0;
+
+    // Insert records in batches
+    for (let i = 0; i < batches; i++) {
+      const start = i * batchSize;
+      const end = Math.min(start + batchSize, totalRecords);
+      const batch = travelTimes.slice(start, end);
+
+      const insertQuery = 'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES ?';
+      const values = batch.map(record => [
+        record.Direction === 'Home to Work', // Convert Direction to boolean
+        record.Duration,
+        record.Distance,
+        record.Date
+      ]);
+
+      await pool.query(insertQuery, [values]);
+      processedRecords += batch.length;
+
+      // Send progress update
+      const progress = Math.round((processedRecords / totalRecords) * 100);
+      res.write(`data: ${JSON.stringify({ progress, processedRecords, totalRecords })}\n\n`);
+    }
+
+    res.write(`data: ${JSON.stringify({ progress: 100, processedRecords: totalRecords, totalRecords })}\n\n`);
+    res.end();
+  } catch (error) {
+    console.error('Error importing travel times:', error);
+    res.status(500).json({ message: 'Server error importing travel times' });
+  }
+});
+
 export default router; 

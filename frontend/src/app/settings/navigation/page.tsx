@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { loadGoogleMaps } from '@/lib/googleMapsLoader';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import LocationMap from '@/components/LocationMap';
@@ -34,6 +34,14 @@ export default function NavigationSettings() {
     direction: 'asc' | 'desc';
   }>({ key: 'calculatedAt', direction: 'desc' });
   const [directionFilter, setDirectionFilter] = useState<'all' | 'home_to_work' | 'work_to_home'>('all');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<{
+    progress: number;
+    processedRecords: number;
+    totalRecords: number;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadExistingSettings();
@@ -326,6 +334,99 @@ export default function NavigationSettings() {
 
   const sortedTravelTimes = sortTravelTimes(filteredTravelTimes);
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setImportError(null);
+    setImportProgress(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/travel-times/import', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const contentType = response.headers.get('content-type');
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          // Join the array of errors with line breaks
+          setImportError(errorData.errors.join('\n'));
+        } else {
+          setImportError(errorData.message || 'Failed to import travel times');
+        }
+        return;
+      }
+
+      // Only handle streaming if it's an event stream
+      if (contentType?.includes('text/event-stream')) {
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No reader available');
+
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = JSON.parse(line.slice(6));
+              setImportProgress(data);
+              
+              if (data.progress === 100) {
+                setSuccessMessage('Travel times imported successfully!');
+                await loadTravelTimes(); // Refresh the travel times list
+                setImportProgress(null);
+              }
+            }
+          }
+        }
+      }
+      
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error: any) {
+      console.error('Error importing travel times:', error);
+      setImportError(error.message || 'Failed to import travel times');
+      setImportProgress(null);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const downloadTemplate = async () => {
+    try {
+      const response = await fetch('/api/travel-times/template');
+      if (!response.ok) {
+        throw new Error('Failed to download template');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'travel-times-template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      setError('Failed to download template');
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -472,6 +573,30 @@ export default function NavigationSettings() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium text-dog-gray">Travel Times History</h2>
           <div className="flex space-x-4">
+            <button
+              onClick={downloadTemplate}
+              className="px-4 py-2 border border-secondary-300 rounded-md text-sm font-medium text-dog-gray hover:bg-secondary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              Download Template
+            </button>
+            <div className="relative">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".xlsx"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                className={`px-4 py-2 border border-secondary-300 rounded-md text-sm font-medium text-dog-gray hover:bg-secondary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
+                  isImporting ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {isImporting ? 'Importing...' : 'Import Excel'}
+              </button>
+            </div>
             <select
               value={directionFilter}
               onChange={(e) => setDirectionFilter(e.target.value as any)}
@@ -483,6 +608,27 @@ export default function NavigationSettings() {
             </select>
           </div>
         </div>
+
+        {importError && (
+          <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md whitespace-pre-line">
+            {importError}
+          </div>
+        )}
+
+        {importProgress && (
+          <div className="mb-4">
+            <div className="flex justify-between text-sm text-secondary-600 mb-1">
+              <span>Importing records...</span>
+              <span>{importProgress.processedRecords} / {importProgress.totalRecords}</span>
+            </div>
+            <div className="w-full bg-secondary-200 rounded-full h-2.5">
+              <div
+                className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${importProgress.progress}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-secondary-200">
