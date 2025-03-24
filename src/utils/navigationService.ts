@@ -3,38 +3,34 @@ import { NavigationSettings, TravelTime } from '../types';
 import { RowDataPacket } from 'mysql2';
 import { logger } from './logger';
 import { calculateRoute as googleCalculateRoute, Coordinates } from '../services/google';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Fetches travel times from Google Maps API and saves to database
  */
 export const fetchAndSaveTravelTimes = async (): Promise<void> => {
   try {
-    // Get navigation settings
-    const [settingsRows] = await pool.query<RowDataPacket[]>('SELECT * FROM NavigationSettings LIMIT 1');
-    
-    if (!settingsRows || settingsRows.length === 0) {
-      logger.info('No navigation settings found. Skipping travel time update.');
-      return;
-    }
-    
-    const settings = settingsRows[0] as NavigationSettings;
+    // Read navigation settings from configuration file
+    const navigationConfigPath = path.join(process.cwd(), 'configuration', 'navigation.json');
+    const navigationConfig = JSON.parse(fs.readFileSync(navigationConfigPath, 'utf8'));
     
     // Check if coordinates are set
-    if (!settings.HomeLatitude || !settings.HomeLongitude || 
-        !settings.WorkLatitude || !settings.WorkLongitude) {
-      logger.info('Home or work coordinates not set. Skipping travel time update.');
+    if (!navigationConfig.homeLatitude || !navigationConfig.homeLongitude || 
+        !navigationConfig.workLatitude || !navigationConfig.workLongitude) {
+      logger.info('Home or work coordinates not set in navigation.json. Skipping travel time update.');
       return;
     }
     
     // Create coordinate objects for Google Maps
     const homeCoords: Coordinates = {
-      lat: parseFloat(settings.HomeLatitude),
-      lng: parseFloat(settings.HomeLongitude)
+      lat: parseFloat(navigationConfig.homeLatitude),
+      lng: parseFloat(navigationConfig.homeLongitude)
     };
     
     const workCoords: Coordinates = {
-      lat: parseFloat(settings.WorkLatitude),
-      lng: parseFloat(settings.WorkLongitude)
+      lat: parseFloat(navigationConfig.workLatitude),
+      lng: parseFloat(navigationConfig.workLongitude)
     };
     
     // Calculate route for home to work using Google Maps API
