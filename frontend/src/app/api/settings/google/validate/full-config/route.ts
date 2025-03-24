@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       authUrl.searchParams.append('client_id', oauthClientId);
       authUrl.searchParams.append('redirect_uri', 'http://localhost:3000/api/auth/google/callback');
       authUrl.searchParams.append('response_type', 'code');
-      authUrl.searchParams.append('scope', 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email');
+      authUrl.searchParams.append('scope', 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/contacts.readonly');
       authUrl.searchParams.append('access_type', 'offline');
       authUrl.searchParams.append('prompt', 'consent');
 
@@ -57,7 +57,8 @@ export async function POST(request: Request) {
               status: 'Testing',
               scopes: [
                 'https://www.googleapis.com/auth/userinfo.profile',
-                'https://www.googleapis.com/auth/userinfo.email'
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/contacts.readonly'
               ],
               testUsers: ['Test users can only be viewed in the Google Cloud Console']
             }

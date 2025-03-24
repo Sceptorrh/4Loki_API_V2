@@ -131,13 +131,29 @@ router.get('/table', handler.getCustomerTable.bind(handler));
  *     tags: [Customers]
  *     responses:
  *       200:
- *         description: List of customers
+ *         description: List of all customers
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Customer'
+ *                 type: object
+ *                 properties:
+ *                   Id:
+ *                     type: integer
+ *                     description: Customer ID
+ *                   Contactpersoon:
+ *                     type: string
+ *                     description: Contact person name
+ *                   Naam:
+ *                     type: string
+ *                     description: Customer name
+ *                   Emailadres:
+ *                     type: string
+ *                     description: Customer email
+ *                   Telefoonnummer:
+ *                     type: string
+ *                     description: Customer phone number
  */
 router.get('/', handler.getAll.bind(handler));
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
+import GoogleContactsSelector from '@/components/GoogleContactsSelector';
 
 export default function NewCustomerPage() {
   const router = useRouter();
@@ -25,6 +26,16 @@ export default function NewCustomerPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleContactSelect = (contact: { name: string; email: string; phone: string }) => {
+    setFormData(prev => ({
+      ...prev,
+      name: contact.name,
+      contact: contact.name,
+      ...(contact.email !== 'No email' && { email: contact.email }),
+      ...(contact.phone !== 'No phone' && { phone: contact.phone })
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,14 +95,10 @@ export default function NewCustomerPage() {
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Name *
               </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
+              <GoogleContactsSelector
                 value={formData.name}
-                onChange={handleChange}
-                className="input"
-                required
+                onChange={(value) => handleChange({ target: { name: 'name', value } } as React.ChangeEvent<HTMLInputElement>)}
+                onSelect={handleContactSelect}
                 placeholder="Customer name or business name"
               />
             </div>

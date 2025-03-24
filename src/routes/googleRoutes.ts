@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { calculateRoute, reverseGeocode, forwardGeocode, Coordinates } from '../services/google';
 import { GoogleAuthService } from '../services/google/auth';
+import axios from 'axios';
 
 const router = Router();
 const googleAuth = GoogleAuthService.getInstance();
@@ -414,6 +415,8 @@ router.get('/auth/login', (req, res) => {
  *             schema:
  *               type: object
  *               properties:
+ *                 access_token:
+ *                   type: string
  *                 userInfo:
  *                   type: object
  *                   properties:
@@ -435,12 +438,15 @@ router.post('/auth/callback', async (req, res) => {
     }
 
     // Exchange code for access token
-    await googleAuth.getAccessToken(code, redirectUri);
+    const tokenResponse = await googleAuth.getAccessToken(code, redirectUri);
 
     // Get user information
     const userInfo = await googleAuth.getUserInfo();
 
-    res.json({ userInfo });
+    res.json({ 
+      access_token: tokenResponse.access_token,
+      userInfo 
+    });
   } catch (error) {
     console.error('Error in auth callback:', error);
     res.status(500).json({ message: 'Authentication failed' });
@@ -459,11 +465,116 @@ router.post('/auth/callback', async (req, res) => {
  */
 router.post('/auth/logout', (req, res) => {
   try {
-    googleAuth.clearAccessToken();
+    googleAuth.clearTokenData();
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Error logging out:', error);
     res.status(500).json({ message: 'Failed to logout' });
+  }
+});
+
+/**
+ * @swagger
+ * /google/auth/token:
+ *   get:
+ *     summary: Get the current Google OAuth access token
+ *     tags: [Google]
+ *     responses:
+ *       200:
+ *         description: Access token retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 access_token:
+ *                   type: string
+ *       401:
+ *         description: Not authenticated
+ */
+router.get('/auth/token', async (req, res) => {
+  try {
+    const token = await googleAuth.getValidAccessToken();
+    res.json({ access_token: token });
+  } catch (error) {
+    console.error('Error getting access token:', error);
+    res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
+/**
+ * @swagger
+ * /google/contacts:
+ *   get:
+ *     summary: Get Google contacts
+ *     tags: [Google]
+ *     responses:
+ *       200:
+ *         description: Contacts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 contacts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       resourceName:
+ *                         type: string
+ *                       names:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             displayName:
+ *                               type: string
+ *                       emailAddresses:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             value:
+ *                               type: string
+ *                       phoneNumbers:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             value:
+ *                               type: string
+ *       401:
+ *         description: Not authenticated
+ */
+router.get('/contacts', async (req, res) => {
+  try {
+    const accessToken = await googleAuth.getValidAccessToken();
+    
+    // Fetch contacts from Google People API
+    const response = await axios.get(
+      'https://people.googleapis.com/v1/people/me/connections',
+      {
+        params: {
+          personFields: 'names,emailAddresses,phoneNumbers',
+          pageSize: 100
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    );
+
+    res.json({
+      contacts: response.data.connections || []
+    });
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      res.status(401).json({ error: 'Not authenticated' });
+    } else {
+      res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
   }
 });
 

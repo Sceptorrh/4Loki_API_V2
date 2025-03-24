@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -19,6 +19,7 @@ import {
   FiMap,
   FiSettings
 } from 'react-icons/fi';
+import UserProfile from './UserProfile';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: FiHome },
@@ -73,7 +74,7 @@ const Navigation: React.FC = () => {
           md:hover:w-64 group`}
       >
         {/* Logo */}
-        <div className="p-4 flex items-center justify-center h-24">
+        <div className="p-4">
           <Link href="/" className="relative">
             {/* Small logo for collapsed sidebar */}
             <div className="hidden md:block group-hover:hidden w-16 h-16 relative">
@@ -118,7 +119,7 @@ const Navigation: React.FC = () => {
         </div>
         
         {/* Navigation Items */}
-        <nav className="flex-1 py-4 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto">
           <ul className="space-y-2 px-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -139,7 +140,6 @@ const Navigation: React.FC = () => {
                     <span className="ml-3 whitespace-nowrap md:hidden md:group-hover:block font-medium">{item.name}</span>
                   </Link>
                   
-                  {/* Sub-items */}
                   {hasSubItems && (
                     <ul className="mt-1 ml-6 space-y-1">
                       {item.subItems.map((subItem) => {
@@ -167,16 +167,29 @@ const Navigation: React.FC = () => {
             })}
           </ul>
         </nav>
-        
-        {/* Notification Icon at Bottom */}
-        <div className="p-4 border-t border-secondary-100">
-          <button
-            type="button"
-            className="w-full flex items-center justify-center md:group-hover:justify-start text-dog-gray hover:text-dog-lightgray focus:outline-none rounded-lg p-2 hover:bg-secondary-100"
-          >
-            <FiBell className="h-5 w-5" />
-            <span className="ml-3 md:hidden md:group-hover:block font-medium">Notifications</span>
-          </button>
+
+        {/* Bottom Section */}
+        <div className="mt-auto border-t border-secondary-100">
+          {/* User Profile */}
+          <div className="p-4">
+            <div className="hidden md:block group-hover:hidden">
+              <UserProfile isCollapsed={true} />
+            </div>
+            <div className="md:hidden md:group-hover:block">
+              <UserProfile isCollapsed={false} />
+            </div>
+          </div>
+
+          {/* Notification Icon */}
+          <div className="p-4">
+            <button
+              type="button"
+              className="w-full flex items-center justify-center md:group-hover:justify-start text-dog-gray hover:text-dog-lightgray focus:outline-none rounded-lg p-2 hover:bg-secondary-100"
+            >
+              <FiBell className="h-5 w-5" />
+              <span className="ml-3 md:hidden md:group-hover:block font-medium">Notifications</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>

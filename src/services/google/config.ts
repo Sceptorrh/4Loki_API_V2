@@ -35,7 +35,8 @@ export const googleConfig = {
     clientSecret: loadSecrets().OAUTH_CLIENT_SECRET,
     scopes: [
       'https://www.googleapis.com/auth/userinfo.profile',
-      'https://www.googleapis.com/auth/userinfo.email'
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/contacts.readonly'
     ]
   },
   
