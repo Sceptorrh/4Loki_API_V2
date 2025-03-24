@@ -34,7 +34,7 @@ const app = express();
 // Create HTTP server instance
 let server: Server;
 
-// CORS configuration - Remove Authorization header
+// CORS configuration
 const corsOptions = {
   origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -44,6 +44,9 @@ const corsOptions = {
   optionsSuccessStatus: 200,
   preflightContinue: false
 };
+
+// Apply CORS before other middleware
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(
@@ -101,7 +104,7 @@ app.use(
     crossOriginOpenerPolicy: false
   })
 );
-app.use(cors(corsOptions));
+
 app.use(compression());
 // Only use morgan logger in non-test environments
 if (process.env.NODE_ENV !== 'test') {

@@ -17,7 +17,8 @@ import {
   FiDownload,
   FiDatabase,
   FiMap,
-  FiSettings
+  FiSettings,
+  FiClock
 } from 'react-icons/fi';
 import UserProfile from './UserProfile';
 
@@ -31,6 +32,7 @@ const navItems = [
       { name: 'Invoice Ready', href: '/appointments/invoice-ready' }
     ]
   },
+  { name: 'Hours', href: '/hours', icon: FiClock },
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
   { name: 'Exports', href: '/exports', icon: FiDownload },

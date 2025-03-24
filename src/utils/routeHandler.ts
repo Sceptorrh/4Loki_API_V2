@@ -34,7 +34,7 @@ export class RouteHandler {
       );
       
       if (!Array.isArray(rows) || rows.length === 0) {
-        throw new AppError('Record not found', 404);
+        return res.status(404).json({ message: 'Record not found' });
       }
       
       // If this is a customer, fetch their dogs as well

@@ -11,6 +11,55 @@ const handler = new RouteHandler('TravelTime');
 
 /**
  * @swagger
+ * /travel-times/stats:
+ *   get:
+ *     summary: Get travel time statistics
+ *     tags: [TravelTime]
+ *     responses:
+ *       200:
+ *         description: Travel time statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 min:
+ *                   type: number
+ *                   description: Minimum travel time in minutes
+ *                 max:
+ *                   type: number
+ *                   description: Maximum travel time in minutes
+ *       500:
+ *         description: Server error
+ */
+router.get('/stats', async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        MIN(Duration) as min,
+        MAX(Duration) as max
+      FROM TravelTime
+      WHERE CreatedOn >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    `);
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      // If no recent data, return default values
+      return res.json({ min: 15, max: 45 });
+    }
+
+    const stats = rows[0] as { min: number; max: number };
+    res.json({
+      min: stats.min || 15,
+      max: stats.max || 45
+    });
+  } catch (error) {
+    console.error('Error fetching travel time statistics:', error);
+    res.status(500).json({ message: 'Error fetching travel time statistics' });
+  }
+});
+
+/**
+ * @swagger
  * /travel-times:
  *   get:
  *     summary: Retrieve all travel time records

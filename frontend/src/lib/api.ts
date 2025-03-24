@@ -100,6 +100,18 @@ export const endpoints = {
     generateExcel: (appointmentIds: number[]) => api.post('/exports/excel', { appointmentIds }, { responseType: 'blob' }),
     revertToInvoiced: (appointmentIds: number[]) => api.post('/appointments/revert-to-invoiced', { appointmentIds }),
   },
+  
+  // Travel Times
+  travelTimes: {
+    getAll: () => api.get('/travel-times'),
+    getById: (id: number) => api.get(`/travel-times/${id}`),
+    create: (data: any) => api.post('/travel-times', data),
+    update: (id: number, data: any) => api.put(`/travel-times/${id}`, data),
+    delete: (id: number) => api.delete(`/travel-times/${id}`),
+    updateHomeWork: (data: any) => api.post('/travel-times/update', data),
+    calculate: (data: any) => api.post('/travel-times/calculate', data),
+    getStats: () => api.get('/travel-times/stats'),
+  },
 };
 
 export default api; 

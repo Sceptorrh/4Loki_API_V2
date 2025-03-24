@@ -1,27 +1,29 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Add paths that don't require authentication
-const publicPaths = ['/login', '/api/auth/google/login', '/api/auth/google/callback', '/'];
+// List of paths that don't require backend check
+const PUBLIC_PATHS = ['/login', '/backend-status'];
 
 // This middleware runs on every request
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths
-  if (publicPaths.includes(pathname)) {
+  // Allow access to public paths
+  if (PUBLIC_PATHS.includes(pathname)) {
     return NextResponse.next();
   }
 
-  // Check for authentication cookie
-  const isAuthenticated = request.cookies.get('is_authenticated');
-
-  // If not authenticated and not on login page, redirect to login
-  if (!isAuthenticated && pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url));
+  try {
+    // Check backend health
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`);
+    if (!response.ok) {
+      throw new Error('Backend is not available');
+    }
+    return NextResponse.next();
+  } catch (error) {
+    // If backend is not available, redirect to backend status page
+    return NextResponse.redirect(new URL('/backend-status', request.url));
   }
-
-  return NextResponse.next();
 }
 
 // Configure which paths the middleware should run on
@@ -29,11 +31,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }; 
