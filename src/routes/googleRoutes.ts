@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
 import { calculateRoute, reverseGeocode, forwardGeocode, Coordinates } from '../services/google';
+import { GoogleAuthService } from '../services/google/auth';
 
 const router = Router();
+const googleAuth = GoogleAuthService.getInstance();
 
 /**
  * @swagger
@@ -339,6 +341,129 @@ router.post('/maps/forward-geocode', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error forward geocoding address:', error);
     res.status(500).json({ message: 'Server error geocoding address' });
+  }
+});
+
+/**
+ * @swagger
+ * /google/auth/login:
+ *   get:
+ *     summary: Get Google OAuth login URL
+ *     tags: [Google]
+ *     parameters:
+ *       - in: query
+ *         name: redirectUri
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The redirect URI after successful login
+ *     responses:
+ *       200:
+ *         description: Login URL generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 loginUrl:
+ *                   type: string
+ */
+router.get('/auth/login', (req, res) => {
+  try {
+    const { redirectUri } = req.query;
+    
+    if (!redirectUri || typeof redirectUri !== 'string') {
+      return res.status(400).json({ message: 'Redirect URI is required' });
+    }
+
+    const loginUrl = googleAuth.getLoginUrl(redirectUri);
+    res.json({ loginUrl });
+  } catch (error) {
+    console.error('Error generating login URL:', error);
+    res.status(500).json({ message: 'Failed to generate login URL' });
+  }
+});
+
+/**
+ * @swagger
+ * /google/auth/callback:
+ *   post:
+ *     summary: Handle Google OAuth callback
+ *     tags: [Google]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: The authorization code from Google
+ *               redirectUri:
+ *                 type: string
+ *                 description: The redirect URI used in the login request
+ *             required:
+ *               - code
+ *               - redirectUri
+ *     responses:
+ *       200:
+ *         description: Successfully authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userInfo:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     picture:
+ *                       type: string
+ */
+router.post('/auth/callback', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body;
+
+    if (!code || !redirectUri) {
+      return res.status(400).json({ message: 'Code and redirect URI are required' });
+    }
+
+    // Exchange code for access token
+    await googleAuth.getAccessToken(code, redirectUri);
+
+    // Get user information
+    const userInfo = await googleAuth.getUserInfo();
+
+    res.json({ userInfo });
+  } catch (error) {
+    console.error('Error in auth callback:', error);
+    res.status(500).json({ message: 'Authentication failed' });
+  }
+});
+
+/**
+ * @swagger
+ * /google/auth/logout:
+ *   post:
+ *     summary: Logout from Google
+ *     tags: [Google]
+ *     responses:
+ *       200:
+ *         description: Successfully logged out
+ */
+router.post('/auth/logout', (req, res) => {
+  try {
+    googleAuth.clearAccessToken();
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Error logging out:', error);
+    res.status(500).json({ message: 'Failed to logout' });
   }
 });
 

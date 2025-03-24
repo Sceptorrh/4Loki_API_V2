@@ -4,6 +4,8 @@ import path from 'path';
 // Interface for Google configuration
 interface GoogleConfig {
   ROUTES_API_KEY: string;
+  OAUTH_CLIENT_ID: string;
+  OAUTH_CLIENT_SECRET: string;
   [key: string]: string;
 }
 
@@ -26,6 +28,27 @@ export function loadSecrets(): GoogleConfig {
 export const googleConfig = {
   // Get the API key from configuration
   apiKey: loadSecrets().ROUTES_API_KEY,
+  
+  // OAuth configuration
+  auth: {
+    clientId: loadSecrets().OAUTH_CLIENT_ID,
+    clientSecret: loadSecrets().OAUTH_CLIENT_SECRET,
+    scopes: [
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'https://www.googleapis.com/auth/userinfo.email'
+    ]
+  },
+  
+  // FedCM configuration
+  fedcm: {
+    clientId: loadSecrets().OAUTH_CLIENT_ID,
+    // FedCM specific configuration
+    nonce: undefined, // Will be generated per request
+    context: 'signin',
+    // Additional FedCM parameters
+    select_account: true,
+    prompt: 'select_account'
+  },
   
   // Base URLs for different Google APIs
   maps: {

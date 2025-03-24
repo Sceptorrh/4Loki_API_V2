@@ -17,7 +17,11 @@ const readSettings = () => {
   try {
     if (!fs.existsSync(GOOGLE_CONFIG_FILE)) {
       console.error('Config file does not exist at:', GOOGLE_CONFIG_FILE);
-      return { ROUTES_API_KEY: '' };
+      return {
+        ROUTES_API_KEY: '',
+        OAUTH_CLIENT_ID: '',
+        OAUTH_CLIENT_SECRET: ''
+      };
     }
     const data = fs.readFileSync(GOOGLE_CONFIG_FILE, 'utf8');
     console.log('Read settings:', data);
@@ -26,7 +30,11 @@ const readSettings = () => {
     return parsed;
   } catch (error) {
     console.error('Error reading settings:', error);
-    return { ROUTES_API_KEY: '' };
+    return {
+      ROUTES_API_KEY: '',
+      OAUTH_CLIENT_ID: '',
+      OAUTH_CLIENT_SECRET: ''
+    };
   }
 };
 
@@ -46,7 +54,11 @@ export async function GET() {
   try {
     const settings = readSettings();
     console.log('GET response settings:', settings);
-    return NextResponse.json({ apiKey: settings.ROUTES_API_KEY || '' });
+    return NextResponse.json({
+      apiKey: settings.ROUTES_API_KEY || '',
+      oauthClientId: settings.OAUTH_CLIENT_ID || '',
+      oauthClientSecret: settings.OAUTH_CLIENT_SECRET || ''
+    });
   } catch (error) {
     console.error('GET error:', error);
     return NextResponse.json(
@@ -59,7 +71,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { apiKey } = body;
+    const { apiKey, oauthClientId, oauthClientSecret } = body;
     console.log('POST request body:', body);
 
     if (!apiKey) {
@@ -71,6 +83,8 @@ export async function POST(request: Request) {
 
     const settings = readSettings();
     settings.ROUTES_API_KEY = apiKey;
+    settings.OAUTH_CLIENT_ID = oauthClientId || '';
+    settings.OAUTH_CLIENT_SECRET = oauthClientSecret || '';
 
     const success = writeSettings(settings);
 
