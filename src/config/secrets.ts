@@ -12,19 +12,21 @@ interface Secrets {
 // Initialize secrets object
 const secrets: Secrets = {};
 
-// Try to load secrets from secrets file
-const secretsFilePath = path.join(process.cwd(), 'secrets.json');
+// Try to load secrets from configuration file
+const configDir = path.join(process.cwd(), 'configuration');
+const googleConfigPath = path.join(configDir, 'google.json');
+
 try {
-  if (fs.existsSync(secretsFilePath)) {
-    const secretsContent = fs.readFileSync(secretsFilePath, 'utf8');
-    const parsedSecrets = JSON.parse(secretsContent);
-    Object.assign(secrets, parsedSecrets);
-    logger.info('Loaded API keys from secrets.json');
+  if (fs.existsSync(googleConfigPath)) {
+    const configContent = fs.readFileSync(googleConfigPath, 'utf8');
+    const parsedConfig = JSON.parse(configContent);
+    Object.assign(secrets, parsedConfig);
+    logger.info('Loaded API keys from configuration/google.json');
   } else {
-    logger.info('No secrets.json file found, checking environment variables');
+    logger.info('No configuration/google.json file found, checking environment variables');
   }
 } catch (error) {
-  logger.error('Error reading secrets file:', error);
+  logger.error('Error reading configuration file:', error);
 }
 
 // If secrets aren't in the file, try environment variables
@@ -36,7 +38,7 @@ if (!secrets.ROUTES_API_KEY) {
     secrets.ROUTES_API_KEY = process.env.ROUTES_API_KEY;
     logger.info('Loaded API key from environment variable');
   } else {
-    logger.warn('No Routes API key found in secrets file or environment variables');
+    logger.warn('No Routes API key found in configuration file or environment variables');
   }
 }
 

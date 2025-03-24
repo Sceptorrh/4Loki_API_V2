@@ -7,10 +7,11 @@ import LocationMap from '@/components/LocationMap';
 
 interface TravelTime {
   id: number;
-  isHomeToWork: boolean;
-  duration: number; // now in minutes
-  distance: number; // now in kilometers
-  createdOn: string;
+  userId: number;
+  direction: 'home_to_work' | 'work_to_home';
+  duration: number;
+  distance: number;
+  calculatedAt: string;
 }
 
 export default function NavigationSettings() {
@@ -28,6 +29,11 @@ export default function NavigationSettings() {
   const [isEditing, setIsEditing] = useState(false);
   const [settingsExist, setSettingsExist] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof TravelTime;
+    direction: 'asc' | 'desc';
+  }>({ key: 'calculatedAt', direction: 'desc' });
+  const [directionFilter, setDirectionFilter] = useState<'all' | 'home_to_work' | 'work_to_home'>('all');
 
   useEffect(() => {
     loadExistingSettings();
@@ -126,26 +132,26 @@ export default function NavigationSettings() {
 
   const loadTravelTimes = async () => {
     try {
-      const response = await fetch('/api/travel-times');
-      
+      const response = await fetch('/api/v1/travel-times');
       if (!response.ok) {
-        throw new Error(`Failed to load travel times: ${response.status}`);
+        throw new Error('Failed to fetch travel times');
       }
-
       const data = await response.json();
-      console.log('Travel times data:', data);
       
-      // Ensure all travel times have valid distance and duration
-      const validatedData = data.map((item: any) => ({
-        ...item,
-        distance: item.distance !== undefined && item.distance !== null ? Number(item.distance) : 0,
-        duration: item.duration !== undefined && item.duration !== null ? Number(item.duration) : 0
+      // Transform the data to match our TravelTime interface
+      const transformedData = data.map((item: any) => ({
+        id: item.Id,
+        userId: 1, // Since we don't have this in the API response, using a default value
+        direction: item.IsHomeToWork === 1 ? 'home_to_work' : 'work_to_home',
+        duration: item.Duration,
+        distance: item.Distance,
+        calculatedAt: item.CreatedOn
       }));
       
-      setTravelTimes(validatedData);
+      setTravelTimes(transformedData);
     } catch (error) {
-      console.error('Error loading travel times:', error);
-      setTravelTimesError('Failed to load travel times');
+      console.error('Error fetching travel times:', error);
+      setError('Failed to load travel times');
     }
   };
 
@@ -317,6 +323,44 @@ export default function NavigationSettings() {
     }
   };
 
+  // Add sorting function
+  const sortTravelTimes = (travelTimes: TravelTime[]) => {
+    return [...travelTimes].sort((a, b) => {
+      if (sortConfig.key === 'calculatedAt') {
+        return sortConfig.direction === 'asc' 
+          ? new Date(a.calculatedAt).getTime() - new Date(b.calculatedAt).getTime()
+          : new Date(b.calculatedAt).getTime() - new Date(a.calculatedAt).getTime();
+      }
+      if (sortConfig.key === 'direction') {
+        return sortConfig.direction === 'asc'
+          ? a.direction.localeCompare(b.direction)
+          : b.direction.localeCompare(a.direction);
+      }
+      // For duration and distance, we know they are numbers
+      const aValue = a[sortConfig.key] as number;
+      const bValue = b[sortConfig.key] as number;
+      return sortConfig.direction === 'asc'
+        ? aValue - bValue
+        : bValue - aValue;
+    });
+  };
+
+  // Add sort handler
+  const handleSort = (key: keyof TravelTime) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  // Filter travel times based on direction
+  const filteredTravelTimes = travelTimes.filter(time => 
+    directionFilter === 'all' || time.direction === directionFilter
+  );
+
+  // Sort the filtered travel times
+  const sortedTravelTimes = sortTravelTimes(filteredTravelTimes);
+
   if (loading) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -444,6 +488,22 @@ export default function NavigationSettings() {
           </div>
         )}
 
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Travel Times</h2>
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-gray-700">Direction:</label>
+            <select
+              value={directionFilter}
+              onChange={(e) => setDirectionFilter(e.target.value as typeof directionFilter)}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            >
+              <option value="all">All</option>
+              <option value="home_to_work">Home → Work</option>
+              <option value="work_to_home">Work → Home</option>
+            </select>
+          </div>
+        </div>
+
         {travelTimes.length === 0 ? (
           <p className="text-gray-500 italic">No travel times available. Click "Update Travel Times" to calculate.</p>
         ) : (
@@ -451,26 +511,62 @@ export default function NavigationSettings() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direction</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Distance</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calculated At</th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('direction')}
+                  >
+                    Direction
+                    {sortConfig.key === 'direction' && (
+                      <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('duration')}
+                  >
+                    Duration
+                    {sortConfig.key === 'duration' && (
+                      <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('distance')}
+                  >
+                    Distance
+                    {sortConfig.key === 'distance' && (
+                      <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('calculatedAt')}
+                  >
+                    Calculated At
+                    {sortConfig.key === 'calculatedAt' && (
+                      <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {travelTimes.map((travelTime) => (
-                  <tr key={travelTime.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {travelTime.isHomeToWork ? 'Home → Work' : 'Work → Home'}
+                {sortedTravelTimes.map((time) => (
+                  <tr key={time.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {time.direction === 'home_to_work' ? 'Home → Work' : 'Work → Home'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {formatDuration(travelTime.duration)}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {time.duration} minutes
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {formatDistance(travelTime.distance)}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {time.distance} km
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {formatDate(travelTime.createdOn)}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(time.calculatedAt).toLocaleString()}
                     </td>
                   </tr>
                 ))}

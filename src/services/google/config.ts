@@ -1,30 +1,30 @@
 import fs from 'fs';
 import path from 'path';
 
-// Interface for secrets.json structure
-interface Secrets {
+// Interface for Google configuration
+interface GoogleConfig {
   ROUTES_API_KEY: string;
   [key: string]: string;
 }
 
 /**
- * Load API keys and other configuration from secrets.json
+ * Load API keys and other configuration from configuration/google.json
  */
-export function loadSecrets(): Secrets {
+export function loadSecrets(): GoogleConfig {
   try {
     // Path is relative to the project root
-    const secretsPath = path.join(process.cwd(), 'secrets.json');
-    const secretsContent = fs.readFileSync(secretsPath, 'utf8');
-    return JSON.parse(secretsContent) as Secrets;
+    const configPath = path.join(process.cwd(), 'configuration', 'google.json');
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    return JSON.parse(configContent) as GoogleConfig;
   } catch (error) {
-    console.error('Failed to load secrets.json:', error);
-    throw new Error('Failed to load Google API configuration. Please ensure secrets.json exists and is valid.');
+    console.error('Failed to load Google configuration:', error);
+    throw new Error('Failed to load Google API configuration. Please ensure configuration/google.json exists and is valid.');
   }
 }
 
 // Configuration for Google services
 export const googleConfig = {
-  // Get the API key from secrets.json
+  // Get the API key from configuration
   apiKey: loadSecrets().ROUTES_API_KEY,
   
   // Base URLs for different Google APIs

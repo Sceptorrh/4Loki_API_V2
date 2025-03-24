@@ -162,7 +162,7 @@ router.get('/api-key', async (req, res) => {
     
     if (!apiKey) {
       return res.status(404).json({ 
-        message: 'No API key configured. Please add ROUTES_API_KEY to secrets.json'
+        message: 'No API key configured. Please add ROUTES_API_KEY to configuration/google.json'
       });
     }
     

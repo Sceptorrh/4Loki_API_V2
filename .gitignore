@@ -18,6 +18,10 @@ frontend/.next/
 .env.*.local
 secrets.json
 
+# Configuration
+/configuration/
+/configuration/*.json
+
 # Logs
 logs/
 *.log
