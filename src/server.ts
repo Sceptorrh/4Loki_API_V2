@@ -22,6 +22,7 @@ import dropdownRoutes from './routes/dropdownRoutes';
 import staticRoutes from './routes/staticRoutes';
 import exportRoutes from './routes/exportRoutes';
 import reportsRoutes from './routes/reports';
+import googleRoutes from './routes/googleRoutes';
 import { NextFunction, Request, Response } from 'express';
 import { Server } from 'http';
 import { convertDatesToUTC, convertDatesInResponse } from './middleware/dateHandler';
@@ -206,6 +207,7 @@ app.use('/api/v1/dropdowns', dropdownRoutes);
 app.use('/api/v1/static', staticRoutes);
 app.use('/api/v1/exports', exportRoutes);
 app.use('/api/v1/reports', reportsRoutes);
+app.use('/api/v1/google', googleRoutes);
 
 // Error handling
 app.use(notFoundHandler);

@@ -39,6 +39,14 @@ const swaggerOptions = {
       {
         name: 'Services',
         description: 'Service management endpoints'
+      },
+      {
+        name: 'TravelTime',
+        description: 'Travel time tracking endpoints'
+      },
+      {
+        name: 'Google',
+        description: 'Google API integration endpoints'
       }
     ],
     components: {

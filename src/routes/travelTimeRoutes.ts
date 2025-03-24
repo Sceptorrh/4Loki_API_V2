@@ -2,9 +2,9 @@ import { Router } from 'express';
 import { RouteHandler } from '../utils/routeHandler';
 import { TravelTime } from '../types';
 import pool from '../config/database';
-import axios from 'axios';
 import { Request, Response } from 'express';
 import { RowDataPacket } from 'mysql2';
+import { calculateRoute, Coordinates } from '../services/google';
 
 const router = Router();
 const handler = new RouteHandler('TravelTime');
@@ -101,60 +101,89 @@ router.post('/update', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Home and work coordinates are required' });
     }
 
-    // Create objects for OSRM format
-    const homeCoords = {
+    // Create objects for Google Maps format
+    const homeCoords: Coordinates = {
       lat: homeLocation.lat,
-      lon: homeLocation.lng
+      lng: homeLocation.lng
     };
     
-    const workCoords = {
+    const workCoords: Coordinates = {
       lat: workLocation.lat,
-      lon: workLocation.lng
+      lng: workLocation.lng
     };
     
-    // Calculate route for home to work
-    const homeToWorkRoute = await calculateRoute(homeCoords, workCoords);
-    // Calculate route for work to home
-    const workToHomeRoute = await calculateRoute(workCoords, homeCoords);
-    
-    if (!homeToWorkRoute || !workToHomeRoute) {
-      return res.status(500).json({ message: 'Failed to calculate one or both routes' });
-    }
-    
-    // Convert duration to minutes and distance to kilometers
-    const homeToWorkDurationMinutes = Math.round(homeToWorkRoute.duration / 60);
-    const homeToWorkDistanceKm = Math.round(homeToWorkRoute.distance / 1000 * 10) / 10; // Round to 1 decimal
-    
-    const workToHomeDurationMinutes = Math.round(workToHomeRoute.duration / 60);
-    const workToHomeDistanceKm = Math.round(workToHomeRoute.distance / 1000 * 10) / 10; // Round to 1 decimal
-    
-    // Insert both travel times into database
-    const homeToWorkResult = await pool.query(
-      'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES (?, ?, ?, NOW())',
-      [true, homeToWorkDurationMinutes, homeToWorkDistanceKm]
-    );
-    
-    const workToHomeResult = await pool.query(
-      'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES (?, ?, ?, NOW())',
-      [false, workToHomeDurationMinutes, workToHomeDistanceKm]
-    );
-    
-    // Return success response
-    res.status(201).json({
-      message: 'Travel times updated successfully',
-      homeToWork: {
-        duration: homeToWorkDurationMinutes, // now in minutes
-        distance: homeToWorkDistanceKm // now in km
-      },
-      workToHome: {
-        duration: workToHomeDurationMinutes, // now in minutes
-        distance: workToHomeDistanceKm // now in km
+    try {
+      // Calculate route for home to work using Google Maps
+      const homeToWorkRoute = await calculateRoute(homeCoords, workCoords);
+      // Calculate route for work to home using Google Maps
+      const workToHomeRoute = await calculateRoute(workCoords, homeCoords);
+      
+      if (!homeToWorkRoute || !workToHomeRoute) {
+        return res.status(500).json({ 
+          message: 'Failed to calculate one or both routes. Check if the Google Maps API key is properly configured and has access to the Routes API.' 
+        });
       }
-    });
-    
-  } catch (error) {
+      
+      // Convert duration to minutes and distance to kilometers
+      const homeToWorkDurationMinutes = Math.round(homeToWorkRoute.duration / 60);
+      const homeToWorkDistanceKm = Math.round(homeToWorkRoute.distance / 1000 * 10) / 10; // Round to 1 decimal
+      
+      const workToHomeDurationMinutes = Math.round(workToHomeRoute.duration / 60);
+      const workToHomeDistanceKm = Math.round(workToHomeRoute.distance / 1000 * 10) / 10; // Round to 1 decimal
+      
+      // Insert both travel times into database
+      const homeToWorkResult = await pool.query(
+        'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES (?, ?, ?, NOW())',
+        [true, homeToWorkDurationMinutes, homeToWorkDistanceKm]
+      );
+      
+      const workToHomeResult = await pool.query(
+        'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES (?, ?, ?, NOW())',
+        [false, workToHomeDurationMinutes, workToHomeDistanceKm]
+      );
+      
+      // Return success response
+      res.status(201).json({
+        message: 'Travel times updated successfully',
+        homeToWork: {
+          duration: homeToWorkDurationMinutes, // now in minutes
+          distance: homeToWorkDistanceKm, // now in km
+          originAddress: homeToWorkRoute.originAddress,
+          destinationAddress: homeToWorkRoute.destinationAddress
+        },
+        workToHome: {
+          duration: workToHomeDurationMinutes, // now in minutes
+          distance: workToHomeDistanceKm, // now in km
+          originAddress: workToHomeRoute.originAddress,
+          destinationAddress: workToHomeRoute.destinationAddress
+        }
+      });
+    } catch (routeError: any) {
+      console.error('Error calculating routes:', routeError);
+      
+      // Check for specific Google Maps API errors
+      if (routeError.message && routeError.message.includes('Google Maps API')) {
+        return res.status(503).json({ 
+          message: routeError.message,
+          googleApiError: true
+        });
+      } else if (routeError.message && routeError.message.includes('not authorized')) {
+        return res.status(403).json({ 
+          message: 'The Google Maps API key is not authorized to use the Routes API. Please enable it in the Google Cloud Console.',
+          googleApiError: true
+        });
+      }
+      
+      return res.status(500).json({ 
+        message: 'Error calculating routes with Google Maps API', 
+        error: routeError.message
+      });
+    }
+  } catch (error: any) {
     console.error('Error updating travel times:', error);
-    res.status(500).json({ message: 'Server error updating travel times' });
+    res.status(500).json({ 
+      message: `Server error updating travel times: ${error.message || 'Unknown error'}`
+    });
   }
 });
 
@@ -171,12 +200,20 @@ router.post('/update', async (req: Request, res: Response) => {
  *           schema:
  *             type: object
  *             properties:
- *               originAddress:
- *                 type: string
- *                 description: Starting point address
- *               destinationAddress:
- *                 type: string
- *                 description: Destination address
+ *               originCoords:
+ *                 type: object
+ *                 properties:
+ *                   lat:
+ *                     type: number
+ *                   lng:
+ *                     type: number
+ *               destinationCoords:
+ *                 type: object
+ *                 properties:
+ *                   lat:
+ *                     type: number
+ *                   lng:
+ *                     type: number
  *               isHomeToWork:
  *                 type: boolean
  *                 description: Whether this is a home to work travel time
@@ -194,13 +231,16 @@ router.post('/calculate', async (req: Request, res: Response) => {
     
     // Validate input
     if (!originCoords || !destinationCoords ||
-        !originCoords.lat || !originCoords.lon ||
-        !destinationCoords.lat || !destinationCoords.lon) {
+        !originCoords.lat || !originCoords.lng ||
+        !destinationCoords.lat || !destinationCoords.lng) {
       return res.status(400).json({ message: 'Origin and destination coordinates are required' });
     }
 
-    // Calculate route using OSRM
-    const routeData = await calculateRoute(originCoords, destinationCoords);
+    // Calculate route using Google Maps
+    const routeData = await calculateRoute(
+      originCoords as Coordinates,
+      destinationCoords as Coordinates
+    );
     
     if (!routeData) {
       return res.status(500).json({ message: 'Failed to calculate route' });
@@ -228,7 +268,9 @@ router.post('/calculate', async (req: Request, res: Response) => {
       travelTime: newRecord[0],
       route: {
         duration: durationInMinutes, // now in minutes
-        distance: distanceInKm // now in km
+        distance: distanceInKm, // now in km
+        originAddress: routeData.originAddress,
+        destinationAddress: routeData.destinationAddress
       }
     });
     
@@ -443,62 +485,5 @@ router.put('/:id', handler.update.bind(handler));
  *         description: Server error
  */
 router.delete('/:id', handler.delete.bind(handler));
-
-// Helper functions for geocoding and route calculation
-async function geocodeAddress(address: string) {
-  try {
-    const response = await axios.get('https://nominatim.openstreetmap.org/search', {
-      params: {
-        q: address,
-        format: 'json',
-        limit: 1
-      },
-      headers: {
-        'User-Agent': '4Loki_API_V2'
-      }
-    });
-    
-    if (response.data && response.data.length > 0) {
-      const result = response.data[0];
-      return {
-        lat: parseFloat(result.lat),
-        lon: parseFloat(result.lon)
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('Geocoding error:', error);
-    return null;
-  }
-}
-
-async function calculateRoute(origin: {lat: number, lon: number}, destination: {lat: number, lon: number}) {
-  try {
-    // Using OSRM (Open Source Routing Machine) demo server
-    // For production, consider setting up your own OSRM server or using a commercial service
-    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
-    
-    const response = await axios.get(url, {
-      params: {
-        overview: 'false',
-        alternatives: 'false',
-        steps: 'false'
-      }
-    });
-    
-    if (response.data && 
-        response.data.routes && 
-        response.data.routes.length > 0) {
-      return {
-        duration: response.data.routes[0].duration,
-        distance: response.data.routes[0].distance
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('Routing calculation error:', error);
-    return null;
-  }
-}
 
 export default router; 

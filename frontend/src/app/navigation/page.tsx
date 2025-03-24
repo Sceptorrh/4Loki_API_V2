@@ -27,6 +27,7 @@ export default function NavigationSettings() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [settingsExist, setSettingsExist] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadExistingSettings();
@@ -190,43 +191,48 @@ export default function NavigationSettings() {
 
   const updateTravelTimes = async () => {
     if (!homeLocation || !workLocation) {
-      setTravelTimesError('Both home and work locations must be set');
+      setError("Please set both home and work locations first.");
       return;
     }
 
-    setIsUpdatingTravelTimes(true);
-    setTravelTimesError(null);
-    setSuccessMessage(null);
+    setLoading(true);
+    setError(null);
 
     try {
-      const response = await fetch('/api/travel-times/update', {
+      const response = await fetch('/api/v1/travel-times/update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           homeLocation,
-          workLocation
+          workLocation,
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Failed to update travel times: ${response.status}`);
+        // Check for specific Google Maps API errors
+        if (data.message && data.message.includes('Google Maps API')) {
+          setError(`Google Maps API Error: ${data.message}. This could be due to API key issues or rate limiting.`);
+        } else if (data.message && data.message.includes('authorized to use this API')) {
+          setError('The Google Maps API key needs to be enabled for the Routes API in Google Cloud Console.');
+        } else {
+          setError(data.message || 'Failed to update travel times');
+        }
+        return;
       }
 
-      // Reload travel times
-      await loadTravelTimes();
       setSuccessMessage('Travel times updated successfully!');
-      
-      // Hide success message after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 3000);
-    } catch (error) {
-      console.error('Error updating travel times:', error);
-      setTravelTimesError('Failed to update travel times. Please try again.');
+      setSettingsExist(true);
+      setIsEditing(false); // Hide edit form after successful update
+    } catch (err) {
+      console.error('Error updating travel times:', err);
+      setError('Failed to update travel times. Please try again later.');
     } finally {
       setIsUpdatingTravelTimes(false);
+      setLoading(false);
     }
   };
 
@@ -422,9 +428,9 @@ export default function NavigationSettings() {
           </button>
         </div>
         
-        {travelTimesError && (
+        {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {travelTimesError}
+            {error}
           </div>
         )}
 

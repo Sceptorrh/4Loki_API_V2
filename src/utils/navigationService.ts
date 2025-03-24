@@ -1,12 +1,11 @@
-import axios from 'axios';
 import pool from '../config/database';
 import { NavigationSettings, TravelTime } from '../types';
 import { RowDataPacket } from 'mysql2';
-import secrets from '../config/secrets';
 import { logger } from './logger';
+import { calculateRoute as googleCalculateRoute, Coordinates } from '../services/google';
 
 /**
- * Fetches travel times from navigation API and saves to database
+ * Fetches travel times from Google Maps API and saves to database
  */
 export const fetchAndSaveTravelTimes = async (): Promise<void> => {
   try {
@@ -27,87 +26,52 @@ export const fetchAndSaveTravelTimes = async (): Promise<void> => {
       return;
     }
     
-    // Create coordinate objects
-    const homeCoords = {
+    // Create coordinate objects for Google Maps
+    const homeCoords: Coordinates = {
       lat: parseFloat(settings.HomeLatitude),
-      lon: parseFloat(settings.HomeLongitude)
+      lng: parseFloat(settings.HomeLongitude)
     };
     
-    const workCoords = {
+    const workCoords: Coordinates = {
       lat: parseFloat(settings.WorkLatitude),
-      lon: parseFloat(settings.WorkLongitude)
+      lng: parseFloat(settings.WorkLongitude)
     };
     
-    // Calculate route for home to work using OSRM
-    const homeToWorkRoute = await calculateRoute(homeCoords, workCoords);
+    // Calculate route for home to work using Google Maps API
+    const homeToWorkRoute = await googleCalculateRoute(homeCoords, workCoords);
     
     // Calculate route for work to home
-    const workToHomeRoute = await calculateRoute(workCoords, homeCoords);
+    const workToHomeRoute = await googleCalculateRoute(workCoords, homeCoords);
     
     // Save to database
     if (homeToWorkRoute) {
+      // Convert duration to minutes and distance to kilometers
+      const durationMinutes = Math.round(homeToWorkRoute.duration / 60);
+      const distanceKm = Math.round(homeToWorkRoute.distance / 1000 * 10) / 10;
+      
       await pool.query(
         'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance) VALUES (?, ?, ?)',
-        [true, homeToWorkRoute.duration, homeToWorkRoute.distance]
+        [true, durationMinutes, distanceKm]
       );
+      
+      logger.info(`Home to work route: ${durationMinutes} minutes, ${distanceKm} km`);
     }
     
     if (workToHomeRoute) {
+      // Convert duration to minutes and distance to kilometers
+      const durationMinutes = Math.round(workToHomeRoute.duration / 60);
+      const distanceKm = Math.round(workToHomeRoute.distance / 1000 * 10) / 10;
+      
       await pool.query(
         'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance) VALUES (?, ?, ?)',
-        [false, workToHomeRoute.duration, workToHomeRoute.distance]
+        [false, durationMinutes, distanceKm]
       );
+      
+      logger.info(`Work to home route: ${durationMinutes} minutes, ${distanceKm} km`);
     }
     
     logger.info('Travel times updated successfully');
   } catch (error) {
     logger.error('Error updating travel times:', error);
-  }
-};
-
-/**
- * Calculate route using OSRM (Open Source Routing Machine)
- */
-const calculateRoute = async (
-  origin: { lat: number; lon: number },
-  destination: { lat: number; lon: number }
-): Promise<{ duration: number; distance: number } | null> => {
-  try {
-    // For development, return some mock data
-    if (process.env.NODE_ENV === 'development') {
-      logger.info('Using mock data for travel time calculation');
-      return {
-        duration: Math.floor(Math.random() * 3600) + 900, // 15-75 minutes in seconds
-        distance: (Math.floor(Math.random() * 50) + 5) * 1000, // 5-55 km in meters
-      };
-    }
-    
-    logger.debug(`Calculating route from [${origin.lat},${origin.lon}] to [${destination.lat},${destination.lon}]`);
-    
-    // Using OSRM (Open Source Routing Machine) demo server
-    // For production, consider setting up your own OSRM server or using a commercial service
-    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
-    
-    const response = await axios.get(url, {
-      params: {
-        overview: 'false',
-        alternatives: 'false',
-        steps: 'false'
-      }
-    });
-    
-    if (response.data && 
-        response.data.routes && 
-        response.data.routes.length > 0) {
-      return {
-        duration: response.data.routes[0].duration,
-        distance: response.data.routes[0].distance
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    logger.error('Error calculating route:', error);
-    return null;
   }
 }; 

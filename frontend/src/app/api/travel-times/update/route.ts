@@ -18,15 +18,25 @@ export async function POST(request: Request) {
       body: JSON.stringify(body),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
       console.error(`Travel times update failed with status: ${response.status}`);
+      console.error('Error details:', data);
+      
+      // Pass through the detailed error message if available
+      const errorMessage = data.message || `Failed to update travel times: ${response.status}`;
+      
       return NextResponse.json(
-        { message: `Failed to update travel times: ${response.status}` },
+        { 
+          message: errorMessage,
+          googleApiError: data.googleApiError || false,
+          details: data.error || null 
+        },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error(`Error updating travel times:`, error);

@@ -245,4 +245,35 @@ This order is defined in `tests/customSequencer.js` and can be modified by updat
 
 ### Test Database
 
-The test database is initialized only once before all tests run, using the global setup in `tests/globalSetup.ts`. This prevents the database from being initialized multiple times when running tests sequentially. 
+The test database is initialized only once before all tests run, using the global setup in `tests/globalSetup.ts`. This prevents the database from being initialized multiple times when running tests sequentially.
+
+## Google Maps API Setup
+
+This application uses the Google Maps Routes API for route calculation and travel time estimation. To use this feature, you need to:
+
+1. Obtain a Google Maps API key from the [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable the following APIs in your Google Cloud project:
+   - Routes API (for calculating travel times and distances)
+   - Geocoding API (for address lookups)
+   - Maps JavaScript API (for the map display)
+3. Create a `secrets.json` file in the project root with the following format:
+   ```json
+   {
+     "ROUTES_API_KEY": "YOUR_API_KEY_HERE"
+   }
+   ```
+
+For detailed instructions on setting up the Google Maps API, see the [GOOGLE_MAPS_SETUP.md](./GOOGLE_MAPS_SETUP.md) guide.
+
+### Common Issues
+
+If you see the error "REQUEST_DENIED" or "This API project is not authorized to use this API", it means:
+1. The API key is invalid, or
+2. The required API (Routes API) is not enabled for your project, or
+3. The billing account is not set up for your Google Cloud project
+
+Refer to the setup guide for detailed troubleshooting steps.
+
+### Note on API Migration
+
+As of March 1, 2025, the Distance Matrix API and Directions API will be deprecated in favor of the Routes API. This application uses the newer Routes API to ensure future compatibility. 
