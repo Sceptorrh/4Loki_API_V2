@@ -20,46 +20,42 @@ export const fetchAndSaveTravelTimes = async (): Promise<void> => {
     
     const settings = settingsRows[0] as NavigationSettings;
     
-    // Check if addresses are set
-    if (!settings.HomeAddress || !settings.WorkAddress) {
-      logger.info('Home or work address not set. Skipping travel time update.');
+    // Check if coordinates are set
+    if (!settings.HomeLatitude || !settings.HomeLongitude || 
+        !settings.WorkLatitude || !settings.WorkLongitude) {
+      logger.info('Home or work coordinates not set. Skipping travel time update.');
       return;
     }
     
-    // Get API key from secrets instead of database
-    const apiKey = secrets.ROUTES_API_KEY || settings.ApiKey;
+    // Create coordinate objects
+    const homeCoords = {
+      lat: parseFloat(settings.HomeLatitude),
+      lon: parseFloat(settings.HomeLongitude)
+    };
     
-    if (!apiKey) {
-      logger.warn('No API key found in secrets or database. Skipping travel time update.');
-      return;
-    }
+    const workCoords = {
+      lat: parseFloat(settings.WorkLatitude),
+      lon: parseFloat(settings.WorkLongitude)
+    };
     
-    // Make API calls to get travel times (home to work)
-    const homeToWorkData = await fetchTravelTime(
-      settings.HomeAddress,
-      settings.WorkAddress,
-      apiKey
-    );
+    // Calculate route for home to work using OSRM
+    const homeToWorkRoute = await calculateRoute(homeCoords, workCoords);
     
-    // Make API calls to get travel times (work to home)
-    const workToHomeData = await fetchTravelTime(
-      settings.WorkAddress,
-      settings.HomeAddress,
-      apiKey
-    );
+    // Calculate route for work to home
+    const workToHomeRoute = await calculateRoute(workCoords, homeCoords);
     
     // Save to database
-    if (homeToWorkData) {
+    if (homeToWorkRoute) {
       await pool.query(
         'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance) VALUES (?, ?, ?)',
-        [true, homeToWorkData.duration, homeToWorkData.distance]
+        [true, homeToWorkRoute.duration, homeToWorkRoute.distance]
       );
     }
     
-    if (workToHomeData) {
+    if (workToHomeRoute) {
       await pool.query(
         'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance) VALUES (?, ?, ?)',
-        [false, workToHomeData.duration, workToHomeData.distance]
+        [false, workToHomeRoute.duration, workToHomeRoute.distance]
       );
     }
     
@@ -70,17 +66,15 @@ export const fetchAndSaveTravelTimes = async (): Promise<void> => {
 };
 
 /**
- * Fetch travel time using Google Routes API
- * Documentation: https://developers.google.com/maps/documentation/routes
+ * Calculate route using OSRM (Open Source Routing Machine)
  */
-const fetchTravelTime = async (
-  origin: string,
-  destination: string,
-  apiKey?: string
+const calculateRoute = async (
+  origin: { lat: number; lon: number },
+  destination: { lat: number; lon: number }
 ): Promise<{ duration: number; distance: number } | null> => {
   try {
-    // For development, return some mock data if no API key or env is development
-    if (!apiKey || process.env.NODE_ENV === 'development') {
+    // For development, return some mock data
+    if (process.env.NODE_ENV === 'development') {
       logger.info('Using mock data for travel time calculation');
       return {
         duration: Math.floor(Math.random() * 3600) + 900, // 15-75 minutes in seconds
@@ -88,49 +82,32 @@ const fetchTravelTime = async (
       };
     }
     
-    logger.debug(`Fetching travel time from ${origin} to ${destination}`);
+    logger.debug(`Calculating route from [${origin.lat},${origin.lon}] to [${destination.lat},${destination.lon}]`);
     
-    // Google Routes API request
-    const response = await axios.post(
-      `https://routes.googleapis.com/directions/v2:computeRoutes`,
-      {
-        origin: {
-          address: origin
-        },
-        destination: {
-          address: destination
-        },
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_AWARE",
-        computeAlternativeRoutes: false,
-        routeModifiers: {
-          avoidTolls: false,
-          avoidHighways: false,
-          avoidFerries: false
-        },
-        languageCode: "en-US",
-        units: "METRIC"
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': apiKey,
-          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.travelAdvisory'
-        }
+    // Using OSRM (Open Source Routing Machine) demo server
+    // For production, consider setting up your own OSRM server or using a commercial service
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
+    
+    const response = await axios.get(url, {
+      params: {
+        overview: 'false',
+        alternatives: 'false',
+        steps: 'false'
       }
-    );
+    });
     
-    if (response.data && response.data.routes && response.data.routes.length > 0) {
-      const route = response.data.routes[0];
+    if (response.data && 
+        response.data.routes && 
+        response.data.routes.length > 0) {
       return {
-        duration: parseInt(route.duration.replace('s', ''), 10), // Remove 's' from duration string (e.g., '300s' -> 300)
-        distance: route.distanceMeters,
+        duration: response.data.routes[0].duration,
+        distance: response.data.routes[0].distance
       };
     }
     
     return null;
   } catch (error) {
-    logger.error('Error fetching travel time from Routes API:', error);
+    logger.error('Error calculating route:', error);
     return null;
   }
 }; 

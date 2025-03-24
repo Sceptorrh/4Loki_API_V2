@@ -11,7 +11,7 @@ const handler = new RouteHandler('TravelTime');
 
 /**
  * @swagger
- * /api/travel-times:
+ * /travel-times:
  *   get:
  *     summary: Retrieve all travel time records
  *     tags: [TravelTime]
@@ -31,34 +31,7 @@ router.get('/', handler.getAll.bind(handler));
 
 /**
  * @swagger
- * /api/travel-times/{id}:
- *   get:
- *     summary: Get a travel time record by ID
- *     tags: [TravelTime]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The travel time record ID
- *     responses:
- *       200:
- *         description: Travel time record found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/TravelTime'
- *       404:
- *         description: Travel time record not found
- *       500:
- *         description: Server error
- */
-router.get('/:id', handler.getById.bind(handler));
-
-/**
- * @swagger
- * /api/travel-times:
+ * /travel-times:
  *   post:
  *     summary: Create a new travel time record
  *     tags: [TravelTime]
@@ -84,65 +57,110 @@ router.post('/', handler.create.bind(handler));
 
 /**
  * @swagger
- * /api/travel-times/{id}:
- *   put:
- *     summary: Update a travel time record
+ * /travel-times/update:
+ *   post:
+ *     summary: Calculate and store travel times between home and work locations using coordinates
  *     tags: [TravelTime]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The travel time record ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/TravelTimeInput'
+ *             type: object
+ *             properties:
+ *               homeLocation:
+ *                 type: object
+ *                 properties:
+ *                   lat:
+ *                     type: number
+ *                   lng:
+ *                     type: number
+ *               workLocation:
+ *                 type: object
+ *                 properties:
+ *                   lat:
+ *                     type: number
+ *                   lng:
+ *                     type: number
  *     responses:
- *       200:
- *         description: Travel time record updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/TravelTime'
+ *       201:
+ *         description: Travel times calculated and stored successfully
  *       400:
  *         description: Invalid input data
- *       404:
- *         description: Travel time record not found
  *       500:
  *         description: Server error
  */
-router.put('/:id', handler.update.bind(handler));
+router.post('/update', async (req: Request, res: Response) => {
+  try {
+    const { homeLocation, workLocation } = req.body;
+    
+    // Validate input
+    if (!homeLocation || !workLocation || 
+        !homeLocation.lat || !homeLocation.lng ||
+        !workLocation.lat || !workLocation.lng) {
+      return res.status(400).json({ message: 'Home and work coordinates are required' });
+    }
+
+    // Create objects for OSRM format
+    const homeCoords = {
+      lat: homeLocation.lat,
+      lon: homeLocation.lng
+    };
+    
+    const workCoords = {
+      lat: workLocation.lat,
+      lon: workLocation.lng
+    };
+    
+    // Calculate route for home to work
+    const homeToWorkRoute = await calculateRoute(homeCoords, workCoords);
+    // Calculate route for work to home
+    const workToHomeRoute = await calculateRoute(workCoords, homeCoords);
+    
+    if (!homeToWorkRoute || !workToHomeRoute) {
+      return res.status(500).json({ message: 'Failed to calculate one or both routes' });
+    }
+    
+    // Convert duration to minutes and distance to kilometers
+    const homeToWorkDurationMinutes = Math.round(homeToWorkRoute.duration / 60);
+    const homeToWorkDistanceKm = Math.round(homeToWorkRoute.distance / 1000 * 10) / 10; // Round to 1 decimal
+    
+    const workToHomeDurationMinutes = Math.round(workToHomeRoute.duration / 60);
+    const workToHomeDistanceKm = Math.round(workToHomeRoute.distance / 1000 * 10) / 10; // Round to 1 decimal
+    
+    // Insert both travel times into database
+    const homeToWorkResult = await pool.query(
+      'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES (?, ?, ?, NOW())',
+      [true, homeToWorkDurationMinutes, homeToWorkDistanceKm]
+    );
+    
+    const workToHomeResult = await pool.query(
+      'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES (?, ?, ?, NOW())',
+      [false, workToHomeDurationMinutes, workToHomeDistanceKm]
+    );
+    
+    // Return success response
+    res.status(201).json({
+      message: 'Travel times updated successfully',
+      homeToWork: {
+        duration: homeToWorkDurationMinutes, // now in minutes
+        distance: homeToWorkDistanceKm // now in km
+      },
+      workToHome: {
+        duration: workToHomeDurationMinutes, // now in minutes
+        distance: workToHomeDistanceKm // now in km
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error updating travel times:', error);
+    res.status(500).json({ message: 'Server error updating travel times' });
+  }
+});
 
 /**
  * @swagger
- * /api/travel-times/{id}:
- *   delete:
- *     summary: Delete a travel time record
- *     tags: [TravelTime]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: The travel time record ID
- *     responses:
- *       200:
- *         description: Travel time record deleted successfully
- *       404:
- *         description: Travel time record not found
- *       500:
- *         description: Server error
- */
-router.delete('/:id', handler.delete.bind(handler));
-
-/**
- * @swagger
- * /api/travel-times/calculate:
+ * /travel-times/calculate:
  *   post:
  *     summary: Calculate and store travel time between two addresses
  *     tags: [TravelTime]
@@ -172,39 +190,30 @@ router.delete('/:id', handler.delete.bind(handler));
  */
 router.post('/calculate', async (req: Request, res: Response) => {
   try {
-    const { originAddress, destinationAddress, isHomeToWork } = req.body;
+    const { originCoords, destinationCoords, isHomeToWork } = req.body;
     
     // Validate input
-    if (!originAddress || !destinationAddress) {
-      return res.status(400).json({ message: 'Origin and destination addresses are required' });
+    if (!originCoords || !destinationCoords ||
+        !originCoords.lat || !originCoords.lon ||
+        !destinationCoords.lat || !destinationCoords.lon) {
+      return res.status(400).json({ message: 'Origin and destination coordinates are required' });
     }
 
-    // Geocode the addresses to get coordinates using Nominatim (OpenStreetMap)
-    const originCoords = await geocodeAddress(originAddress);
-    const destCoords = await geocodeAddress(destinationAddress);
-    
-    if (!originCoords || !destCoords) {
-      return res.status(400).json({ message: 'Failed to geocode one or both addresses' });
-    }
-    
     // Calculate route using OSRM
-    const routeData = await calculateRoute(originCoords, destCoords);
+    const routeData = await calculateRoute(originCoords, destinationCoords);
     
     if (!routeData) {
       return res.status(500).json({ message: 'Failed to calculate route' });
     }
     
-    // Extract duration in seconds and distance in meters
-    const durationInSeconds = routeData.duration;
-    const distanceInMeters = routeData.distance;
-    
-    // Convert to minutes for storage
-    const durationInMinutes = Math.round(durationInSeconds / 60);
+    // Convert duration to minutes and distance to kilometers
+    const durationInMinutes = Math.round(routeData.duration / 60);
+    const distanceInKm = Math.round(routeData.distance / 1000 * 10) / 10; // Round to 1 decimal
     
     // Store travel time in database
     const [result] = await pool.query(
       'INSERT INTO TravelTime (IsHomeToWork, Duration, Distance, CreatedOn) VALUES (?, ?, ?, NOW())',
-      [isHomeToWork, durationInMinutes, distanceInMeters]
+      [isHomeToWork, durationInMinutes, distanceInKm]
     );
     
     // Get the newly created record
@@ -217,7 +226,10 @@ router.post('/calculate', async (req: Request, res: Response) => {
     
     res.status(201).json({
       travelTime: newRecord[0],
-      route: routeData
+      route: {
+        duration: durationInMinutes, // now in minutes
+        distance: distanceInKm // now in km
+      }
     });
     
   } catch (error) {
@@ -228,7 +240,7 @@ router.post('/calculate', async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/travel-times/latest:
+ * /travel-times/latest:
  *   get:
  *     summary: Get the latest travel time records
  *     tags: [TravelTime]
@@ -273,7 +285,7 @@ router.get('/latest', async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/travel-times/average:
+ * /travel-times/average:
  *   get:
  *     summary: Get average travel time and distance
  *     tags: [TravelTime]
@@ -346,6 +358,91 @@ router.get('/average', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+/**
+ * @swagger
+ * /travel-times/{id}:
+ *   get:
+ *     summary: Get a travel time record by ID
+ *     tags: [TravelTime]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The travel time record ID
+ *     responses:
+ *       200:
+ *         description: Travel time record found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TravelTime'
+ *       404:
+ *         description: Travel time record not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id', handler.getById.bind(handler));
+
+/**
+ * @swagger
+ * /travel-times/{id}:
+ *   put:
+ *     summary: Update a travel time record
+ *     tags: [TravelTime]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The travel time record ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TravelTimeInput'
+ *     responses:
+ *       200:
+ *         description: Travel time record updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TravelTime'
+ *       400:
+ *         description: Invalid input data
+ *       404:
+ *         description: Travel time record not found
+ *       500:
+ *         description: Server error
+ */
+router.put('/:id', handler.update.bind(handler));
+
+/**
+ * @swagger
+ * /travel-times/{id}:
+ *   delete:
+ *     summary: Delete a travel time record
+ *     tags: [TravelTime]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The travel time record ID
+ *     responses:
+ *       200:
+ *         description: Travel time record deleted successfully
+ *       404:
+ *         description: Travel time record not found
+ *       500:
+ *         description: Server error
+ */
+router.delete('/:id', handler.delete.bind(handler));
 
 // Helper functions for geocoding and route calculation
 async function geocodeAddress(address: string) {

@@ -113,8 +113,9 @@ export interface ServiceAppointmentDog {
 
 export interface NavigationSettings {
   Id: number;
-  HomeAddress: string;
-  WorkAddress: string;
-  ApiKey?: string;
+  HomeLatitude: string;
+  HomeLongitude: string;
+  WorkLatitude: string;
+  WorkLongitude: string;
   UpdatedOn: Date;
 } 

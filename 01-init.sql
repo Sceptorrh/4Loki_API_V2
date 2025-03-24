@@ -642,8 +642,10 @@ CREATE TABLE IF NOT EXISTS `TravelTime` (
 -- Create NavigationSettings table if it doesn't exist
 CREATE TABLE IF NOT EXISTS `NavigationSettings` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `HomeAddress` varchar(255) NOT NULL,
-  `WorkAddress` varchar(255) NOT NULL,
+  `HomeLatitude` varchar(50) NOT NULL,
+  `HomeLongitude` varchar(50) NOT NULL,
+  `WorkLatitude` varchar(50) NOT NULL,
+  `WorkLongitude` varchar(50) NOT NULL,
   `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

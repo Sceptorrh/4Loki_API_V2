@@ -35,11 +35,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const url = `${API_URL}/api/navigation-settings`;
+  // Extract base URL from API_URL (remove any trailing path)
+  const baseUrl = API_URL.split('/api')[0];
+  const url = `${baseUrl}/api/navigation-settings`;
   
   try {
     const body = await request.json();
-    console.log(`Making POST request to: ${url}`);
+    console.log(`Making POST request to: ${url} with body:`, JSON.stringify(body, null, 2));
     
     const response = await fetch(url, {
       method: 'POST',
@@ -49,18 +51,22 @@ export async function POST(request: Request) {
       body: JSON.stringify(body),
     });
 
+    console.log(`POST response status: ${response.status}`);
+    
     if (!response.ok) {
-      console.error(`API request failed with status: ${response.status}, URL: ${url}`);
+      const errorText = await response.text();
+      console.error(`API request failed with status: ${response.status}, URL: ${url}, Response: ${errorText}`);
       return NextResponse.json(
-        { message: `API request failed with status: ${response.status}` },
+        { message: `Failed to save settings: ${response.status}. Response: ${errorText}` },
         { status: response.status }
       );
     }
 
     const data = await response.json();
+    console.log(`POST response data:`, data);
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error(`Error saving navigation settings: ${error}, URL: ${url}`);
+    console.error(`Error saving navigation settings:`, error);
     return NextResponse.json(
       { message: `Error saving navigation settings: ${error}` },
       { status: 500 }

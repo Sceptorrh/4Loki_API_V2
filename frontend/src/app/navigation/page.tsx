@@ -8,8 +8,8 @@ import LocationMap from '@/components/LocationMap';
 interface TravelTime {
   id: number;
   isHomeToWork: boolean;
-  duration: number; // in seconds
-  distance: number; // in meters
+  duration: number; // now in minutes
+  distance: number; // now in kilometers
   createdOn: string;
 }
 
@@ -25,6 +25,8 @@ export default function NavigationSettings() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [travelTimes, setTravelTimes] = useState<TravelTime[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [settingsExist, setSettingsExist] = useState(false);
 
   useEffect(() => {
     loadExistingSettings();
@@ -39,32 +41,83 @@ export default function NavigationSettings() {
       if (!response.ok) {
         if (response.status === 404) {
           // No settings exist yet, this is fine
+          setIsEditing(true); // Show edit form if no settings exist
+          setSettingsExist(false);
           return;
         }
         throw new Error(`Failed to load settings: ${response.status}`);
       }
 
       const data = await response.json();
-      setHomeAddress(data.homeAddress || '');
-      setWorkAddress(data.workAddress || '');
       
-      // If we have stored locations, set them
-      if (data.homeLatitude && data.homeLongitude) {
-        setHomeLocation({
-          lat: parseFloat(data.homeLatitude),
-          lng: parseFloat(data.homeLongitude)
-        });
+      // Check if we have valid settings
+      const hasValidSettings = 
+        data && 
+        data.HomeLatitude && 
+        data.HomeLongitude && 
+        data.WorkLatitude && 
+        data.WorkLongitude && 
+        data.HomeLatitude !== '0' && 
+        data.HomeLongitude !== '0' && 
+        data.WorkLatitude !== '0' && 
+        data.WorkLongitude !== '0';
+      
+      setSettingsExist(hasValidSettings);
+      
+      // If we have empty settings record but no actual locations, show edit form
+      if (!hasValidSettings) {
+        setIsEditing(true);
+        return;
       }
       
-      if (data.workLatitude && data.workLongitude) {
-        setWorkLocation({
-          lat: parseFloat(data.workLatitude),
-          lng: parseFloat(data.workLongitude)
+      // If we have stored locations, set them
+      if (data.HomeLatitude && data.HomeLongitude) {
+        const homeLat = parseFloat(data.HomeLatitude);
+        const homeLng = parseFloat(data.HomeLongitude);
+        
+        setHomeLocation({
+          lat: homeLat,
+          lng: homeLng
         });
+        
+        // Try to get address from coordinates using Nominatim
+        try {
+          const address = await reverseGeocode(homeLat, homeLng);
+          setHomeAddress(address);
+        } catch (error) {
+          console.error('Error reverse geocoding home address:', error);
+          setHomeAddress(formatCoordinates(homeLat, homeLng));
+        }
+      }
+      
+      if (data.WorkLatitude && data.WorkLongitude) {
+        const workLat = parseFloat(data.WorkLatitude);
+        const workLng = parseFloat(data.WorkLongitude);
+        
+        setWorkLocation({
+          lat: workLat,
+          lng: workLng
+        });
+        
+        // Try to get address from coordinates for work address
+        try {
+          const address = await reverseGeocode(workLat, workLng);
+          setWorkAddress(address);
+        } catch (error) {
+          console.error('Error reverse geocoding work address:', error);
+          setWorkAddress(formatCoordinates(workLat, workLng));
+        }
+      }
+
+      // If both locations are set and valid, hide the edit form
+      if (hasValidSettings) {
+        setIsEditing(false);
       }
     } catch (error) {
       console.error('Error loading settings:', error);
       setSaveError('Failed to load settings');
+      setIsEditing(true); // Show edit form on error
+      setSettingsExist(false);
     } finally {
       setLoading(false);
     }
@@ -79,7 +132,16 @@ export default function NavigationSettings() {
       }
 
       const data = await response.json();
-      setTravelTimes(data);
+      console.log('Travel times data:', data);
+      
+      // Ensure all travel times have valid distance and duration
+      const validatedData = data.map((item: any) => ({
+        ...item,
+        distance: item.distance !== undefined && item.distance !== null ? Number(item.distance) : 0,
+        duration: item.duration !== undefined && item.duration !== null ? Number(item.duration) : 0
+      }));
+      
+      setTravelTimes(validatedData);
     } catch (error) {
       console.error('Error loading travel times:', error);
       setTravelTimesError('Failed to load travel times');
@@ -94,17 +156,15 @@ export default function NavigationSettings() {
 
     try {
       const response = await fetch('/api/navigation-settings', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          homeAddress,
-          workAddress,
-          homeLatitude: homeLocation?.lat.toString() || null,
-          homeLongitude: homeLocation?.lng.toString() || null,
-          workLatitude: workLocation?.lat.toString() || null,
-          workLongitude: workLocation?.lng.toString() || null
+          HomeLatitude: homeLocation?.lat.toString() || '',
+          HomeLongitude: homeLocation?.lng.toString() || '',
+          WorkLatitude: workLocation?.lat.toString() || '',
+          WorkLongitude: workLocation?.lng.toString() || ''
         }),
       });
 
@@ -113,6 +173,8 @@ export default function NavigationSettings() {
       }
 
       setSuccessMessage('Settings saved successfully!');
+      setSettingsExist(true);
+      setIsEditing(false); // Hide edit form after successful save
       
       // Hide success message after 3 seconds
       setTimeout(() => {
@@ -183,22 +245,60 @@ export default function NavigationSettings() {
     }
   };
 
-  // Format duration in minutes:seconds
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
+  // Format duration in minutes
+  const formatDuration = (minutes: number): string => {
+    if (minutes === undefined || minutes === null || isNaN(minutes)) {
+      return '0 min';
+    }
+    return `${minutes} min`;
   };
 
   // Format distance in kilometers
-  const formatDistance = (meters: number): string => {
-    const kilometers = (meters / 1000).toFixed(1);
-    return `${kilometers} km`;
+  const formatDistance = (kilometers: number): string => {
+    if (kilometers === undefined || kilometers === null || isNaN(kilometers)) {
+      return '0.0 km';
+    }
+    return `${kilometers.toFixed(1)} km`;
   };
 
   // Format date in human-readable format
   const formatDate = (dateString: string): string => {
+    if (!dateString) {
+      return 'Unknown date';
+    }
     return new Date(dateString).toLocaleString();
+  };
+
+  // Toggle edit mode
+  const toggleEditMode = () => {
+    setIsEditing(!isEditing);
+  };
+
+  // Format coordinates
+  const formatCoordinates = (lat?: number, lng?: number): string => {
+    if (!lat || !lng) return 'Not set';
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  };
+
+  // Try to get address from coordinates
+  const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const geocodeUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+      const response = await fetch(geocodeUrl, {
+        headers: {
+          'User-Agent': '4Loki_API'
+        }
+      });
+      const data = await response.json();
+      
+      if (data && data.display_name) {
+        return data.display_name;
+      }
+      return formatCoordinates(lat, lng);
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      return formatCoordinates(lat, lng);
+    }
   };
 
   if (loading) {
@@ -227,47 +327,83 @@ export default function NavigationSettings() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-lg font-medium mb-4">Address Settings</h2>
-        
-        <form onSubmit={handleSaveSettings} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <AddressAutocomplete
-              id="homeAddress"
-              label="Home Address"
-              value={homeAddress}
-              onChange={handleHomeAddressChange}
-              required
-            />
-            
-            <AddressAutocomplete
-              id="workAddress"
-              label="Work Address"
-              value={workAddress}
-              onChange={handleWorkAddressChange}
-              required
-            />
+      {(isEditing || settingsExist) && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-medium">Address Settings</h2>
+            {settingsExist && (
+              <button
+                onClick={toggleEditMode}
+                className="text-indigo-600 hover:text-indigo-800 flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1">
+                  <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                </svg>
+                {isEditing ? 'Cancel' : 'Edit'}
+              </button>
+            )}
           </div>
-        
-          <button
-            type="submit"
-            disabled={isSaving || !homeAddress || !workAddress}
-            className={`w-full py-2 px-4 rounded ${
-              isSaving || !homeAddress || !workAddress
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-            }`}
-          >
-            {isSaving ? 'Saving...' : 'Save Settings'}
-          </button>
-        </form>
-      </div>
+          
+          {isEditing ? (
+            <form onSubmit={handleSaveSettings} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <AddressAutocomplete
+                  id="homeAddress"
+                  label="Home Address"
+                  value={homeAddress}
+                  onChange={handleHomeAddressChange}
+                  required
+                />
+                
+                <AddressAutocomplete
+                  id="workAddress"
+                  label="Work Address"
+                  value={workAddress}
+                  onChange={handleWorkAddressChange}
+                  required
+                />
+              </div>
+            
+              <button
+                type="submit"
+                disabled={isSaving || !homeAddress || !workAddress}
+                className={`w-full py-2 px-4 rounded ${
+                  isSaving || !homeAddress || !workAddress
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                }`}
+              >
+                {isSaving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Home Address</p>
+                  <p className="mt-1">
+                    {homeAddress || (homeLocation ? formatCoordinates(homeLocation.lat, homeLocation.lng) : 'Not set')}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Work Address</p>
+                  <p className="mt-1">
+                    {workAddress || (workLocation ? formatCoordinates(workLocation.lat, workLocation.lng) : 'Not set')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <LocationMap
         homeLocation={homeLocation}
         workLocation={workLocation}
         homeAddress={homeAddress}
         workAddress={workAddress}
+        onEdit={toggleEditMode}
       />
 
       <div className="mt-6 bg-white rounded-lg shadow-md p-6">
@@ -275,9 +411,9 @@ export default function NavigationSettings() {
           <h2 className="text-lg font-medium">Travel Times</h2>
           <button
             onClick={updateTravelTimes}
-            disabled={isUpdatingTravelTimes || !homeLocation || !workLocation}
+            disabled={isUpdatingTravelTimes || !settingsExist || !homeLocation || !workLocation}
             className={`py-2 px-4 rounded ${
-              isUpdatingTravelTimes || !homeLocation || !workLocation
+              isUpdatingTravelTimes || !settingsExist || !homeLocation || !workLocation
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-indigo-600 hover:bg-indigo-700 text-white'
             }`}

@@ -12,7 +12,7 @@ export const tableDateFields: TableDateFields = {
   DogDogbreed: ['CreatedOn', 'UpdatedOn'],
   ExportLog: ['IssuedOn', 'ForMonthDate', 'CreatedOn', 'UpdatedOn'],
   ServiceAppointmentDog: ['CreatedOn', 'UpdatedOn'],
-  TravelTime: ['CreatedOn', 'UpdatedOn']
+  TravelTime: ['CreatedOn']
 };
 
 export const getDateFields = (tableName: string): string[] => {

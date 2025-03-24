@@ -30,6 +30,10 @@ router.get('/', async (req, res) => {
         Id: null,
         HomeAddress: '',
         WorkAddress: '',
+        HomeLatitude: null,
+        HomeLongitude: null,
+        WorkLatitude: null,
+        WorkLongitude: null,
         ApiKey: null,
         UpdatedOn: new Date().toISOString()
       });
@@ -55,12 +59,14 @@ router.get('/', async (req, res) => {
  *           schema:
  *             type: object
  *             properties:
- *               HomeAddress:
- *                 type: string
- *               WorkAddress:
- *                 type: string
- *               ApiKey:
- *                 type: string
+ *               HomeLatitude:
+ *                 type: number
+ *               HomeLongitude:
+ *                 type: number
+ *               WorkLatitude:
+ *                 type: number
+ *               WorkLongitude:
+ *                 type: number
  *     responses:
  *       200:
  *         description: Navigation settings updated successfully
@@ -72,10 +78,12 @@ router.get('/', async (req, res) => {
  *         description: Server error
  */
 router.post('/', async (req, res) => {
-  const { HomeAddress, WorkAddress } = req.body;
+  console.log('POST request received at /api/navigation-settings:', req.body);
   
-  if (!HomeAddress || !WorkAddress) {
-    return res.status(400).json({ message: 'Home address and work address are required' });
+  const { HomeLatitude, HomeLongitude, WorkLatitude, WorkLongitude } = req.body;
+  
+  if (!HomeLatitude || !HomeLongitude || !WorkLatitude || !WorkLongitude) {
+    return res.status(400).json({ message: 'Home and work coordinates are required' });
   }
   
   try {
@@ -85,24 +93,26 @@ router.post('/', async (req, res) => {
     if (exists && exists.length > 0) {
       // Update existing settings
       const id = exists[0].Id;
+      console.log('Updating existing settings with ID:', id);
       await pool.query(
-        'UPDATE NavigationSettings SET HomeAddress = ?, WorkAddress = ? WHERE Id = ?',
-        [HomeAddress, WorkAddress, id]
+        'UPDATE NavigationSettings SET HomeLatitude = ?, HomeLongitude = ?, WorkLatitude = ?, WorkLongitude = ? WHERE Id = ?',
+        [HomeLatitude, HomeLongitude, WorkLatitude, WorkLongitude, id]
       );
       
       res.status(200).json({ message: 'Navigation settings updated successfully' });
     } else {
       // Create new settings
+      console.log('Creating new navigation settings');
       await pool.query(
-        'INSERT INTO NavigationSettings (HomeAddress, WorkAddress) VALUES (?, ?)',
-        [HomeAddress, WorkAddress]
+        'INSERT INTO NavigationSettings (HomeLatitude, HomeLongitude, WorkLatitude, WorkLongitude) VALUES (?, ?, ?, ?)',
+        [HomeLatitude, HomeLongitude, WorkLatitude, WorkLongitude]
       );
       
       res.status(201).json({ message: 'Navigation settings created successfully' });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving navigation settings:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: `Server error: ${error.message}` });
   }
 });
 
