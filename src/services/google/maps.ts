@@ -104,6 +104,12 @@ function formatDistanceToKm(meters: number): number {
   return Math.round(meters / 100) / 10; // Convert to km with 1 decimal
 }
 
+// Store the last geocoding error message
+declare global {
+  var lastGeocodingError: string | undefined;
+  var lastForwardGeocodingError: string | undefined;
+}
+
 /**
  * Calculate route between two points using Google Routes API (v2)
  * 
@@ -233,20 +239,106 @@ export async function calculateRoute(
  */
 export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
+    console.log(`Geocoding coordinates: ${lat}, ${lng}`);
+    
     const response = await axios.get(googleConfig.maps.geocodingUrl, {
       params: {
         latlng: `${lat},${lng}`,
-        key: googleConfig.apiKey
+        key: googleConfig.apiKey,
+        result_type: 'street_address|route|premise',
+        language: 'en'
       }
     });
 
+    console.log('Geocoding API response status:', response.data.status);
+    
     if (response.data.status === 'OK' && response.data.results.length > 0) {
-      return response.data.results[0].formatted_address;
+      const formattedAddress = response.data.results[0].formatted_address;
+      console.log('Found address:', formattedAddress);
+      return formattedAddress;
+    } else {
+      console.warn('No results found or status not OK:', response.data.status);
+      
+      // Store the error message for the route handler
+      if (response.data.error_message) {
+        console.error('Geocoding API error:', response.data.error_message);
+        globalThis.lastGeocodingError = response.data.error_message;
+      } else if (response.data.status) {
+        globalThis.lastGeocodingError = response.data.status;
+      }
     }
 
     return null;
   } catch (error) {
     console.error('Error reverse geocoding with Google Maps:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+      
+      // Store error message from Axios error
+      if (error.response.data?.error_message) {
+        globalThis.lastGeocodingError = error.response.data.error_message;
+      } else if (error.message) {
+        globalThis.lastGeocodingError = error.message;
+      }
+    }
+    return null;
+  }
+}
+
+/**
+ * Forward geocode address to get coordinates
+ * 
+ * @param address Address string to geocode
+ * @returns Promise with coordinates (latitude, longitude)
+ */
+export async function forwardGeocode(address: string): Promise<Coordinates | null> {
+  try {
+    console.log(`Forward geocoding address: ${address}`);
+    
+    const response = await axios.get(googleConfig.maps.geocodingUrl, {
+      params: {
+        address: address,
+        key: googleConfig.apiKey,
+        language: 'en'
+      }
+    });
+
+    console.log('Forward geocoding API response status:', response.data.status);
+    
+    if (response.data.status === 'OK' && response.data.results.length > 0) {
+      const location = response.data.results[0].geometry.location;
+      console.log('Found coordinates:', location);
+      return {
+        lat: location.lat,
+        lng: location.lng
+      };
+    } else {
+      console.warn('No results found or status not OK:', response.data.status);
+      
+      // Store the error message for the route handler
+      if (response.data.error_message) {
+        console.error('Forward geocoding API error:', response.data.error_message);
+        globalThis.lastForwardGeocodingError = response.data.error_message;
+      } else if (response.data.status) {
+        globalThis.lastForwardGeocodingError = response.data.status;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error forward geocoding with Google Maps:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+      
+      // Store error message from Axios error
+      if (error.response.data?.error_message) {
+        globalThis.lastForwardGeocodingError = error.response.data.error_message;
+      } else if (error.message) {
+        globalThis.lastForwardGeocodingError = error.message;
+      }
+    }
     return null;
   }
 } 

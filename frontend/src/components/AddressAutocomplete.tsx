@@ -9,18 +9,12 @@ interface AddressAutocompleteProps {
   required?: boolean;
 }
 
-interface NominatimResult {
-  place_id: number;
-  licence: string;
-  osm_type: string;
-  osm_id: number;
-  boundingbox: string[];
-  lat: string;
-  lon: string;
-  display_name: string;
-  class: string;
-  type: string;
-  importance: number;
+interface GoogleGeocodingResult {
+  address: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
 }
 
 // Shared timestamp of the last API request across all instances
@@ -34,7 +28,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   required = false,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
+  const [suggestions, setSuggestions] = useState<GoogleGeocodingResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
@@ -43,7 +37,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const searchQueueRef = useRef<string | null>(null);
   const requestTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Search for places via the Nominatim API with rate limiting
+  // Search for places via the Google Maps Geocoding API with rate limiting
   const searchPlaces = async (query: string) => {
     if (!query || query.length < 3) {
       setSuggestions([]);
@@ -57,9 +51,9 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     // Store the query in case we need to process it later
     searchQueueRef.current = query;
 
-    // Calculate time until next allowed request (2000ms = 2 seconds)
+    // Calculate time until next allowed request (1000ms = 1 second)
     const now = Date.now();
-    const timeUntilNextRequest = Math.max(0, lastApiRequestTime + 2000 - now);
+    const timeUntilNextRequest = Math.max(0, lastApiRequestTime + 1000 - now);
 
     // Clear any existing timeout
     if (requestTimeoutRef.current) {
@@ -98,36 +92,45 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     abortControllerRef.current = new AbortController();
 
     try {
-      // Use the Nominatim API with query parameters for the Netherlands
-      const params = new URLSearchParams({
-        q: query,
-        format: 'json',
-        addressdetails: '1',
-        limit: '5',
-        countrycodes: 'nl', // Limit to Netherlands
+      // Use our own API endpoint that connects to Google Maps Geocoding API
+      const response = await fetch('/api/v1/google/maps/forward-geocode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address: query }),
+        signal: abortControllerRef.current.signal,
       });
 
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-        {
-          signal: abortControllerRef.current.signal,
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'AddressAutocompleteTool/1.0' // Nominatim requires a user agent
-          }
-        }
-      );
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(`Error fetching address suggestions: ${response.statusText}`);
+        // If the address wasn't found, clear suggestions and show error
+        if (response.status === 404) {
+          setSuggestions([]);
+          setError('Address not found. Please try a different search.');
+        } else {
+          throw new Error(data.message || `Error fetching address suggestions: ${response.statusText}`);
+        }
+        return;
       }
-
-      const data: NominatimResult[] = await response.json();
-      setSuggestions(data);
+      
+      if (data.coordinates) {
+        // Create a single result with the main address and coordinates
+        setSuggestions([{
+          address: query,
+          coordinates: data.coordinates
+        }]);
+        setError(null); // Clear any previous errors
+      } else {
+        setSuggestions([]);
+        setError('No results found. Please try a different search.');
+      }
     } catch (err) {
       if (err instanceof Error && err.name !== 'AbortError') {
         console.error('Error fetching address suggestions:', err);
         setError(`Error: ${err.message}`);
+        setSuggestions([]);
       }
     } finally {
       setLoading(false);
@@ -151,14 +154,14 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   };
 
   // Handle selection of a suggestion
-  const handleSuggestionClick = (suggestion: NominatimResult) => {
+  const handleSuggestionClick = (suggestion: GoogleGeocodingResult) => {
     const placeData = {
-      lat: parseFloat(suggestion.lat),
-      lng: parseFloat(suggestion.lon),
-      display_name: suggestion.display_name
+      lat: suggestion.coordinates.lat,
+      lng: suggestion.coordinates.lng,
+      display_name: suggestion.address
     };
     
-    onChange(suggestion.display_name, placeData);
+    onChange(suggestion.address, placeData);
     setSuggestions([]);
   };
 
@@ -212,13 +215,13 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       
       {focused && suggestions.length > 0 && (
         <div className={styles.suggestionsContainer}>
-          {suggestions.map((suggestion) => (
+          {suggestions.map((suggestion, index) => (
             <div
-              key={suggestion.place_id}
+              key={index}
               className={styles.suggestionItem}
               onClick={() => handleSuggestionClick(suggestion)}
             >
-              {suggestion.display_name}
+              {suggestion.address}
             </div>
           ))}
         </div>

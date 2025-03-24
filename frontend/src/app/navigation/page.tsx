@@ -289,17 +289,27 @@ export default function NavigationSettings() {
   // Try to get address from coordinates
   const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
     try {
-      const geocodeUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
-      const response = await fetch(geocodeUrl, {
+      // Use Google Maps Geocoding API through our backend proxy
+      const response = await fetch(`/api/v1/google/maps/geocode`, {
+        method: 'POST',
         headers: {
-          'User-Agent': '4Loki_API'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          coordinates: { lat, lng }
+        }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`Geocoding failed with status: ${response.status}`);
+      }
+      
       const data = await response.json();
       
-      if (data && data.display_name) {
-        return data.display_name;
+      if (data && data.address) {
+        return data.address;
       }
+      
       return formatCoordinates(lat, lng);
     } catch (error) {
       console.error('Error reverse geocoding:', error);

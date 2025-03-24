@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { calculateRoute, reverseGeocode, Coordinates } from '../services/google';
+import { calculateRoute, reverseGeocode, forwardGeocode, Coordinates } from '../services/google';
 
 const router = Router();
 
@@ -29,21 +29,36 @@ const router = Router();
  *                 properties:
  *                   lat:
  *                     type: number
+ *                     example: 51.8331303
  *                   lng:
  *                     type: number
+ *                     example: 4.6925461
  *               destination:
  *                 type: object
  *                 properties:
  *                   lat:
  *                     type: number
+ *                     example: 51.8184583
  *                   lng:
  *                     type: number
+ *                     example: 4.5589537
  *               includeDepartureTime:
  *                 type: boolean
  *                 default: true
+ *                 example: true
  *             required:
  *               - origin
  *               - destination
+ *           examples:
+ *             example1:
+ *               summary: Route from Oude-Tonge to Zuidland
+ *               value:
+ *                 origin:
+ *                   lat: 51.8331303
+ *                   lng: 4.6925461
+ *                 destination:
+ *                   lat: 51.8184583
+ *                   lng: 4.5589537
  *     responses:
  *       200:
  *         description: Route calculated successfully
@@ -55,22 +70,39 @@ const router = Router();
  *                 distance:
  *                   type: number
  *                   description: Distance in meters
+ *                   example: 15682
  *                 distanceKm:
  *                   type: number
  *                   description: Distance in kilometers (with 1 decimal)
+ *                   example: 15.7
  *                 duration:
  *                   type: number
  *                   description: Duration in seconds
+ *                   example: 1042
  *                 durationMinutes:
  *                   type: number
  *                   description: Duration in minutes (rounded)
+ *                   example: 17
  *                 durationInTraffic:
  *                   type: number
  *                   description: Duration with traffic in seconds
+ *                   example: 1158
  *                 originAddress:
  *                   type: string
+ *                   example: "51.8331303,4.6925461"
  *                 destinationAddress:
  *                   type: string
+ *                   example: "51.8184583,4.5589537"
+ *             examples:
+ *               routeExample:
+ *                 summary: Example route calculation result
+ *                 value:
+ *                   distance: 15682
+ *                   distanceKm: 15.7
+ *                   duration: 1042
+ *                   durationMinutes: 17
+ *                   originAddress: "51.8331303,4.6925461"
+ *                   destinationAddress: "51.8184583,4.5589537"
  *       400:
  *         description: Invalid input data
  *       500:
@@ -130,10 +162,19 @@ router.post('/maps/route', async (req: Request, res: Response) => {
  *                 properties:
  *                   lat:
  *                     type: number
+ *                     example: 51.8331303
  *                   lng:
  *                     type: number
+ *                     example: 4.6925461
  *             required:
  *               - coordinates
+ *           examples:
+ *             example1:
+ *               summary: Geocode Oude-Tonge coordinates
+ *               value:
+ *                 coordinates:
+ *                   lat: 51.8331303
+ *                   lng: 4.6925461
  *     responses:
  *       200:
  *         description: Address geocoded successfully
@@ -144,8 +185,26 @@ router.post('/maps/route', async (req: Request, res: Response) => {
  *               properties:
  *                 address:
  *                   type: string
+ *                   example: "Beatrixstraat, Oude-Tonge, Goeree-Overflakkee, Zuid-Holland, Nederland, 3255 AR, Nederland"
+ *             examples:
+ *               geocodeExample:
+ *                 summary: Example geocoding result
+ *                 value:
+ *                   address: "Beatrixstraat, Oude-Tonge, Goeree-Overflakkee, Zuid-Holland, Nederland, 3255 AR, Nederland"
  *       400:
  *         description: Invalid input data
+ *       403:
+ *         description: API authorization error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Google API Error: This API project is not authorized to use this API."
+ *       404:
+ *         description: Could not geocode these coordinates
  *       500:
  *         description: Server error
  */
@@ -161,14 +220,125 @@ router.post('/maps/geocode', async (req: Request, res: Response) => {
     // Geocode coordinates - updated to use separate lat/lng parameters
     const address = await reverseGeocode(coordinates.lat, coordinates.lng);
     
+    // Get the last error message from the geocoding service
     if (!address) {
-      return res.status(404).json({ message: 'Could not geocode these coordinates' });
+      // Check for API authorization errors based on logs
+      const error = globalThis.lastGeocodingError || 'Could not geocode these coordinates';
+      
+      if (error.includes('not authorized') || error.includes('REQUEST_DENIED')) {
+        return res.status(403).json({ 
+          message: `Google API Error: ${error}`
+        });
+      }
+      
+      return res.status(404).json({ 
+        message: error
+      });
     }
     
     res.json({ address });
   } catch (error) {
     console.error('Error geocoding coordinates:', error);
     res.status(500).json({ message: 'Server error geocoding coordinates' });
+  }
+});
+
+/**
+ * @swagger
+ * /google/maps/forward-geocode:
+ *   post:
+ *     summary: Convert address to coordinates using Google Maps
+ *     tags: [Google]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               address:
+ *                 type: string
+ *                 example: "Beatrixstraat, Oude-Tonge, Netherlands"
+ *             required:
+ *               - address
+ *           examples:
+ *             example1:
+ *               summary: Geocode Oude-Tonge address
+ *               value:
+ *                 address: "Beatrixstraat, Oude-Tonge, Netherlands"
+ *     responses:
+ *       200:
+ *         description: Address geocoded to coordinates successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 coordinates:
+ *                   type: object
+ *                   properties:
+ *                     lat:
+ *                       type: number
+ *                       example: 51.8331303
+ *                     lng:
+ *                       type: number
+ *                       example: 4.6925461
+ *             examples:
+ *               coordinatesExample:
+ *                 summary: Example coordinates result
+ *                 value:
+ *                   coordinates:
+ *                     lat: 51.8331303
+ *                     lng: 4.6925461
+ *       400:
+ *         description: Invalid input data
+ *       403:
+ *         description: API authorization error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Google API Error: This API project is not authorized to use this API."
+ *       404:
+ *         description: Could not geocode this address
+ *       500:
+ *         description: Server error
+ */
+router.post('/maps/forward-geocode', async (req: Request, res: Response) => {
+  try {
+    const { address } = req.body;
+    
+    // Validate input
+    if (!address || typeof address !== 'string' || address.trim() === '') {
+      return res.status(400).json({ message: 'A valid address string is required' });
+    }
+
+    // Forward geocode address to coordinates
+    const coordinates = await forwardGeocode(address.trim());
+    
+    // Get the last error message from the geocoding service
+    if (!coordinates) {
+      // Check for API authorization errors based on logs
+      const error = globalThis.lastForwardGeocodingError || 'Could not geocode this address';
+      
+      if (error.includes('not authorized') || error.includes('REQUEST_DENIED')) {
+        return res.status(403).json({ 
+          message: `Google API Error: ${error}`
+        });
+      }
+      
+      return res.status(404).json({ 
+        message: error
+      });
+    }
+    
+    res.json({ coordinates });
+  } catch (error) {
+    console.error('Error forward geocoding address:', error);
+    res.status(500).json({ message: 'Server error geocoding address' });
   }
 });
 
