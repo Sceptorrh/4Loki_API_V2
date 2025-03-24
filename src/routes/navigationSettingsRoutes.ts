@@ -1,10 +1,51 @@
 import { Router } from 'express';
-import pool from '../config/database';
-import { NavigationSettings } from '../types';
-import { RowDataPacket } from 'mysql2';
+import fs from 'fs';
+import path from 'path';
 import secrets from '../config/secrets';
 
 const router = Router();
+
+// Helper function to get the navigation settings file path
+const getNavigationSettingsPath = () => {
+  return path.join(process.cwd(), 'configuration', 'navigation.json');
+};
+
+// Helper function to read navigation settings
+const readNavigationSettings = () => {
+  try {
+    const filePath = getNavigationSettingsPath();
+    if (!fs.existsSync(filePath)) {
+      return {
+        homeLatitude: '',
+        homeLongitude: '',
+        workLatitude: '',
+        workLongitude: ''
+      };
+    }
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading navigation settings:', error);
+    return {
+      homeLatitude: '',
+      homeLongitude: '',
+      workLatitude: '',
+      workLongitude: ''
+    };
+  }
+};
+
+// Helper function to write navigation settings
+const writeNavigationSettings = (settings: any) => {
+  try {
+    const filePath = getNavigationSettingsPath();
+    fs.writeFileSync(filePath, JSON.stringify(settings, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error writing navigation settings:', error);
+    return false;
+  }
+};
 
 /**
  * @swagger
@@ -15,31 +56,13 @@ const router = Router();
  *     responses:
  *       200:
  *         description: Navigation settings retrieved successfully
- *       404:
- *         description: Navigation settings not found
  *       500:
  *         description: Server error
  */
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await pool.query<RowDataPacket[]>('SELECT * FROM NavigationSettings LIMIT 1');
-    
-    if (!rows || rows.length === 0) {
-      // Return default settings instead of 404
-      return res.json({
-        Id: null,
-        HomeAddress: '',
-        WorkAddress: '',
-        HomeLatitude: null,
-        HomeLongitude: null,
-        WorkLatitude: null,
-        WorkLongitude: null,
-        ApiKey: null,
-        UpdatedOn: new Date().toISOString()
-      });
-    }
-    
-    res.json(rows[0]);
+    const settings = readNavigationSettings();
+    res.json(settings);
   } catch (error) {
     console.error('Error fetching navigation settings:', error);
     res.status(500).json({ message: 'Server error' });
@@ -60,18 +83,16 @@ router.get('/', async (req, res) => {
  *             type: object
  *             properties:
  *               HomeLatitude:
- *                 type: number
+ *                 type: string
  *               HomeLongitude:
- *                 type: number
+ *                 type: string
  *               WorkLatitude:
- *                 type: number
+ *                 type: string
  *               WorkLongitude:
- *                 type: number
+ *                 type: string
  *     responses:
  *       200:
  *         description: Navigation settings updated successfully
- *       201:
- *         description: Navigation settings created successfully
  *       400:
  *         description: Invalid input
  *       500:
@@ -87,28 +108,19 @@ router.post('/', async (req, res) => {
   }
   
   try {
-    // Check if settings already exist
-    const [exists] = await pool.query<RowDataPacket[]>('SELECT Id FROM NavigationSettings LIMIT 1');
+    const settings = {
+      homeLatitude: HomeLatitude,
+      homeLongitude: HomeLongitude,
+      workLatitude: WorkLatitude,
+      workLongitude: WorkLongitude
+    };
+
+    const success = writeNavigationSettings(settings);
     
-    if (exists && exists.length > 0) {
-      // Update existing settings
-      const id = exists[0].Id;
-      console.log('Updating existing settings with ID:', id);
-      await pool.query(
-        'UPDATE NavigationSettings SET HomeLatitude = ?, HomeLongitude = ?, WorkLatitude = ?, WorkLongitude = ? WHERE Id = ?',
-        [HomeLatitude, HomeLongitude, WorkLatitude, WorkLongitude, id]
-      );
-      
+    if (success) {
       res.status(200).json({ message: 'Navigation settings updated successfully' });
     } else {
-      // Create new settings
-      console.log('Creating new navigation settings');
-      await pool.query(
-        'INSERT INTO NavigationSettings (HomeLatitude, HomeLongitude, WorkLatitude, WorkLongitude) VALUES (?, ?, ?, ?)',
-        [HomeLatitude, HomeLongitude, WorkLatitude, WorkLongitude]
-      );
-      
-      res.status(201).json({ message: 'Navigation settings created successfully' });
+      res.status(500).json({ message: 'Failed to save navigation settings' });
     }
   } catch (error: any) {
     console.error('Error saving navigation settings:', error);

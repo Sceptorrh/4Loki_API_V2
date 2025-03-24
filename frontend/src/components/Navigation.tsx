@@ -33,9 +33,7 @@ const navItems = [
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
   { name: 'Exports', href: '/exports', icon: FiDownload },
-  { name: 'Backup', href: '/backup', icon: FiDatabase },
   { name: 'Reports', href: '/reports', icon: FiBarChart2 },
-  { name: 'Navigation', href: '/navigation', icon: FiMap },
   { 
     name: 'Settings', 
     href: '/settings', 
@@ -45,6 +43,7 @@ const navItems = [
       { name: 'Google', href: '/settings/google' }
     ]
   },
+  { name: 'Backup', href: '/backup', icon: FiDatabase },
 ];
 
 // This component is now only for the site navigation sidebar
