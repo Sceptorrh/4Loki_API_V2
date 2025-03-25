@@ -22,17 +22,8 @@ export default function UserProfile({ isCollapsed }: UserProfileProps) {
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        const token = sessionStorage.getItem('google_token');
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-
-        const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        // Fetch user info from our backend API instead of directly from Google
+        const response = await fetch('/api/auth/user');
 
         if (!response.ok) {
           throw new Error('Failed to fetch user info');
@@ -55,15 +46,15 @@ export default function UserProfile({ isCollapsed }: UserProfileProps) {
     fetchUserInfo();
   }, []);
 
-  const handleLogout = () => {
-    // Clear session storage
-    sessionStorage.removeItem('google_token');
-    
-    // Clear authentication cookie
-    document.cookie = 'is_authenticated=false; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC';
-    
-    // Redirect to login page
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      // Call logout endpoint
+      await fetch('/api/auth/logout', { method: 'POST' });
+      // Redirect to login page
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   if (isLoading) {
