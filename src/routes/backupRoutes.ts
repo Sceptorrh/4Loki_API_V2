@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress, previewDriveBackup } from '../controllers/backupController';
+import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress, previewDriveBackup, importDriveBackup } from '../controllers/backupController';
 import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBackup, cleanupOldBackups } from '../services/google/drive';
 import { authenticateToken } from '../middleware/auth';
 import { logger } from '../utils/logger';
@@ -13,8 +13,14 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const googleAuth = GoogleAuthService.getInstance();
 
-// Apply authentication middleware to all routes
-router.use(authenticateToken);
+// Apply authentication middleware to all routes except progress endpoint
+router.use((req, res, next) => {
+  if (req.path === '/import/progress') {
+    next();
+  } else {
+    authenticateToken(req, res, next);
+  }
+});
 
 /**
  * @swagger
@@ -280,44 +286,6 @@ router.get('/check-auto-backup', async (req: Request, res: Response) => {
 router.post('/preview-drive', previewDriveBackup);
 
 // Import backup from Google Drive
-router.post('/import-drive', async (req: Request, res: Response) => {
-  try {
-    const { fileId } = req.body;
-    if (!fileId) {
-      return res.status(400).json({ message: 'File ID is required' });
-    }
-
-    const fileBuffer = await downloadFromDrive(fileId, req);
-    const tempPath = path.join(process.cwd(), 'uploads', `temp_${Date.now()}.xlsx`);
-    fs.writeFileSync(tempPath, fileBuffer);
-
-    // Create a mock file object for the importBackup function
-    const mockFile: Express.Multer.File = {
-      path: tempPath,
-      filename: `temp_${Date.now()}.xlsx`,
-      fieldname: 'file',
-      originalname: `backup_${Date.now()}.xlsx`,
-      encoding: '7bit',
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      destination: 'uploads/',
-      size: fileBuffer.length,
-      stream: fs.createReadStream(tempPath),
-      buffer: fileBuffer
-    };
-
-    // Call the existing import function
-    const mockReq = {
-      file: mockFile
-    } as Request;
-    
-    await importBackup(mockReq as any, res);
-
-    // Clean up the temporary file
-    fs.unlinkSync(tempPath);
-  } catch (error) {
-    console.error('Error importing from drive:', error);
-    res.status(500).json({ message: 'Failed to import from Google Drive backup' });
-  }
-});
+router.post('/import-drive', importDriveBackup);
 
 export default router; 

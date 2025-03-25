@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     const redirectUrl = new URL('/', FRONTEND_URL);
     const nextResponse = NextResponse.redirect(redirectUrl);
 
-    // Set the token in a cookie
+    // Set the access token in a cookie
     nextResponse.cookies.set('google_token', tokenResponse.data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -57,6 +57,17 @@ export async function GET(request: Request) {
       path: '/',
       maxAge: 3600 // 1 hour
     });
+
+    // Set the refresh token in a cookie if it exists
+    if (tokenResponse.data.refresh_token) {
+      nextResponse.cookies.set('google_refresh_token', tokenResponse.data.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60 // 30 days
+      });
+    }
 
     return nextResponse;
   } catch (error) {

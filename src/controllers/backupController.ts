@@ -1141,9 +1141,9 @@ export const clearDatabase = async (req: Request, res: Response) => {
 };
 
 /**
- * Preview data from a Google Drive backup file
+ * Import data from a Google Drive backup file
  */
-export const previewDriveBackup = async (req: Request, res: Response) => {
+export const importDriveBackup = async (req: Request, res: Response) => {
   const { fileId } = req.body;
   
   if (!fileId) {
@@ -1158,7 +1158,41 @@ export const previewDriveBackup = async (req: Request, res: Response) => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(fileBuffer);
     
-    const preview: Record<string, any[]> = {};
+    const results: ImportResults = {
+      customers: { success: 0, failed: 0, errors: [] },
+      dogs: { success: 0, failed: 0, errors: [] },
+      appointments: { success: 0, failed: 0, errors: [] },
+      appointmentDogs: { success: 0, failed: 0, errors: [] },
+      additionalHours: { success: 0, failed: 0, errors: [] },
+      dogDogbreeds: { success: 0, failed: 0, errors: [] },
+      serviceAppointmentDogs: { success: 0, failed: 0, errors: [] }
+    };
+
+    // Track missing sheets
+    const missingSheets: string[] = [];
+    
+    // Check for expected tables that aren't in the workbook
+    NON_STATIC_TABLES.forEach(tableName => {
+      if (!workbook.getWorksheet(tableName)) {
+        missingSheets.push(tableName);
+      }
+    });
+
+    // Initialize progress tracking
+    let totalRecords = 0;
+    let processedRecords = 0;
+    
+    // Count total records for progress tracking
+    workbook.eachSheet((worksheet) => {
+      if (NON_STATIC_TABLES.includes(worksheet.name)) {
+        totalRecords += worksheet.rowCount - 1; // Subtract header row
+      }
+    });
+    
+    console.log(`Total records to import: ${totalRecords}`);
+    
+    // Send initial progress update
+    sendProgressUpdate(0, `Starting import process... (0/${totalRecords} records)`);
 
     // Process each worksheet
     for (const worksheet of workbook.worksheets) {
@@ -1181,31 +1215,280 @@ export const previewDriveBackup = async (req: Request, res: Response) => {
       // Remove first empty element from headers array (ExcelJS quirk)
       headers.shift();
 
-      // Get data rows
-      const rows: any[] = [];
-      worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Skip header row
-        
+      // Map table names to results object keys
+      const tableMapping: Record<string, keyof ImportResults> = {
+        'customer': 'customers',
+        'dog': 'dogs',
+        'appointment': 'appointments',
+        'appointmentdog': 'appointmentDogs',
+        'additionalhour': 'additionalHours',
+        'dogdogbreed': 'dogDogbreeds',
+        'serviceappointmentdog': 'serviceAppointmentDogs'
+      };
+
+      const resultKey = tableMapping[tableNameLower];
+      if (!resultKey) {
+        console.warn(`Unknown table type: ${tableName}`);
+        continue;
+      }
+
+      const tableResults = results[resultKey];
+      if (!tableResults) {
+        console.warn(`No results object for table ${tableName}`);
+        continue;
+      }
+
+      // Process each row in the table
+      for (const row of worksheet.getRows(2, worksheet.rowCount - 1) || []) {
         const rowData: any = {};
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber - 1];
           if (header) {
-            rowData[header] = cell.value;
+            // Use convertNullValue to properly handle special fields like IsPaidInCash
+            rowData[header] = convertNullValue(cell.value, header);
           }
         });
-        
-        if (Object.keys(rowData).length > 0) {
-          rows.push(rowData);
-        }
-      });
 
-      preview[tableName] = rows;
+        // Process the row and handle the result
+        const result = await processTableRow(tableName, rowData);
+        if (result.success) {
+          tableResults.success++;
+        } else {
+          tableResults.failed++;
+          tableResults.errors.push({
+            message: result.error || 'Unknown error',
+            details: rowData,
+            errorType: 'ProcessingError'
+          });
+        }
+        
+        processedRecords++;
+        const progress = Math.round((processedRecords / totalRecords) * 100);
+        sendProgressUpdate(progress, `Processing ${tableName}... (${processedRecords}/${totalRecords} records)`);
+      }
     }
 
-    // Store preview data for import
+    // Prepare the response
+    const response = {
+      message: 'Import completed successfully',
+      report: {
+        summary: {
+          total: {
+            success: Object.values(results).reduce((sum, r) => sum + r.success, 0),
+            failed: Object.values(results).reduce((sum, r) => sum + r.failed, 0)
+          },
+          tables: Object.entries(results).reduce((acc, [key, value]) => ({
+            ...acc,
+            [key.charAt(0).toUpperCase() + key.slice(1)]: {
+              success: value.success,
+              failed: value.failed
+            }
+          }), {}),
+          missingSheets
+        },
+        errorsByTable: Object.entries(results)
+          .filter(([_, value]) => value.failed > 0)
+          .map(([tableName, value]) => ({
+            tableName: tableName.charAt(0).toUpperCase() + tableName.slice(1),
+            count: value.failed,
+            items: value.errors
+          }))
+      }
+    };
+
+    res.json(response);
+  } catch (error: any) {
+    console.error('Import error:', error);
+    res.status(500).json({ 
+      error: 'Failed to import backup',
+      details: error.message 
+    });
+  }
+};
+
+/**
+ * Preview data from a Google Drive backup file
+ */
+export const previewDriveBackup = async (req: Request, res: Response) => {
+  const { fileId } = req.body;
+  
+  if (!fileId) {
+    return res.status(400).json({ error: 'No file ID provided' });
+  }
+
+  try {
+    // Download the file from Google Drive as a buffer
+    const fileBuffer = await downloadFromDrive(fileId, req);
+    
+    // Create a workbook from the buffer
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(fileBuffer);
+    
+    const preview: Record<string, any[]> = {};
+    const validationResults: TableValidationResult[] = [];
+
+    // Process each worksheet
+    for (const worksheet of workbook.worksheets) {
+      const tableName = worksheet.name;
+      const tableNameLower = tableName.toLowerCase();
+      
+      // Skip if not a valid table name
+      if (!NON_STATIC_TABLES.map(t => t.toLowerCase()).includes(tableNameLower)) {
+        console.warn(`Skipping worksheet ${tableName} as it's not in the allowed list`);
+        continue;
+      }
+
+      // Get headers from first row
+      const headers = worksheet.getRow(1).values as string[];
+      if (!headers || headers.length <= 1) {
+        console.warn(`No valid headers found for table ${tableName}`);
+        continue;
+      }
+
+      // Remove first empty element from headers array (ExcelJS quirk)
+      headers.shift();
+
+      // Process each row
+      const rows = worksheet.getRows(2, worksheet.rowCount - 1) || [];
+      preview[tableName] = rows.map((row, index) => {
+        const rowData: any = {};
+        
+        // First get the raw CustomerId directly if it exists
+        const customerIdIndex = headers.findIndex(h => 
+          typeof h === 'string' && h.toLowerCase() === 'customerid'
+        );
+        const rawCustomerId = customerIdIndex !== -1 ? row.getCell(customerIdIndex + 1).text : null;
+        if (rawCustomerId && rawCustomerId.trim() !== '') {
+          // Convert potential numeric string to number for database
+          rowData['CustomerId'] = isNaN(Number(rawCustomerId)) ? rawCustomerId : Number(rawCustomerId);
+        }
+        
+        // Then populate the rest of the fields
+        headers.forEach((header, colIndex) => {
+          if (header.toLowerCase() !== 'customerid') { // Skip the CustomerId field as we've handled it
+            const cell = row.getCell(colIndex + 1);
+            let value;
+            
+            // Check cell type to handle different types of data correctly
+            if (cell.type === 4) { // DateValue enum in ExcelJS
+              // Handle date values
+              value = cell.value; // Get the Date object
+            } else if (cell.type === 2 && typeof cell.value === 'number') { // NumberValue enum
+              // For numeric values, check if this might be a time value (for time columns)
+              const headerName = header.toLowerCase();
+              if (headerName.includes('time') || headerName.includes('start') || headerName.includes('end')) {
+                // If the value is small (less than 1), it's likely a time value (fraction of day)
+                if (cell.value < 1) {
+                  // Store the raw value - we'll format it during processing
+                  value = cell.value;
+                } else {
+                  value = cell.text; // Use string representation
+                }
+              } else {
+                value = cell.value; // Use numeric value
+              }
+            } else {
+              // For other types, use the text representation
+              value = cell.text;
+            }
+            
+            rowData[header] = convertNullValue(value, header);
+          }
+        });
+
+        // Safety check - ensure CustomerId is still populated from raw value
+        if (rawCustomerId && rawCustomerId.trim() !== '' && !rowData['CustomerId']) {
+          rowData['CustomerId'] = isNaN(Number(rawCustomerId)) ? rawCustomerId : Number(rawCustomerId);
+        }
+
+        // If we have customer_id but not CustomerId, map it
+        if (rowData['customer_id'] && !rowData['CustomerId']) {
+          rowData['CustomerId'] = rowData['customer_id'];
+          delete rowData['customer_id'];
+        }
+        
+        // For Appointment table, apply field name mapping
+        if (tableNameLower === 'appointment') {
+          // Field name mapping from lowercase to proper case
+          const fieldMapping: Record<string, string> = {
+            'id': 'Id',
+            'date': 'Date',
+            'timestart': 'TimeStart', 
+            'timeend': 'TimeEnd',
+            'dateend': 'DateEnd',
+            'actualduration': 'ActualDuration',
+            'customerid': 'CustomerId',
+            'appointmentstatusid': 'AppointmentStatusId',
+            'note': 'Note',
+            'serialnumber': 'SerialNumber',
+            'ispaidincash': 'IsPaidInCash'
+          };
+          
+          // Create a new object with properly capitalized field names
+          const properCaseRow: RowData = {};
+          
+          // Map field names and handle date/time formatting
+          Object.keys(rowData).forEach(key => {
+            const lowerKey = key.toLowerCase();
+            const value = rowData[key];
+            
+            if (fieldMapping[lowerKey]) {
+              const mappedKey = fieldMapping[lowerKey];
+              
+              // Handle specific date and time fields
+              if (mappedKey === 'Date' || mappedKey === 'DateEnd') {
+                properCaseRow[mappedKey] = formatDateToMySql(value);
+              } else if (mappedKey === 'TimeStart' || mappedKey === 'TimeEnd') {
+                // Pass the value directly to formatTimeToMySql which can now handle numeric values
+                properCaseRow[mappedKey] = formatTimeToMySql(value);
+              } else {
+                properCaseRow[mappedKey] = value;
+              }
+            } else if (!Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
+              // Only include keys that don't have a mapped equivalent
+              properCaseRow[key] = value;
+            }
+          });
+          
+          // Replace rowData completely with properCaseRow instead of merging
+          // This prevents duplicate fields with different casings
+          Object.keys(rowData).forEach(key => delete rowData[key]); 
+          Object.assign(rowData, properCaseRow);
+        }
+        
+        // Check for missing customer_id for Dog and Appointment tables
+        if ((tableNameLower === 'dog' || tableNameLower === 'appointment') && !rowData['CustomerId']) {
+          console.warn(`Row ${row.number} in table ${tableName} is missing CustomerId. Dog name: ${rowData.name || rowData.Name || 'unnamed'}`);
+          validationResults.push({
+            table: tableName,
+            valid: false,
+            errors: [{ 
+              field: 'CustomerId', 
+              error: `Required field is missing for ${tableNameLower === 'dog' ? `dog "${rowData.name || rowData.Name || 'unnamed'}"` : 'appointment'}`, 
+              value: null 
+            }],
+            rowNumber: row.number
+          });
+        }
+
+        // Validate the row
+        const validationResult = validateRow(tableName, rowData, row.number);
+        if (!validationResult.valid) {
+          validationResults.push(validationResult);
+        }
+
+        return rowData;
+      });
+    }
+
+    // Store preview data in memory
     previewDataStore = preview;
 
-    res.json({ preview });
+    res.json({
+      message: 'Backup preview generated successfully',
+      preview,
+      validationResults
+    });
   } catch (error: any) {
     console.error('Preview error:', error);
     res.status(500).json({ 

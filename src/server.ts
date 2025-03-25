@@ -28,6 +28,7 @@ import { Server } from 'http';
 import { convertDatesToUTC, convertDatesInResponse } from './middleware/dateHandler';
 import cron from 'node-cron';
 import { fetchAndSaveTravelTimes } from './utils/navigationService';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 
@@ -47,6 +48,9 @@ const corsOptions = {
 
 // Apply CORS before other middleware
 app.use(cors(corsOptions));
+
+// Apply cookie-parser middleware
+app.use(cookieParser());
 
 // Middleware
 app.use(

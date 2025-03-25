@@ -6,23 +6,58 @@ import { authenticateToken } from '../middleware/auth';
 import axios from 'axios';
 import { listDriveFiles } from '../services/google/drive';
 
+interface GoogleUserInfo {
+  id: string;
+  email: string;
+  verified_email: boolean;
+  name: string;
+  given_name: string;
+  family_name: string;
+  picture: string;
+  locale: string;
+}
+
 const router = Router();
 const googleAuth = GoogleAuthService.getInstance();
 
 // Auth callback route - no authentication required
 router.post('/auth/callback', async (req, res) => {
   try {
+    console.log('Auth callback received:', {
+      body: req.body,
+      headers: req.headers,
+      cookies: req.cookies
+    });
+
     const { code, redirectUri } = req.body;
 
     if (!code || !redirectUri) {
+      console.error('Missing required parameters:', { code, redirectUri });
       return res.status(400).json({ message: 'Code and redirect URI are required' });
     }
 
     // Exchange code for access token
+    console.log('Attempting to exchange code for token...');
     const tokenResponse = await googleAuth.getAccessToken(code, redirectUri, res);
+    console.log('Token exchange successful:', {
+      hasAccessToken: !!tokenResponse.access_token,
+      hasRefreshToken: !!tokenResponse.refresh_token,
+      expiresIn: tokenResponse.expires_in
+    });
 
-    // Get user information
-    const userInfo = await googleAuth.getUserInfo(req);
+    // Get user information using the access token directly
+    console.log('Attempting to get user info...');
+    const userInfoResponse = await axios.get<GoogleUserInfo>('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${tokenResponse.access_token}`
+      }
+    });
+    const userInfo = userInfoResponse.data;
+    console.log('User info retrieved successfully:', {
+      id: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name
+    });
 
     res.json({ 
       access_token: tokenResponse.access_token,
@@ -30,6 +65,12 @@ router.post('/auth/callback', async (req, res) => {
     });
   } catch (error) {
     console.error('Error in auth callback:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+    }
     res.status(500).json({ message: 'Authentication failed' });
   }
 });

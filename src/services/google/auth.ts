@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { googleConfig } from './config';
 import { Request, Response } from 'express';
+import pool from '../../config/database';
 
 interface GoogleUserInfo {
   id: string;
@@ -89,6 +90,13 @@ export class GoogleAuthService {
         expires_at: Date.now() + (response.data.expires_in * 1000)
       };
 
+      // Store tokens in database
+      await this.storeTokensInDb(
+        response.data.access_token,
+        response.data.refresh_token || this.tokenData.refresh_token,
+        new Date(Date.now() + (response.data.expires_in * 1000))
+      );
+
       // Store access token in cookie
       res.cookie('google_token', response.data.access_token, {
         httpOnly: true,
@@ -123,19 +131,68 @@ export class GoogleAuthService {
   }
 
   /**
+   * Store tokens in the database
+   */
+  private async storeTokensInDb(accessToken: string, refreshToken: string, expiresAt: Date): Promise<void> {
+    try {
+      // Delete any existing tokens
+      await pool.query('DELETE FROM GoogleAuth');
+      
+      // Insert new tokens
+      await pool.query(
+        'INSERT INTO GoogleAuth (access_token, refresh_token, expires_at) VALUES (?, ?, ?)',
+        [accessToken, refreshToken, expiresAt]
+      );
+    } catch (error) {
+      console.error('Error storing tokens in database:', error);
+      throw new Error('Failed to store tokens in database');
+    }
+  }
+
+  /**
+   * Get tokens from the database
+   */
+  private async getTokensFromDb(): Promise<TokenData | null> {
+    try {
+      const [rows] = await pool.query('SELECT * FROM GoogleAuth ORDER BY id DESC LIMIT 1');
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return null;
+      }
+
+      const row = rows[0] as any;
+      return {
+        access_token: row.access_token,
+        refresh_token: row.refresh_token,
+        expires_at: new Date(row.expires_at).getTime()
+      };
+    } catch (error) {
+      console.error('Error getting tokens from database:', error);
+      return null;
+    }
+  }
+
+  /**
    * Refresh the access token using the refresh token
    */
   private async refreshAccessToken(): Promise<string> {
-    if (!this.tokenData?.refresh_token) {
-      throw new Error('No refresh token available - user needs to re-authenticate');
-    }
-
     try {
+      // Try to get refresh token from memory first
+      let refreshToken = this.tokenData?.refresh_token;
+      
+      // If not in memory, try to get from database
+      if (!refreshToken) {
+        const dbTokens = await this.getTokensFromDb();
+        if (!dbTokens?.refresh_token) {
+          throw new Error('No refresh token available - user needs to re-authenticate');
+        }
+        refreshToken = dbTokens.refresh_token;
+      }
+
       console.log('Refreshing access token...');
       const response = await axios.post<GoogleAuthResponse>('https://oauth2.googleapis.com/token', {
         client_id: googleConfig.auth.clientId,
         client_secret: googleConfig.auth.clientSecret,
-        refresh_token: this.tokenData.refresh_token,
+        refresh_token: refreshToken,
         grant_type: 'refresh_token'
       });
 
@@ -144,11 +201,19 @@ export class GoogleAuthService {
         expiresIn: response.data.expires_in
       });
 
+      // Update token data in memory
       this.tokenData = {
-        ...this.tokenData,
         access_token: response.data.access_token,
+        refresh_token: refreshToken,
         expires_at: Date.now() + (response.data.expires_in * 1000)
       };
+
+      // Update tokens in database
+      await this.storeTokensInDb(
+        response.data.access_token,
+        refreshToken,
+        new Date(Date.now() + (response.data.expires_in * 1000))
+      );
 
       return response.data.access_token;
     } catch (error) {
@@ -166,57 +231,42 @@ export class GoogleAuthService {
   }
 
   /**
-   * Get a valid access token, refreshing if necessary
+   * Get a valid access token
    */
   public async getValidAccessToken(req: Request): Promise<string> {
-    // First try to get token from cookie
-    const cookies = req.headers.cookie?.split('; ') || [];
-    const tokenCookie = cookies.find(cookie => cookie.startsWith('google_token='));
-    const refreshTokenCookie = cookies.find(cookie => cookie.startsWith('google_refresh_token='));
-    
-    if (tokenCookie) {
-      const token = tokenCookie.split('=')[1];
-      // Get token expiry from cookie
-      const expiresCookie = cookies.find(cookie => cookie.startsWith('google_token_expires='));
-      const expiresAt = expiresCookie ? parseInt(expiresCookie.split('=')[1]) : Date.now() + 3600000;
-      
-      // Get refresh token from cookie if available
-      const refreshToken = refreshTokenCookie ? refreshTokenCookie.split('=')[1] : null;
-      
-      // Update token data with both access and refresh tokens
-      this.tokenData = {
-        access_token: token,
-        refresh_token: refreshToken || this.tokenData?.refresh_token || '',
-        expires_at: expiresAt
-      };
-
-      // If we have a refresh token in the cookie but not in memory, update memory
-      if (refreshToken && (!this.tokenData.refresh_token || this.tokenData.refresh_token !== refreshToken)) {
-        this.tokenData.refresh_token = refreshToken;
-      }
-    }
-
-    if (!this.tokenData) {
-      throw new Error('No token data available - user needs to authenticate');
-    }
-
-    // If token is expired or about to expire in the next 5 minutes, refresh it
-    if (Date.now() >= this.tokenData.expires_at - 300000) {
-      console.log('Token expired or about to expire, refreshing...');
-      return this.refreshAccessToken();
-    }
-
-    // Validate the current token
     try {
-      const response = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: {
-          Authorization: `Bearer ${this.tokenData.access_token}`
+      // Try to get token from cookie-parser
+      let token = req.cookies?.google_token;
+      
+      // If not found, try to parse raw cookies
+      if (!token && req.headers.cookie) {
+        const cookies = req.headers.cookie.split('; ');
+        const tokenCookie = cookies.find(cookie => cookie.startsWith('google_token='));
+        if (tokenCookie) {
+          token = tokenCookie.split('=')[1];
         }
-      });
-      return this.tokenData.access_token;
+      }
+
+      // If no token in cookies, try to get from database
+      if (!token) {
+        const dbTokens = await this.getTokensFromDb();
+        if (dbTokens) {
+          // Check if token is expired
+          if (Date.now() >= dbTokens.expires_at) {
+            // Token is expired, try to refresh it
+            return await this.refreshAccessToken();
+          }
+          return dbTokens.access_token;
+        }
+      }
+
+      if (!token) {
+        throw new Error('No Google token found');
+      }
+      return token;
     } catch (error) {
-      console.log('Current token is invalid, refreshing...');
-      return this.refreshAccessToken();
+      console.error('Error getting access token:', error);
+      throw error;
     }
   }
 
@@ -246,11 +296,18 @@ export class GoogleAuthService {
   /**
    * Clear the current token data
    */
-  public clearTokenData(res: Response): void {
+  public async clearTokenData(res: Response): Promise<void> {
     this.tokenData = null;
     res.clearCookie('google_token');
     res.clearCookie('google_token_expires');
     res.clearCookie('google_refresh_token');
+    
+    // Clear tokens from database
+    try {
+      await pool.query('DELETE FROM GoogleAuth');
+    } catch (error) {
+      console.error('Error clearing tokens from database:', error);
+    }
   }
 
   /**

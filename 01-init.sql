@@ -639,4 +639,15 @@ CREATE TABLE IF NOT EXISTS `TravelTime` (
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Create GoogleAuth table to store Google authentication tokens
+CREATE TABLE IF NOT EXISTS `GoogleAuth` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `access_token` text NOT NULL,
+  `refresh_token` text NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;
