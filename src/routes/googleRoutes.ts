@@ -457,10 +457,26 @@ router.post('/auth/logout', (req, res) => {
 router.get('/auth/token', async (req, res) => {
   try {
     const token = await googleAuth.getValidAccessToken(req);
-    res.json({ token });
+    const tokenData = googleAuth.getTokenData();
+    
+    res.json({ 
+      token,
+      tokenStatus: {
+        hasAccessToken: !!token,
+        hasRefreshToken: !!tokenData?.refresh_token,
+        expiresAt: tokenData?.expires_at
+      }
+    });
   } catch (error) {
     console.error('Error getting access token:', error);
-    res.status(500).json({ message: 'Failed to get access token' });
+    res.status(401).json({ 
+      message: 'Failed to get access token',
+      tokenStatus: {
+        hasAccessToken: false,
+        hasRefreshToken: false,
+        expiresAt: null
+      }
+    });
   }
 });
 

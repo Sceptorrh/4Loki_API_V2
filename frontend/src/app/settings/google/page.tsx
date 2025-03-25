@@ -9,6 +9,20 @@ interface GoogleSettings {
   oauthClientSecret: string;
 }
 
+interface AuthInfo {
+  userInfo: {
+    id: string;
+    email: string;
+    name: string;
+    picture: string;
+  } | null;
+  tokenStatus: {
+    hasAccessToken: boolean;
+    hasRefreshToken: boolean;
+    expiresAt: string | null;
+  };
+}
+
 interface ValidationResult {
   apiKey?: {
     valid: boolean;
@@ -47,6 +61,14 @@ export default function GoogleSettingsPage() {
     oauthClientId: '',
     oauthClientSecret: ''
   });
+  const [authInfo, setAuthInfo] = useState<AuthInfo>({
+    userInfo: null,
+    tokenStatus: {
+      hasAccessToken: false,
+      hasRefreshToken: false,
+      expiresAt: null
+    }
+  });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
@@ -59,6 +81,7 @@ export default function GoogleSettingsPage() {
   useEffect(() => {
     // Fetch current settings when component mounts
     fetchCurrentSettings();
+    fetchAuthInfo();
   }, []);
 
   const fetchCurrentSettings = async () => {
@@ -79,6 +102,50 @@ export default function GoogleSettingsPage() {
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
+    }
+  };
+
+  const fetchAuthInfo = async () => {
+    try {
+      const response = await fetch('/api/auth/user');
+      if (response.ok) {
+        const userInfo = await response.json();
+        setAuthInfo(prev => ({
+          ...prev,
+          userInfo
+        }));
+      }
+
+      // Get token status
+      const tokenResponse = await fetch('/api/v1/google/auth/token');
+      if (tokenResponse.ok) {
+        const { tokenStatus } = await tokenResponse.json();
+        setAuthInfo(prev => ({
+          ...prev,
+          tokenStatus
+        }));
+      } else {
+        // If token request fails, set token status to missing
+        setAuthInfo(prev => ({
+          ...prev,
+          tokenStatus: {
+            hasAccessToken: false,
+            hasRefreshToken: false,
+            expiresAt: null
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching auth info:', error);
+      // On error, set token status to missing
+      setAuthInfo(prev => ({
+        ...prev,
+        tokenStatus: {
+          hasAccessToken: false,
+          hasRefreshToken: false,
+          expiresAt: null
+        }
+      }));
     }
   };
 
@@ -243,6 +310,55 @@ export default function GoogleSettingsPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold text-dog-gray mb-6">Google Settings</h1>
       
+      {/* Authentication Status Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Authentication Status</h2>
+        <div className="space-y-4">
+          {authInfo.userInfo ? (
+            <div className="flex items-center space-x-4">
+              <img 
+                src={authInfo.userInfo.picture} 
+                alt={authInfo.userInfo.name}
+                className="w-10 h-10 rounded-full"
+              />
+              <div>
+                <p className="font-medium">{authInfo.userInfo.name}</p>
+                <p className="text-sm text-gray-600">{authInfo.userInfo.email}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-gray-600">Not authenticated</div>
+          )}
+
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Token Status</h3>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  authInfo.tokenStatus.hasAccessToken ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className="text-sm">
+                  Access Token: {authInfo.tokenStatus.hasAccessToken ? 'Valid' : 'Missing'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  authInfo.tokenStatus.hasRefreshToken ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span className="text-sm">
+                  Refresh Token: {authInfo.tokenStatus.hasRefreshToken ? 'Available' : 'Missing'}
+                </span>
+              </div>
+              {authInfo.tokenStatus.expiresAt && (
+                <div className="text-sm text-gray-600">
+                  Token expires: {new Date(authInfo.tokenStatus.expiresAt).toLocaleString()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* API Key Field */}

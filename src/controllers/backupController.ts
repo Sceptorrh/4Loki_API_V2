@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import db from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
+import { downloadFromDrive } from '../services/google/drive';
 
 // Track SSE clients for progress updates
 const progressEmitters: Response[] = [];
@@ -907,14 +908,52 @@ export const previewBackup = async (req: MulterRequest, res: Response) => {
 };
 
 /**
+ * Process a single row of data for a specific table
+ * Returns a result object instead of throwing errors
+ */
+async function processTableRow(tableName: string, row: any): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Validate the row first
+    const validationResult = validateRow(tableName, row, 0);
+    if (!validationResult.valid) {
+      return {
+        success: false,
+        error: validationResult.errors.map(e => `${e.field}: ${e.error}`).join(', ')
+      };
+    }
+
+    // Insert the row into the database
+    await db.query(`INSERT INTO ${tableName} SET ?`, [row]);
+    return { success: true };
+  } catch (error: any) {
+    // Handle specific MySQL errors more gracefully
+    if (error.code === 'ER_DUP_ENTRY') {
+      return {
+        success: false,
+        error: `Duplicate entry for ${tableName}`
+      };
+    }
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
  * Import data from a backup file
  */
 export const importBackup = async (req: MulterRequest, res: Response) => {
-  if (!previewDataStore || Object.keys(previewDataStore).length === 0) {
-    return res.status(400).json({ error: 'No preview data available for import' });
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
   }
 
+  const workbook = new ExcelJS.Workbook();
+  const buffer = req.file.buffer;
+
   try {
+    await workbook.xlsx.load(buffer);
+    
     const results: ImportResults = {
       customers: { success: 0, failed: 0, errors: [] },
       dogs: { success: 0, failed: 0, errors: [] },
@@ -928,9 +967,9 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
     // Track missing sheets
     const missingSheets: string[] = [];
     
-    // Check for expected tables that aren't in the preview data
+    // Check for expected tables that aren't in the workbook
     NON_STATIC_TABLES.forEach(tableName => {
-      if (!previewDataStore[tableName]) {
+      if (!workbook.getWorksheet(tableName)) {
         missingSheets.push(tableName);
       }
     });
@@ -940,8 +979,10 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
     let processedRecords = 0;
     
     // Count total records for progress tracking
-    Object.values(previewDataStore).forEach(tableData => {
-      totalRecords += tableData.length;
+    workbook.eachSheet((worksheet) => {
+      if (NON_STATIC_TABLES.includes(worksheet.name)) {
+        totalRecords += worksheet.rowCount - 1; // Subtract header row
+      }
     });
     
     console.log(`Total records to import: ${totalRecords}`);
@@ -949,21 +990,29 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
     // Send initial progress update
     sendProgressUpdate(0, `Starting import process... (0/${totalRecords} records)`);
 
-    // Get a connection from the pool
-    const connection = await db.getConnection();
-    
-    try {
-      // Start transaction
-      await connection.beginTransaction();
+    // Process each worksheet
+    for (const worksheet of workbook.worksheets) {
+      const tableName = worksheet.name;
+      const tableNameLower = tableName.toLowerCase();
       
-      sendProgressUpdate(1, 'Transaction started');
+      // Skip if not a valid table name
+      if (!NON_STATIC_TABLES.map(t => t.toLowerCase()).includes(tableNameLower)) {
+        console.warn(`Skipping worksheet ${tableName} as it's not in the allowed list`);
+        continue;
+      }
 
-      // Process each table from preview data
-      let tableCount = 0;
-      const totalTables = Object.keys(previewDataStore).length;
-      
-      // Map table names to result keys
-      const tableToResultKey: Record<string, keyof ImportResults> = {
+      // Get headers from first row
+      const headers = worksheet.getRow(1).values as string[];
+      if (!headers || headers.length <= 1) {
+        console.warn(`No valid headers found for table ${tableName}`);
+        continue;
+      }
+
+      // Remove first empty element from headers array (ExcelJS quirk)
+      headers.shift();
+
+      // Map table names to results object keys
+      const tableMapping: Record<string, keyof ImportResults> = {
         'customer': 'customers',
         'dog': 'dogs',
         'appointment': 'appointments',
@@ -972,686 +1021,83 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
         'dogdogbreed': 'dogDogbreeds',
         'serviceappointmentdog': 'serviceAppointmentDogs'
       };
-      
-      for (const tableName in previewDataStore) {
-        tableCount++;
-        const tableNameLower = tableName.toLowerCase();
-        const rows = previewDataStore[tableName];
-        
-        sendProgressUpdate(
-          Math.max(1, Math.min(5, Math.floor((tableCount / totalTables) * 5))),
-          `Processing table ${tableName} (${rows.length} records)`
-        );
-        
-        let rowCount = 0;
-        for (const row of rows) {
-          rowCount++;
-          processedRecords++;
-          
-          // Update progress for EACH record
-          const progressPercentage = Math.max(5, Math.min(95, Math.floor((processedRecords / totalRecords) * 90) + 5));
-          sendProgressUpdate(
-            progressPercentage, 
-            `Importing ${tableName} record ${rowCount}/${rows.length} (${processedRecords}/${totalRecords} total)`
-          );
-          
-          try {
-            // Create a row identifier for better error reporting
-            let rowIdentifier = '';
-            let rowDetails = {};
-            
-            if (tableNameLower === 'customer') {
-              rowIdentifier = `Customer "${row.naam || row.Naam || 'unnamed'}"`;
-              rowDetails = {
-                name: row.naam || row.Naam || 'unnamed',
-                id: row.id || row.Id,
-                contact: row.contactpersoon || row.Contactpersoon
-              };
-            } else if (tableNameLower === 'dog') {
-              rowIdentifier = `Dog "${row.name || row.Name || 'unnamed'}" (CustomerId: ${row.CustomerId || 'missing'})`;
-              rowDetails = {
-                name: row.name || row.Name || 'unnamed',
-                id: row.id || row.Id,
-                customerId: row.CustomerId || 'missing',
-                breed: row.breed || row.Breed
-              };
-            } else if (tableNameLower === 'appointment') {
-              const dateInfo = row.Date || row.date || 'unknown date';
-              const timeInfo = row.TimeStart || row.timestart || 'unknown time';
-              rowIdentifier = `Appointment on ${dateInfo} at ${timeInfo} (CustomerId: ${row.CustomerId || 'missing'})`;
-              rowDetails = {
-                date: dateInfo,
-                time: timeInfo,
-                id: row.id || row.Id,
-                customerId: row.CustomerId || 'missing',
-                status: row.AppointmentStatusId || row.appointmentstatusid
-              };
-            } else if (tableNameLower === 'appointmentdog') {
-              rowIdentifier = `AppointmentDog (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'}, DogId: ${row.DogId || row.dogid || 'missing'})`;
-              rowDetails = {
-                id: row.id || row.Id,
-                appointmentId: row.AppointmentId || row.appointmentid,
-                dogId: row.DogId || row.dogid
-              };
-            } else if (tableNameLower === 'additionalhour') {
-              rowIdentifier = `AdditionalHour (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'})`;
-              rowDetails = {
-                id: row.id || row.Id,
-                appointmentId: row.AppointmentId || row.appointmentid,
-                duration: row.Duration || row.duration
-              };
-            } else if (tableNameLower === 'dogdogbreed') {
-              rowIdentifier = `DogDogbreed (DogId: ${row.DogId || row.dogid || 'missing'}, DogbreedId: ${row.DogbreedId || row.dogbreedid || row.dogBreedId || 'missing'})`;
-              rowDetails = {
-                id: row.id || row.Id,
-                dogId: row.DogId || row.dogid,
-                dogbreedId: row.DogbreedId || row.dogbreedid || row.dogBreedId
-              };
-            } else if (tableNameLower === 'serviceappointmentdog') {
-              rowIdentifier = `ServiceAppointmentDog (AppointmentDogId: ${row.AppointmentDogId || row.appointmentdogid || 'missing'}, ServiceId: ${row.ServiceId || row.serviceid || 'missing'})`;
-              rowDetails = {
-                id: row.id || row.Id,
-                appointmentDogId: row.AppointmentDogId || row.appointmentdogid,
-                serviceId: row.ServiceId || row.serviceid,
-                price: row.Price || row.price
-              };
-            } else {
-              rowIdentifier = `Row in ${tableName}`;
-              rowDetails = { id: row.id || row.Id };
-            }
-            
-            // Since we've already processed the customer_id in the preview stage,
-            // we should keep it intact in the normalizedRow
-            const normalizedRow: RowData = { ...row };
-            
-            // Ensure CustomerId has the correct type (number) if it's a numeric string
-            if (normalizedRow.CustomerId && typeof normalizedRow.CustomerId === 'string' && !isNaN(Number(normalizedRow.CustomerId))) {
-              normalizedRow.CustomerId = Number(normalizedRow.CustomerId);
-            }
-            
-            // If we have customer_id but not CustomerId, map it
-            if (normalizedRow.customer_id && !normalizedRow.CustomerId) {
-              normalizedRow.CustomerId = normalizedRow.customer_id;
-              delete normalizedRow.customer_id;
-            }
-            
-            // For Appointment table, ensure fields have the correct capitalization
-            if (tableNameLower === 'appointment') {
-              // Field name mapping from Excel/JSON to database schema
-              const fieldMapping: Record<string, string> = {
-                'id': 'Id',
-                'date': 'Date',
-                'timestart': 'TimeStart', 
-                'timeend': 'TimeEnd',
-                'dateend': 'DateEnd',
-                'actualduration': 'ActualDuration',
-                'customerid': 'CustomerId',
-                'appointmentstatusid': 'AppointmentStatusId',
-                'note': 'Note',
-                'serialnumber': 'SerialNumber',
-                'ispaidincash': 'IsPaidInCash'
-              };
-              
-              // Create a new object with ONLY properly capitalized field names
-              const properCaseRow: RowData = {};
-              
-              // First, capture all fields with their proper casing 
-              Object.keys(normalizedRow).forEach(key => {
-                const lowerKey = key.toLowerCase();
-                if (fieldMapping[lowerKey]) {
-                  // Use the proper field name from mapping
-                  properCaseRow[fieldMapping[lowerKey]] = normalizedRow[key];
-                } else if (!lowerKey.toLowerCase().startsWith('id') && 
-                           !Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
-                  // Keep original if no mapping exists and it's not already a mapped field
-                  properCaseRow[key] = normalizedRow[key];
-                }
-              });
-              
-              // Create a new normalized row with ONLY the properly cased fields
-              const updatedRow: RowData = { ...properCaseRow };
-              
-              // Check for various forms of the IsPaidInCash field
-              const isPaidValue = normalizedRow.IsPaidInCash !== undefined ? normalizedRow.IsPaidInCash :
-                                  normalizedRow.ispaidincash !== undefined ? normalizedRow.ispaidincash :
-                                  normalizedRow.is_paid_in_cash !== undefined ? normalizedRow.is_paid_in_cash : null;
-              
-              if (isPaidValue !== null) {
-                // Ensure it's properly converted to a boolean for MySQL
-                updatedRow.IsPaidInCash = convertNullValue(isPaidValue, 'IsPaidInCash');
 
-              }
-              
-              // Replace normalizedRow with updatedRow
-              Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
-              Object.assign(normalizedRow, updatedRow);
-            } else if (tableNameLower === 'customer') {
-              // Field name mapping from Excel/JSON to database schema
-              const fieldMapping: Record<string, string> = {
-                'id': 'Id',
-                'naam': 'Naam',
-                'contactpersoon': 'Contactpersoon',
-                'emailadres': 'Emailadres',
-                'telefoonnummer': 'Telefoonnummer',
-                'notities': 'Notities',
-                'isallowcontactshare': 'IsAllowContactShare',
-                'createdon': 'CreatedOn',
-                'updatedon': 'UpdatedOn'
-              };
-              
-              // Create a new object with properly capitalized field names
-              const properCaseRow: RowData = {};
-              
-              // First, capture all fields with their proper casing 
-              Object.keys(normalizedRow).forEach(key => {
-                const lowerKey = key.toLowerCase();
-                if (fieldMapping[lowerKey]) {
-                  // Use the proper field name from mapping
-                  properCaseRow[fieldMapping[lowerKey]] = normalizedRow[key];
-                } else if (!lowerKey.toLowerCase().startsWith('id') && 
-                           !Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
-                  // Keep original if no mapping exists and it's not already a mapped field
-                  properCaseRow[key] = normalizedRow[key];
-                }
-              });
-              
-              // Replace normalizedRow with properCaseRow
-              Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
-              Object.assign(normalizedRow, properCaseRow);
-            } else if (tableNameLower === 'appointmentdog') {
-              // Field name mapping from Excel/JSON to database schema
-              const fieldMapping: Record<string, string> = {
-                'id': 'Id',
-                'appointmentid': 'AppointmentId',
-                'dogid': 'DogId'
-              };
-              
-              // Create a new object with properly capitalized field names
-              const properCaseRow: RowData = {};
-              
-              // Ensure fields have proper casing
-              Object.keys(normalizedRow).forEach(key => {
-                const lowerKey = key.toLowerCase();
-                if (fieldMapping[lowerKey]) {
-                  // Use the proper field name from mapping
-                  properCaseRow[fieldMapping[lowerKey]] = normalizedRow[key];
-                } else if (!Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
-                  // Keep original if no mapping exists and it's not already a mapped field
-                  properCaseRow[key] = normalizedRow[key];
-                }
-              });
-              
-              // Replace normalizedRow with properCaseRow
-              Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
-              Object.assign(normalizedRow, properCaseRow);
-            } else if (tableNameLower === 'additionalhour') {
-              // Field name mapping from Excel/JSON to database schema
-              const fieldMapping: Record<string, string> = {
-                'id': 'Id',
-                'appointmentid': 'AppointmentId',
-                'duration': 'Duration'
-              };
-              
-              // Create a new object with properly capitalized field names
-              const properCaseRow: RowData = {};
-              
-              // Ensure fields have proper casing
-              Object.keys(normalizedRow).forEach(key => {
-                const lowerKey = key.toLowerCase();
-                if (fieldMapping[lowerKey]) {
-                  // Use the proper field name from mapping
-                  properCaseRow[fieldMapping[lowerKey]] = normalizedRow[key];
-                } else if (!Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
-                  // Keep original if no mapping exists and it's not already a mapped field
-                  properCaseRow[key] = normalizedRow[key];
-                }
-              });
-              
-              // Replace normalizedRow with properCaseRow
-              Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
-              Object.assign(normalizedRow, properCaseRow);
-            }
-            
-            // Check for required fields based on table type
-            if (tableNameLower === 'dog' && !normalizedRow['CustomerId']) {
-              const errorMsg = `${rowIdentifier} is missing required CustomerId reference`;
-              console.error(errorMsg);
-              
-              results.dogs.failed++;
-              results.dogs.errors.push({
-                message: errorMsg,
-                details: rowDetails,
-                errorType: 'missing_customer_id'
-              });
-              continue;
-            }
-            
-            if (tableNameLower === 'appointment' && !normalizedRow['CustomerId']) {
-              const errorMsg = `${rowIdentifier} is missing required CustomerId reference`;
-              console.error(errorMsg);
-              
-              results.appointments.failed++;
-              results.appointments.errors.push({
-                message: errorMsg,
-                details: rowDetails,
-                errorType: 'missing_customer_id'
-              });
-              continue;
-            }
-
-            // Validate the row before import
-            const validationResult = validateRow(tableName, normalizedRow, 0);
-            if (!validationResult.valid) {
-              // Create a detailed error message with the validation errors
-              const errorDetails = validationResult.errors.map(err => 
-                `Field "${err.field}": ${err.error}${err.value !== null ? ` (value: ${err.value})` : ''}`
-              ).join('; ');
-              
-              const errorMsg = `${rowIdentifier} validation failed: ${errorDetails}`;
-              console.error(errorMsg);
-              
-              // Add to appropriate error collection
-              const detailedError = {
-                message: errorMsg,
-                details: rowDetails,
-                validationErrors: validationResult.errors,
-                errorType: 'validation_error'
-              };
-              
-              // Update failure count based on table
-              const resultKey = tableToResultKey[tableNameLower];
-              if (resultKey) {
-                results[resultKey].failed++;
-                results[resultKey].errors.push(detailedError);
-              }
-              continue;
-            }
-
-            // Format Appointment times (where applicable)
-            if (tableNameLower === 'appointment') {
-              // Ensure Date is in MySQL format (YYYY-MM-DD)
-              normalizedRow.Date = formatDateToMySql(normalizedRow.Date);
-              
-              // Format DateEnd field if it exists
-              // Ensure old dates are converted to null
-              normalizedRow.DateEnd = formatDateToMySql(normalizedRow.DateEnd);
-              
-              // Format TimeStart and TimeEnd
-              normalizedRow.TimeStart = formatTimeToMySql(normalizedRow.TimeStart);
-              normalizedRow.TimeEnd = formatTimeToMySql(normalizedRow.TimeEnd);
-              
-            }
-
-            // Format dates for Dog table
-            if (tableNameLower === 'dog') {
-              // Field name mapping from Excel/JSON to database schema
-              const fieldMapping: Record<string, string> = {
-                'id': 'Id',
-                'name': 'Name',
-                'breed': 'Breed',
-                'birth_date': 'Birthday',
-                'birthday': 'Birthday',
-                'weight': 'Weight',
-                'allergies': 'Allergies',
-                'servicenote': 'ServiceNote',
-                'dogsizeid': 'DogSizeId',
-                'customerid': 'CustomerId'
-              };
-              
-              // Create a new object with properly capitalized field names
-              const properCaseRow: RowData = {};
-              
-              // First, capture all fields with their proper casing 
-              Object.keys(normalizedRow).forEach(key => {
-                const lowerKey = key.toLowerCase();
-                if (fieldMapping[lowerKey]) {
-                  // Use the proper field name from mapping
-                  properCaseRow[fieldMapping[lowerKey]] = normalizedRow[key];
-                } else if (!lowerKey.toLowerCase().startsWith('id') && 
-                           !Object.values(fieldMapping).map(v => v.toLowerCase()).includes(lowerKey)) {
-                  // Keep original if no mapping exists and it's not already a mapped field
-                  properCaseRow[key] = normalizedRow[key];
-                }
-              });
-              
-              // Replace normalizedRow with properCaseRow
-              Object.keys(normalizedRow).forEach(key => delete normalizedRow[key]);
-              Object.assign(normalizedRow, properCaseRow);
-              
-              // Format Birthday field
-              normalizedRow.Birthday = formatDateToMySql(normalizedRow.Birthday);
-            }
-
-            // Format created/updated dates for all tables
-            if (normalizedRow.CreatedOn) {
-              try {
-                const date = new Date(normalizedRow.CreatedOn);
-                if (!isNaN(date.getTime())) {
-                  // Format to MySQL compatible datetime format: YYYY-MM-DD HH:MM:SS
-                  normalizedRow.CreatedOn = date.toISOString().slice(0, 19).replace('T', ' ');
-                }
-              } catch (e) {
-                console.warn(`Failed to format CreatedOn date: ${normalizedRow.CreatedOn}`);
-              }
-            }
-            
-            if (normalizedRow.UpdatedOn) {
-              try {
-                const date = new Date(normalizedRow.UpdatedOn);
-                if (!isNaN(date.getTime())) {
-                  // Format to MySQL compatible datetime format: YYYY-MM-DD HH:MM:SS
-                  normalizedRow.UpdatedOn = date.toISOString().slice(0, 19).replace('T', ' ');
-                }
-              } catch (e) {
-                console.warn(`Failed to format UpdatedOn date: ${normalizedRow.UpdatedOn}`);
-              }
-            }
-
-            // Handle lowercase variants of createdOn and updatedOn
-            if (normalizedRow.createdon) {
-              try {
-                const date = new Date(normalizedRow.createdon);
-                if (!isNaN(date.getTime())) {
-                  // Format to MySQL compatible datetime format: YYYY-MM-DD HH:MM:SS
-                  normalizedRow.createdon = date.toISOString().slice(0, 19).replace('T', ' ');
-                }
-              } catch (e) {
-                console.warn(`Failed to format createdon date: ${normalizedRow.createdon}`);
-              }
-            }
-            
-            if (normalizedRow.updatedon) {
-              try {
-                const date = new Date(normalizedRow.updatedon);
-                if (!isNaN(date.getTime())) {
-                  // Format to MySQL compatible datetime format: YYYY-MM-DD HH:MM:SS
-                  normalizedRow.updatedon = date.toISOString().slice(0, 19).replace('T', ' ');
-                }
-              } catch (e) {
-                console.warn(`Failed to format updatedon date: ${normalizedRow.updatedon}`);
-              }
-            }
-
-            // Remove non-existent fields
-            delete normalizedRow.created_at;
-            delete normalizedRow.updated_at;
-
-            // Explicitly list columns and values
-            const columns = Object.keys(normalizedRow).join(', ');
-            const placeholders = Object.keys(normalizedRow).map(() => '?').join(', ');
-            const values = Object.values(normalizedRow);
-
-            try {
-              // For existing record with an ID, check if we need to handle auto-increment
-              let sql = `INSERT INTO ${tableName} (${columns}) VALUES (${placeholders})`;
-              
-              // Execute the insert statement
-              const [result] = await connection.execute(sql, values);
-              
-              // If the ID column is present in the data, update the auto-increment value
-              if (normalizedRow.Id || normalizedRow.id) {
-                // Get the current max ID
-                const [maxRows]: any = await connection.execute(`SELECT MAX(Id) as maxId FROM ${tableName}`);
-                const maxId = maxRows[0].maxId || 0;
-                
-                // Update the auto-increment to be one more than the max ID
-                await connection.execute(`ALTER TABLE ${tableName} AUTO_INCREMENT = ${maxId + 1}`);
-              }
-              
-              
-              // Update success counts
-              const resultKey = tableToResultKey[tableNameLower];
-              if (resultKey) {
-                results[resultKey].success++;
-              }
-            } catch (dbError: any) {
-              // Create a detailed database error message
-              const errorMsg = `${rowIdentifier} database error: ${dbError.message}`;
-              console.error(errorMsg);
-              
-              // Add to appropriate error collection
-              const detailedError = {
-                message: errorMsg,
-                details: rowDetails,
-                sqlError: dbError.message,
-                errorType: 'database_error'
-              };
-              
-              // Update failure count based on table
-              const resultKey = tableToResultKey[tableNameLower];
-              if (resultKey) {
-                results[resultKey].failed++;
-                results[resultKey].errors.push(detailedError);
-              }
-            }
-          } catch (error: any) {
-            // Create a descriptive error for the row
-            let rowIdentifier = '';
-            let rowDetails = {};
-            
-            try {
-              if (tableNameLower === 'customer') {
-                rowIdentifier = `Customer "${row.naam || row.Naam || 'unnamed'}"`;
-                rowDetails = {
-                  name: row.naam || row.Naam || 'unnamed',
-                  id: row.id || row.Id
-                };
-              } else if (tableNameLower === 'dog') {
-                rowIdentifier = `Dog "${row.name || row.Name || 'unnamed'}" (CustomerId: ${row.CustomerId || 'missing'})`;
-                rowDetails = {
-                  name: row.name || row.Name || 'unnamed',
-                  id: row.id || row.Id,
-                  customerId: row.CustomerId
-                };
-              } else if (tableNameLower === 'appointment') {
-                const dateInfo = row.Date || row.date || 'unknown date';
-                const timeInfo = row.TimeStart || row.timestart || 'unknown time';
-                rowIdentifier = `Appointment on ${dateInfo} at ${timeInfo} (CustomerId: ${row.CustomerId || 'missing'})`;
-                rowDetails = {
-                  date: dateInfo,
-                  time: timeInfo,
-                  id: row.id || row.Id,
-                  customerId: row.CustomerId
-                };
-              } else if (tableNameLower === 'appointmentdog') {
-                rowIdentifier = `AppointmentDog (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'}, DogId: ${row.DogId || row.dogid || 'missing'})`;
-                rowDetails = {
-                  id: row.id || row.Id,
-                  appointmentId: row.AppointmentId || row.appointmentid,
-                  dogId: row.DogId || row.dogid
-                };
-              } else if (tableNameLower === 'additionalhour') {
-                rowIdentifier = `AdditionalHour (AppointmentId: ${row.AppointmentId || row.appointmentid || 'missing'})`;
-                rowDetails = {
-                  id: row.id || row.Id,
-                  appointmentId: row.AppointmentId || row.appointmentid,
-                  duration: row.Duration || row.duration
-                };
-              } else if (tableNameLower === 'dogdogbreed') {
-                rowIdentifier = `DogDogbreed (DogId: ${row.DogId || row.dogid || 'missing'}, DogbreedId: ${row.DogbreedId || row.dogbreedid || row.dogBreedId || 'missing'})`;
-                rowDetails = {
-                  id: row.id || row.Id,
-                  dogId: row.DogId || row.dogid,
-                  dogbreedId: row.DogbreedId || row.dogbreedid || row.dogBreedId
-                };
-              } else if (tableNameLower === 'serviceappointmentdog') {
-                rowIdentifier = `ServiceAppointmentDog (AppointmentDogId: ${row.AppointmentDogId || row.appointmentdogid || 'missing'}, ServiceId: ${row.ServiceId || row.serviceid || 'missing'})`;
-                rowDetails = {
-                  id: row.id || row.Id,
-                  appointmentDogId: row.AppointmentDogId || row.appointmentdogid,
-                  serviceId: row.ServiceId || row.serviceid,
-                  price: row.Price || row.price
-                };
-              } else {
-                rowIdentifier = `Row in ${tableName}`;
-                rowDetails = { id: row.id || row.Id };
-              }
-            } catch (e) {
-              rowIdentifier = `Row in ${tableName}`;
-              rowDetails = { error: "Could not extract row details" };
-            }
-            
-            const errorMsg = `${rowIdentifier} processing error: ${error.message}`;
-            console.error(errorMsg);
-            
-            const detailedError = {
-              message: errorMsg,
-              details: rowDetails,
-              error: error.message,
-              errorType: 'processing_error'
-            };
-            
-            // Update failure count based on table
-            const resultKey = tableToResultKey[tableNameLower];
-            if (resultKey) {
-              results[resultKey].failed++;
-              results[resultKey].errors.push(detailedError);
-            }
-          }
-        }
+      const resultKey = tableMapping[tableNameLower];
+      if (!resultKey) {
+        console.warn(`Unknown table type: ${tableName}`);
+        continue;
       }
 
-      // Commit transaction
-      await connection.commit();
-      sendProgressUpdate(98, 'Finalizing import...');
+      const tableResults = results[resultKey];
+      if (!tableResults) {
+        console.warn(`No results object for table ${tableName}`);
+        continue;
+      }
 
-      // Clear preview data after import
-      previewDataStore = {};
+      // Process each row in the table
+      for (const row of worksheet.getRows(2, worksheet.rowCount - 1) || []) {
+        const rowData: any = {};
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber - 1];
+          if (header) {
+            // Use convertNullValue to properly handle special fields like IsPaidInCash
+            rowData[header] = convertNullValue(cell.value, header);
+          }
+        });
 
-      // Prepare detailed report for frontend display
-      const detailedReport = {
+        // Process the row and handle the result
+        const result = await processTableRow(tableName, rowData);
+        if (result.success) {
+          tableResults.success++;
+        } else {
+          tableResults.failed++;
+          tableResults.errors.push({
+            message: result.error || 'Unknown error',
+            details: rowData,
+            errorType: 'ProcessingError'
+          });
+        }
+        
+        processedRecords++;
+        const progress = Math.round((processedRecords / totalRecords) * 100);
+        sendProgressUpdate(progress, `Processing ${tableName}... (${processedRecords}/${totalRecords} records)`);
+      }
+    }
+
+    // Prepare the response
+    const response = {
+      message: 'Import completed successfully',
+      report: {
         summary: {
           total: {
-            success: Object.values(results).reduce((sum, result) => sum + result.success, 0),
-            failed: Object.values(results).reduce((sum, result) => sum + result.failed, 0)
+            success: Object.values(results).reduce((sum, r) => sum + r.success, 0),
+            failed: Object.values(results).reduce((sum, r) => sum + r.failed, 0)
           },
-          tables: {
-            'Customer': { 
-              success: results.customers.success, 
-              failed: results.customers.failed 
-            },
-            'Dog': { 
-              success: results.dogs.success, 
-              failed: results.dogs.failed 
-            },
-            'Appointment': { 
-              success: results.appointments.success, 
-              failed: results.appointments.failed 
-            },
-            'AppointmentDog': {
-              success: results.appointmentDogs.success,
-              failed: results.appointmentDogs.failed
-            },
-            'AdditionalHour': {
-              success: results.additionalHours.success,
-              failed: results.additionalHours.failed
-            },
-            'DogDogbreed': {
-              success: results.dogDogbreeds.success,
-              failed: results.dogDogbreeds.failed
-            },
-            'ServiceAppointmentDog': {
-              success: results.serviceAppointmentDogs.success,
-              failed: results.serviceAppointmentDogs.failed
+          tables: Object.entries(results).reduce((acc, [key, value]) => ({
+            ...acc,
+            [key.charAt(0).toUpperCase() + key.slice(1)]: {
+              success: value.success,
+              failed: value.failed
             }
-          },
-          missingSheets: missingSheets.length > 0 ? missingSheets : undefined
+          }), {}),
+          missingSheets
         },
-        // Format errors to be more readable for frontend display
-        errorsByTable: [
-          {
-            tableName: 'Customer',
-            count: results.customers.failed,
-            items: results.customers.errors
-          },
-          {
-            tableName: 'Dog',
-            count: results.dogs.failed,
-            items: results.dogs.errors
-          },
-          {
-            tableName: 'Appointment',
-            count: results.appointments.failed,
-            items: results.appointments.errors
-          },
-          {
-            tableName: 'AppointmentDog',
-            count: results.appointmentDogs.failed,
-            items: results.appointmentDogs.errors
-          },
-          {
-            tableName: 'AdditionalHour',
-            count: results.additionalHours.failed,
-            items: results.additionalHours.errors
-          },
-          {
-            tableName: 'DogDogbreed',
-            count: results.dogDogbreeds.failed,
-            items: results.dogDogbreeds.errors
-          },
-          {
-            tableName: 'ServiceAppointmentDog',
-            count: results.serviceAppointmentDogs.failed,
-            items: results.serviceAppointmentDogs.errors
-          }
-        ].filter(tableReport => tableReport.count > 0) // Only include tables with errors
-      };
-
-      // Create a message summarizing the import
-      const totalSuccess = detailedReport.summary.total.success;
-      const totalFailed = detailedReport.summary.total.failed;
-      
-      let statusMessage;
-      if (totalFailed === 0) {
-        statusMessage = `Import successful: ${totalSuccess} records imported without errors.`;
-      } else if (totalSuccess === 0) {
-        statusMessage = `Import failed: All ${totalFailed} records failed to import.`;
-      } else {
-        statusMessage = `Import partially successful: ${totalSuccess} records imported, ${totalFailed} records failed.`;
+        errorsByTable: Object.entries(results)
+          .filter(([_, value]) => value.failed > 0)
+          .map(([tableName, value]) => ({
+            tableName: tableName.charAt(0).toUpperCase() + tableName.slice(1),
+            count: value.failed,
+            items: value.errors
+          }))
       }
+    };
 
-      if (missingSheets.length > 0) {
-        statusMessage += ` (${missingSheets.length} sheets were not imported)`;
-      }
-
-      // Send final progress update
-      sendProgressUpdate(100, `Import completed: ${processedRecords} records processed`);
-
-      res.json({
-        status: totalFailed > 0 ? 'partial' : 'success',
-        message: statusMessage,
-        report: detailedReport
-      });
-    } catch (error: any) {
-      // Rollback transaction on error
-      await connection.rollback();
-      console.error('Transaction error:', error);
-      
-      // Update progress on error
-      sendProgressUpdate(0, `Import failed: ${error.message}`);
-      
-      // Also send error details to frontend
-      res.status(500).json({ 
-        status: 'error',
-        message: 'Failed to import backup due to a transaction error',
-        error: error.message,
-        details: 'The transaction was rolled back - no data was imported.'
-      });
-    } finally {
-      // Release the connection back to the pool
-      connection.release();
-    }
+    res.json(response);
   } catch (error: any) {
     console.error('Import error:', error);
-    
-    // Update progress on error
-    sendProgressUpdate(0, `Import failed: ${error.message}`);
-    
     res.status(500).json({ 
-      status: 'error',
-      message: 'Failed to import backup',
-      error: error.message,
-      details: 'An error occurred before database operations could begin.'
+      error: 'Failed to import backup',
+      details: error.message 
     });
   }
 };
@@ -1691,5 +1137,80 @@ export const clearDatabase = async (req: Request, res: Response) => {
     });
   } finally {
     connection.release();
+  }
+};
+
+/**
+ * Preview data from a Google Drive backup file
+ */
+export const previewDriveBackup = async (req: Request, res: Response) => {
+  const { fileId } = req.body;
+  
+  if (!fileId) {
+    return res.status(400).json({ error: 'No file ID provided' });
+  }
+
+  try {
+    // Download the file from Google Drive as a buffer
+    const fileBuffer = await downloadFromDrive(fileId, req);
+    
+    // Create a workbook from the buffer
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(fileBuffer);
+    
+    const preview: Record<string, any[]> = {};
+
+    // Process each worksheet
+    for (const worksheet of workbook.worksheets) {
+      const tableName = worksheet.name;
+      const tableNameLower = tableName.toLowerCase();
+      
+      // Skip if not a valid table name
+      if (!NON_STATIC_TABLES.map(t => t.toLowerCase()).includes(tableNameLower)) {
+        console.warn(`Skipping worksheet ${tableName} as it's not in the allowed list`);
+        continue;
+      }
+
+      // Get headers from first row
+      const headers = worksheet.getRow(1).values as string[];
+      if (!headers || headers.length <= 1) {
+        console.warn(`No valid headers found for table ${tableName}`);
+        continue;
+      }
+
+      // Remove first empty element from headers array (ExcelJS quirk)
+      headers.shift();
+
+      // Get data rows
+      const rows: any[] = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header row
+        
+        const rowData: any = {};
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber - 1];
+          if (header) {
+            rowData[header] = cell.value;
+          }
+        });
+        
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData);
+        }
+      });
+
+      preview[tableName] = rows;
+    }
+
+    // Store preview data for import
+    previewDataStore = preview;
+
+    res.json({ preview });
+  } catch (error: any) {
+    console.error('Preview error:', error);
+    res.status(500).json({ 
+      error: 'Failed to preview backup',
+      details: error.message 
+    });
   }
 }; 

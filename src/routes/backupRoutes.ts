@@ -3,14 +3,14 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress } from '../controllers/backupController';
+import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress, previewDriveBackup } from '../controllers/backupController';
 import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBackup, cleanupOldBackups } from '../services/google/drive';
 import { authenticateToken } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { GoogleAuthService } from '../services/google/auth';
 
 const router = Router();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 const googleAuth = GoogleAuthService.getInstance();
 
 // Apply authentication middleware to all routes
@@ -170,9 +170,21 @@ router.get('/drive-files', async (req: Request, res: Response) => {
     const accessToken = await googleAuth.getValidAccessToken(req);
     const files = await listDriveFiles(accessToken);
     res.json({ files });
-  } catch (error) {
-    logger.error('Error listing drive files:', error);
-    res.status(500).json({ message: 'Failed to list Google Drive files' });
+  } catch (error: any) {
+    console.error('Error listing drive files:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/drive-files/:fileId', async (req: Request, res: Response) => {
+  try {
+    const fileData = await downloadFromDrive(req.params.fileId, req);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=backup.xlsx');
+    res.send(fileData);
+  } catch (error: any) {
+    console.error('Error downloading drive file:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -183,7 +195,7 @@ router.post('/restore-drive', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'File ID is required' });
     }
 
-    const fileBuffer = await downloadFromDrive(fileId);
+    const fileBuffer = await downloadFromDrive(fileId, req);
     const tempPath = path.join(process.cwd(), 'uploads', `temp_${Date.now()}.xlsx`);
     fs.writeFileSync(tempPath, fileBuffer);
 
@@ -218,6 +230,7 @@ router.post('/restore-drive', async (req: Request, res: Response) => {
 
 router.post('/export-drive', async (req: Request, res: Response) => {
   try {
+    // Create a temporary file path
     const tempPath = path.join(process.cwd(), 'uploads', `backup_${Date.now()}.xlsx`);
     
     // Create a writable stream for the backup file
@@ -238,18 +251,18 @@ router.post('/export-drive', async (req: Request, res: Response) => {
     
     // Upload the file to Google Drive
     const fileName = `4loki_backup_${new Date().toISOString().split('T')[0]}.xlsx`;
-    await uploadToDrive(tempPath, fileName);
+    const fileId = await uploadToDrive(tempPath, fileName, req);
     
     // Clean up old backups if configured
-    await cleanupOldBackups();
+    await cleanupOldBackups(req);
 
     // Clean up the temporary file
     fs.unlinkSync(tempPath);
 
-    res.json({ message: 'Backup exported to Google Drive successfully' });
-  } catch (error) {
-    console.error('Error exporting to drive:', error);
-    res.status(500).json({ message: 'Failed to export backup to Google Drive' });
+    res.json({ success: true, fileId });
+  } catch (error: any) {
+    console.error('Error exporting to Google Drive:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -260,6 +273,50 @@ router.get('/check-auto-backup', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error checking auto backup:', error);
     res.status(500).json({ message: 'Failed to check auto backup status' });
+  }
+});
+
+// Preview backup from Google Drive
+router.post('/preview-drive', previewDriveBackup);
+
+// Import backup from Google Drive
+router.post('/import-drive', async (req: Request, res: Response) => {
+  try {
+    const { fileId } = req.body;
+    if (!fileId) {
+      return res.status(400).json({ message: 'File ID is required' });
+    }
+
+    const fileBuffer = await downloadFromDrive(fileId, req);
+    const tempPath = path.join(process.cwd(), 'uploads', `temp_${Date.now()}.xlsx`);
+    fs.writeFileSync(tempPath, fileBuffer);
+
+    // Create a mock file object for the importBackup function
+    const mockFile: Express.Multer.File = {
+      path: tempPath,
+      filename: `temp_${Date.now()}.xlsx`,
+      fieldname: 'file',
+      originalname: `backup_${Date.now()}.xlsx`,
+      encoding: '7bit',
+      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      destination: 'uploads/',
+      size: fileBuffer.length,
+      stream: fs.createReadStream(tempPath),
+      buffer: fileBuffer
+    };
+
+    // Call the existing import function
+    const mockReq = {
+      file: mockFile
+    } as Request;
+    
+    await importBackup(mockReq as any, res);
+
+    // Clean up the temporary file
+    fs.unlinkSync(tempPath);
+  } catch (error) {
+    console.error('Error importing from drive:', error);
+    res.status(500).json({ message: 'Failed to import from Google Drive backup' });
   }
 });
 

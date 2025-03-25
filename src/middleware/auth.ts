@@ -41,22 +41,20 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
   const isBackupRoute = req.originalUrl.includes('/api/v1/backup/') || req.originalUrl === '/api/v1/backup';
   logger.info(`Full path: ${req.originalUrl}, isBackupRoute: ${isBackupRoute}`);
 
-  // For backup routes, just pass the token through
-  if (isBackupRoute) {
-    logger.info('Backup route detected, passing through Google token');
+  // For backup routes or Google auth routes, just pass the token through
+  if (isBackupRoute || req.originalUrl.includes('/api/v1/google/')) {
+    logger.info('Backup or Google route detected, passing through token');
     req.user = { token }; // Just pass the token through
     return next();
   }
 
-  // For other routes, verify as JWT
+  // For all other routes, verify the JWT token
   try {
-    logger.info('Verifying JWT token');
-    const user = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = user;
-    logger.info('JWT token verified successfully');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    req.user = decoded as any;
     next();
   } catch (error) {
     logger.error('JWT verification failed:', error);
-    return res.status(403).json({ message: 'Invalid or expired token' });
+    return res.status(403).json({ message: 'Invalid token' });
   }
 }; 

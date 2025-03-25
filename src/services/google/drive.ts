@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { googleConfig } from './config';
 import fs from 'fs';
 import path from 'path';
+import { GoogleAuthService } from './auth';
 
 // Interface for backup configuration
 interface BackupConfig {
@@ -32,13 +33,27 @@ function loadBackupConfig(): BackupConfig {
 }
 
 /**
- * Initialize Google Drive API client
+ * Initialize Google Drive API client with valid credentials
  */
-function getDriveClient() {
+async function getDriveClient(req: any) {
+  const googleAuth = GoogleAuthService.getInstance();
+  const accessToken = await googleAuth.getValidAccessToken(req);
+  const tokenData = googleAuth.getTokenData();
+
+  if (!tokenData) {
+    throw new Error('No token data available');
+  }
+
   const auth = new google.auth.OAuth2(
     googleConfig.auth.clientId,
     googleConfig.auth.clientSecret
   );
+
+  auth.setCredentials({
+    access_token: tokenData.access_token,
+    refresh_token: tokenData.refresh_token,
+    expiry_date: tokenData.expires_at
+  });
 
   return google.drive({ version: 'v3', auth });
 }
@@ -46,13 +61,13 @@ function getDriveClient() {
 /**
  * Upload a file to Google Drive
  */
-export async function uploadToDrive(filePath: string, fileName: string): Promise<string> {
+export async function uploadToDrive(filePath: string, fileName: string, req: any): Promise<string> {
   const config = loadBackupConfig();
   if (!config.googleDrive.enabled || !config.googleDrive.folderId) {
     throw new Error('Google Drive backup is not configured');
   }
 
-  const drive = getDriveClient();
+  const drive = await getDriveClient(req);
   
   const fileMetadata = {
     name: fileName,
@@ -115,13 +130,13 @@ export async function listDriveFiles(accessToken: string): Promise<Array<{ id: s
 /**
  * Download a file from Google Drive
  */
-export async function downloadFromDrive(fileId: string): Promise<Buffer> {
+export async function downloadFromDrive(fileId: string, req: any): Promise<Buffer> {
   const config = loadBackupConfig();
   if (!config.googleDrive.enabled) {
     throw new Error('Google Drive backup is not configured');
   }
 
-  const drive = getDriveClient();
+  const drive = await getDriveClient(req);
 
   try {
     const response = await drive.files.get({
@@ -143,13 +158,13 @@ export async function downloadFromDrive(fileId: string): Promise<Buffer> {
 /**
  * Delete old backup files based on the configured maximum files to keep
  */
-export async function cleanupOldBackups(): Promise<void> {
+export async function cleanupOldBackups(req: any): Promise<void> {
   const config = loadBackupConfig();
   if (!config.googleDrive.enabled || !config.googleDrive.folderId) {
     return;
   }
 
-  const drive = getDriveClient();
+  const drive = await getDriveClient(req);
   const maxFiles = config.googleDrive.autoBackup.maxFiles;
 
   try {

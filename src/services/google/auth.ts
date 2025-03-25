@@ -47,7 +47,7 @@ export class GoogleAuthService {
   public getLoginUrl(redirectUri: string): string {
     const params = new URLSearchParams({
       client_id: googleConfig.auth.clientId,
-      redirect_uri: 'http://localhost:3001/api/auth/google/callback',
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: googleConfig.auth.scopes.join(' '),
       access_type: 'offline',
@@ -89,13 +89,23 @@ export class GoogleAuthService {
         expires_at: Date.now() + (response.data.expires_in * 1000)
       };
 
-      // Store token in cookie
+      // Store access token in cookie
       res.cookie('google_token', response.data.access_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: response.data.expires_in * 1000 // Convert to milliseconds
       });
+
+      // Store refresh token in a separate secure cookie
+      if (response.data.refresh_token) {
+        res.cookie('google_refresh_token', response.data.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+      }
 
       return response.data;
     } catch (error) {
@@ -117,7 +127,7 @@ export class GoogleAuthService {
    */
   private async refreshAccessToken(): Promise<string> {
     if (!this.tokenData?.refresh_token) {
-      throw new Error('No refresh token available');
+      throw new Error('No refresh token available - user needs to re-authenticate');
     }
 
     try {
@@ -162,17 +172,32 @@ export class GoogleAuthService {
     // First try to get token from cookie
     const cookies = req.headers.cookie?.split('; ') || [];
     const tokenCookie = cookies.find(cookie => cookie.startsWith('google_token='));
+    const refreshTokenCookie = cookies.find(cookie => cookie.startsWith('google_refresh_token='));
+    
     if (tokenCookie) {
       const token = tokenCookie.split('=')[1];
+      // Get token expiry from cookie
+      const expiresCookie = cookies.find(cookie => cookie.startsWith('google_token_expires='));
+      const expiresAt = expiresCookie ? parseInt(expiresCookie.split('=')[1]) : Date.now() + 3600000;
+      
+      // Get refresh token from cookie if available
+      const refreshToken = refreshTokenCookie ? refreshTokenCookie.split('=')[1] : null;
+      
+      // Update token data with both access and refresh tokens
       this.tokenData = {
         access_token: token,
-        refresh_token: this.tokenData?.refresh_token || '',
-        expires_at: Date.now() + 3600000 // Assume 1 hour expiry
+        refresh_token: refreshToken || this.tokenData?.refresh_token || '',
+        expires_at: expiresAt
       };
+
+      // If we have a refresh token in the cookie but not in memory, update memory
+      if (refreshToken && (!this.tokenData.refresh_token || this.tokenData.refresh_token !== refreshToken)) {
+        this.tokenData.refresh_token = refreshToken;
+      }
     }
 
     if (!this.tokenData) {
-      throw new Error('No token data available');
+      throw new Error('No token data available - user needs to authenticate');
     }
 
     // If token is expired or about to expire in the next 5 minutes, refresh it
@@ -211,6 +236,9 @@ export class GoogleAuthService {
       return response.data;
     } catch (error) {
       console.error('Error getting user info:', error);
+      if (axios.isAxiosError(error)) {
+        throw new Error(`Failed to get user info: ${error.response?.data?.error_description || error.message}`);
+      }
       throw new Error('Failed to get user info');
     }
   }
@@ -221,5 +249,14 @@ export class GoogleAuthService {
   public clearTokenData(res: Response): void {
     this.tokenData = null;
     res.clearCookie('google_token');
+    res.clearCookie('google_token_expires');
+    res.clearCookie('google_refresh_token');
+  }
+
+  /**
+   * Get the current token data
+   */
+  public getTokenData(): TokenData | null {
+    return this.tokenData;
   }
 } 

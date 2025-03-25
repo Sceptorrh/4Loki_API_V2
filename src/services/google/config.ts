@@ -36,19 +36,10 @@ export const googleConfig = {
     scopes: [
       'https://www.googleapis.com/auth/userinfo.profile',
       'https://www.googleapis.com/auth/userinfo.email',
-      'https://www.googleapis.com/auth/contacts.readonly'
+      'https://www.googleapis.com/auth/contacts.readonly',
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/drive.readonly'
     ]
-  },
-  
-  // FedCM configuration
-  fedcm: {
-    clientId: loadSecrets().OAUTH_CLIENT_ID,
-    // FedCM specific configuration
-    nonce: undefined, // Will be generated per request
-    context: 'signin',
-    // Additional FedCM parameters
-    select_account: true,
-    prompt: 'select_account'
   },
   
   // Base URLs for different Google APIs
