@@ -3,11 +3,12 @@
 import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { FiSettings, FiMap, FiKey } from 'react-icons/fi';
+import { FiSettings, FiMap, FiKey, FiDatabase } from 'react-icons/fi';
 
 const settingsItems = [
   { name: 'Navigation', href: '/settings/navigation', icon: FiMap },
   { name: 'Google', href: '/settings/google', icon: FiKey },
+  { name: 'Backup', href: '/settings/backup', icon: FiDatabase },
 ];
 
 export default function SettingsPage() {

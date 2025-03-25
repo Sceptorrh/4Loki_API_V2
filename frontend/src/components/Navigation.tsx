@@ -15,8 +15,6 @@ import {
   FiMenu,
   FiX,
   FiDownload,
-  FiDatabase,
-  FiMap,
   FiSettings,
   FiClock
 } from 'react-icons/fi';
@@ -37,16 +35,7 @@ const navItems = [
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
   { name: 'Exports', href: '/exports', icon: FiDownload },
   { name: 'Reports', href: '/reports', icon: FiBarChart2 },
-  { 
-    name: 'Settings', 
-    href: '/settings', 
-    icon: FiSettings,
-    subItems: [
-      { name: 'Navigation', href: '/settings/navigation' },
-      { name: 'Google', href: '/settings/google' }
-    ]
-  },
-  { name: 'Backup', href: '/backup', icon: FiDatabase },
+  { name: 'Settings', href: '/settings', icon: FiSettings }
 ];
 
 // This component is now only for the site navigation sidebar
