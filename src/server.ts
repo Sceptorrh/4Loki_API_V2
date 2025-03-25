@@ -38,8 +38,8 @@ let server: Server;
 const corsOptions = {
   origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'Set-Cookie'],
   credentials: true,
   optionsSuccessStatus: 200,
   preflightContinue: false
@@ -106,10 +106,8 @@ app.use(
 );
 
 app.use(compression());
-// Only use morgan logger in non-test environments
-if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev'));
-}
+// Enable morgan logger in all environments
+app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

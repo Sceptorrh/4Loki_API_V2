@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Create an axios instance with default config, without auth headers
+// Create an axios instance with default config
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
   headers: {
@@ -8,9 +8,6 @@ const api = axios.create({
   },
   withCredentials: true, // Enable sending cookies and credentials
 });
-
-// Remove any axios interceptors that might be handling auth
-// This ensures we don't get redirected to login
 
 // API endpoints
 export const endpoints = {

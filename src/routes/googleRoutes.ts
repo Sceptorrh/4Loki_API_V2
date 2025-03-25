@@ -2,10 +2,40 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { calculateRoute, reverseGeocode, forwardGeocode, Coordinates } from '../services/google';
 import { GoogleAuthService } from '../services/google/auth';
+import { authenticateToken } from '../middleware/auth';
 import axios from 'axios';
+import { listDriveFiles } from '../services/google/drive';
 
 const router = Router();
 const googleAuth = GoogleAuthService.getInstance();
+
+// Auth callback route - no authentication required
+router.post('/auth/callback', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body;
+
+    if (!code || !redirectUri) {
+      return res.status(400).json({ message: 'Code and redirect URI are required' });
+    }
+
+    // Exchange code for access token
+    const tokenResponse = await googleAuth.getAccessToken(code, redirectUri, res);
+
+    // Get user information
+    const userInfo = await googleAuth.getUserInfo(req);
+
+    res.json({ 
+      access_token: tokenResponse.access_token,
+      userInfo 
+    });
+  } catch (error) {
+    console.error('Error in auth callback:', error);
+    res.status(500).json({ message: 'Authentication failed' });
+  }
+});
+
+// Apply authentication middleware to all other routes
+router.use(authenticateToken);
 
 /**
  * @swagger
@@ -387,74 +417,6 @@ router.get('/auth/login', (req, res) => {
 
 /**
  * @swagger
- * /google/auth/callback:
- *   post:
- *     summary: Handle Google OAuth callback
- *     tags: [Google]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               code:
- *                 type: string
- *                 description: The authorization code from Google
- *               redirectUri:
- *                 type: string
- *                 description: The redirect URI used in the login request
- *             required:
- *               - code
- *               - redirectUri
- *     responses:
- *       200:
- *         description: Successfully authenticated
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 access_token:
- *                   type: string
- *                 userInfo:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                     email:
- *                       type: string
- *                     name:
- *                       type: string
- *                     picture:
- *                       type: string
- */
-router.post('/auth/callback', async (req, res) => {
-  try {
-    const { code, redirectUri } = req.body;
-
-    if (!code || !redirectUri) {
-      return res.status(400).json({ message: 'Code and redirect URI are required' });
-    }
-
-    // Exchange code for access token
-    const tokenResponse = await googleAuth.getAccessToken(code, redirectUri);
-
-    // Get user information
-    const userInfo = await googleAuth.getUserInfo();
-
-    res.json({ 
-      access_token: tokenResponse.access_token,
-      userInfo 
-    });
-  } catch (error) {
-    console.error('Error in auth callback:', error);
-    res.status(500).json({ message: 'Authentication failed' });
-  }
-});
-
-/**
- * @swagger
  * /google/auth/logout:
  *   post:
  *     summary: Logout from Google
@@ -465,7 +427,7 @@ router.post('/auth/callback', async (req, res) => {
  */
 router.post('/auth/logout', (req, res) => {
   try {
-    googleAuth.clearTokenData();
+    googleAuth.clearTokenData(res);
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Error logging out:', error);
@@ -494,11 +456,11 @@ router.post('/auth/logout', (req, res) => {
  */
 router.get('/auth/token', async (req, res) => {
   try {
-    const token = await googleAuth.getValidAccessToken();
-    res.json({ access_token: token });
+    const token = await googleAuth.getValidAccessToken(req);
+    res.json({ token });
   } catch (error) {
     console.error('Error getting access token:', error);
-    res.status(401).json({ error: 'Not authenticated' });
+    res.status(500).json({ message: 'Failed to get access token' });
   }
 });
 
@@ -549,7 +511,7 @@ router.get('/auth/token', async (req, res) => {
  */
 router.get('/contacts', async (req, res) => {
   try {
-    const accessToken = await googleAuth.getValidAccessToken();
+    const accessToken = await googleAuth.getValidAccessToken(req);
     
     // Fetch contacts from Google People API
     const response = await axios.get(
@@ -575,6 +537,18 @@ router.get('/contacts', async (req, res) => {
     } else {
       res.status(500).json({ error: 'Failed to fetch contacts' });
     }
+  }
+});
+
+// Google Drive backup routes
+router.get('/drive-files', async (req, res) => {
+  try {
+    const accessToken = await googleAuth.getValidAccessToken(req);
+    const files = await listDriveFiles(accessToken);
+    res.json({ files });
+  } catch (error) {
+    console.error('Error listing drive files:', error);
+    res.status(500).json({ message: 'Failed to list Google Drive files' });
   }
 });
 

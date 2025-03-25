@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { googleConfig } from './config';
+import { Request, Response } from 'express';
 
 interface GoogleUserInfo {
   id: string;
@@ -59,7 +60,7 @@ export class GoogleAuthService {
   /**
    * Exchange authorization code for access token
    */
-  public async getAccessToken(code: string, redirectUri: string): Promise<GoogleAuthResponse> {
+  public async getAccessToken(code: string, redirectUri: string, res: Response): Promise<GoogleAuthResponse> {
     try {
       console.log('Attempting to get access token with:', {
         clientId: googleConfig.auth.clientId,
@@ -87,6 +88,14 @@ export class GoogleAuthService {
         refresh_token: response.data.refresh_token || this.tokenData?.refresh_token || '',
         expires_at: Date.now() + (response.data.expires_in * 1000)
       };
+
+      // Store token in cookie
+      res.cookie('google_token', response.data.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: response.data.expires_in * 1000 // Convert to milliseconds
+      });
 
       return response.data;
     } catch (error) {
@@ -149,7 +158,19 @@ export class GoogleAuthService {
   /**
    * Get a valid access token, refreshing if necessary
    */
-  public async getValidAccessToken(): Promise<string> {
+  public async getValidAccessToken(req: Request): Promise<string> {
+    // First try to get token from cookie
+    const cookies = req.headers.cookie?.split('; ') || [];
+    const tokenCookie = cookies.find(cookie => cookie.startsWith('google_token='));
+    if (tokenCookie) {
+      const token = tokenCookie.split('=')[1];
+      this.tokenData = {
+        access_token: token,
+        refresh_token: this.tokenData?.refresh_token || '',
+        expires_at: Date.now() + 3600000 // Assume 1 hour expiry
+      };
+    }
+
     if (!this.tokenData) {
       throw new Error('No token data available');
     }
@@ -177,8 +198,8 @@ export class GoogleAuthService {
   /**
    * Get user information using the access token
    */
-  public async getUserInfo(): Promise<GoogleUserInfo> {
-    const accessToken = await this.getValidAccessToken();
+  public async getUserInfo(req: Request): Promise<GoogleUserInfo> {
+    const accessToken = await this.getValidAccessToken(req);
 
     try {
       const response = await axios.get<GoogleUserInfo>('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -197,7 +218,8 @@ export class GoogleAuthService {
   /**
    * Clear the current token data
    */
-  public clearTokenData(): void {
+  public clearTokenData(res: Response): void {
     this.tokenData = null;
+    res.clearCookie('google_token');
   }
 } 

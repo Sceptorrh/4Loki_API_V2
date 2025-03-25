@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { FaDownload, FaUpload, FaExclamationTriangle, FaCheckCircle, FaTrash, FaAngleDown, FaAngleUp, FaTimesCircle, FaInfoCircle } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
+import { FaDownload, FaUpload, FaExclamationTriangle, FaCheckCircle, FaTrash, FaAngleDown, FaAngleUp, FaTimesCircle, FaInfoCircle, FaGoogleDrive, FaClock, FaFolder } from 'react-icons/fa';
+import api from '@/lib/api';
 
 interface PreviewData {
   [key: string]: any[];
@@ -43,6 +44,19 @@ interface ImportReport {
     missingSheets?: string[];
   };
   errorsByTable: TableErrorReport[];
+}
+
+interface BackupConfig {
+  googleDrive: {
+    enabled: boolean;
+    folderId: string;
+    autoBackup: {
+      enabled: boolean;
+      interval: 'daily' | 'weekly' | 'monthly';
+      maxFiles: number;
+      time: string;
+    };
+  };
 }
 
 // Error Report Component
@@ -151,28 +165,83 @@ export default function BackupPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importProgress, setImportProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
+  const [backupConfig, setBackupConfig] = useState<BackupConfig | null>(null);
+  const [driveFiles, setDriveFiles] = useState<Array<{ id: string; name: string; modifiedTime: string }>>([]);
+  const [isLoadingDriveFiles, setIsLoadingDriveFiles] = useState(false);
+  const [showDriveConfig, setShowDriveConfig] = useState(false);
+
+  useEffect(() => {
+    fetchBackupConfig();
+  }, []);
+
+  const fetchBackupConfig = async () => {
+    try {
+      const response = await api.get('/backup/config');
+      setBackupConfig(response.data);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const fetchDriveFiles = async () => {
+    try {
+      setIsLoadingDriveFiles(true);
+      const response = await api.get('/backup/drive-files');
+      setDriveFiles(response.data.files);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoadingDriveFiles(false);
+    }
+  };
+
+  const handleDriveConfigSave = async () => {
+    try {
+      await api.post('/backup/config', backupConfig);
+      await fetchBackupConfig();
+      setShowDriveConfig(false);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  const handleDriveRestore = async (fileId: string) => {
+    try {
+      setIsImporting(true);
+      setError(null);
+      setImportResult(null);
+      setImportProgress(0);
+      setProgressMessage('Starting restore from Google Drive...');
+
+      const response = await api.post('/backup/restore-drive', { fileId });
+      setImportResult(response.data);
+      setImportProgress(100);
+      setProgressMessage('Restore complete');
+    } catch (err: any) {
+      setError(err.message);
+      setImportProgress(0);
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
       setError(null);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/export`, {
-        credentials: 'include'
+      const response = await api.get('/backup/export', {
+        responseType: 'blob'
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to export backup');
-      }
-
       // Get the filename from the Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
+      const contentDisposition = response.headers['content-disposition'];
       const filename = contentDisposition
         ? contentDisposition.split('filename=')[1].replace(/"/g, '')
         : '4loki_backup.xlsx';
 
       // Create a blob from the response
-      const blob = await response.blob();
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       
       // Create a download link and trigger it
       const url = window.URL.createObjectURL(blob);
@@ -203,19 +272,13 @@ export default function BackupPage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/preview`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+      const response = await api.post('/backup/preview', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to preview backup');
-      }
-
-      setPreviewData(data.preview);
+      setPreviewData(response.data.preview);
       setShowPreview(true);
     } catch (err: any) {
       setError(err.message);
@@ -311,10 +374,10 @@ export default function BackupPage() {
       formData.append('file', selectedFile);
 
       console.log('Starting import request');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/import`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+      const response = await api.post('/backup/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
       
       console.log('Import request completed');
@@ -322,13 +385,7 @@ export default function BackupPage() {
       // Close the event source if it's still open
       eventSource = closeEventSource(eventSource);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to import backup');
-      }
-
-      setImportResult(data);
+      setImportResult(response.data);
       setShowPreview(false);
       setSelectedFile(null);
       setImportProgress(100);
@@ -349,16 +406,7 @@ export default function BackupPage() {
       setIsClearing(true);
       setError(null);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/clear`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to clear database');
-      }
+      const response = await api.post('/backup/clear');
 
       // Show success message
       setImportResult({ message: 'Database cleared successfully' });
@@ -402,30 +450,228 @@ export default function BackupPage() {
           <p className="text-gray-600 mb-4">
             Restore your data from a backup file.
           </p>
-          <div className="relative">
-            <input
-              type="file"
-              accept=".xlsx"
-              onChange={handleFileSelect}
-              disabled={isImporting}
-              className="hidden"
-              id="import-file"
-            />
-            <label
-              htmlFor="import-file"
-              className={`w-full bg-secondary-600 text-white py-2 px-4 rounded-md hover:bg-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer ${
-                isImporting ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+          <div className="space-y-4">
+            <div className="relative">
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={handleFileSelect}
+                disabled={isImporting}
+                className="hidden"
+                id="import-file"
+              />
+              <label
+                htmlFor="import-file"
+                className={`w-full bg-secondary-600 text-white py-2 px-4 rounded-md hover:bg-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer ${
+                  isImporting ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {isImporting ? (
+                  'Importing...'
+                ) : (
+                  <>
+                    <FaUpload /> Select Backup File
+                  </>
+                )}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Google Drive Section */}
+        <div className="bg-white p-6 rounded-lg shadow-md md:col-span-2">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Google Drive Backup</h2>
+            <button
+              onClick={() => setShowDriveConfig(!showDriveConfig)}
+              className="text-primary-600 hover:text-primary-700 flex items-center gap-2"
             >
-              {isImporting ? (
-                'Importing...'
-              ) : (
+              <FaGoogleDrive /> Configure
+            </button>
+          </div>
+
+          {showDriveConfig && backupConfig && (
+            <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="enableDrive"
+                  checked={backupConfig.googleDrive.enabled}
+                  onChange={(e) => setBackupConfig({
+                    ...backupConfig,
+                    googleDrive: {
+                      ...backupConfig.googleDrive,
+                      enabled: e.target.checked
+                    }
+                  })}
+                  className="rounded text-primary-600"
+                />
+                <label htmlFor="enableDrive">Enable Google Drive Backup</label>
+              </div>
+
+              {backupConfig.googleDrive.enabled && (
                 <>
-                  <FaUpload /> Select Backup File
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Folder ID</label>
+                    <input
+                      type="text"
+                      value={backupConfig.googleDrive.folderId}
+                      onChange={(e) => setBackupConfig({
+                        ...backupConfig,
+                        googleDrive: {
+                          ...backupConfig.googleDrive,
+                          folderId: e.target.value
+                        }
+                      })}
+                      className="w-full px-3 py-2 border rounded-md"
+                      placeholder="Enter Google Drive folder ID"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="enableAutoBackup"
+                      checked={backupConfig.googleDrive.autoBackup.enabled}
+                      onChange={(e) => setBackupConfig({
+                        ...backupConfig,
+                        googleDrive: {
+                          ...backupConfig.googleDrive,
+                          autoBackup: {
+                            ...backupConfig.googleDrive.autoBackup,
+                            enabled: e.target.checked
+                          }
+                        }
+                      })}
+                      className="rounded text-primary-600"
+                    />
+                    <label htmlFor="enableAutoBackup">Enable Automatic Backup</label>
+                  </div>
+
+                  {backupConfig.googleDrive.autoBackup.enabled && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Interval</label>
+                        <select
+                          value={backupConfig.googleDrive.autoBackup.interval}
+                          onChange={(e) => setBackupConfig({
+                            ...backupConfig,
+                            googleDrive: {
+                              ...backupConfig.googleDrive,
+                              autoBackup: {
+                                ...backupConfig.googleDrive.autoBackup,
+                                interval: e.target.value as 'daily' | 'weekly' | 'monthly'
+                              }
+                            }
+                          })}
+                          className="w-full px-3 py-2 border rounded-md"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                        <input
+                          type="time"
+                          value={backupConfig.googleDrive.autoBackup.time}
+                          onChange={(e) => setBackupConfig({
+                            ...backupConfig,
+                            googleDrive: {
+                              ...backupConfig.googleDrive,
+                              autoBackup: {
+                                ...backupConfig.googleDrive.autoBackup,
+                                time: e.target.value
+                              }
+                            }
+                          })}
+                          className="w-full px-3 py-2 border rounded-md"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Max Files to Keep</label>
+                        <input
+                          type="number"
+                          value={backupConfig.googleDrive.autoBackup.maxFiles}
+                          onChange={(e) => setBackupConfig({
+                            ...backupConfig,
+                            googleDrive: {
+                              ...backupConfig.googleDrive,
+                              autoBackup: {
+                                ...backupConfig.googleDrive.autoBackup,
+                                maxFiles: parseInt(e.target.value)
+                              }
+                            }
+                          })}
+                          className="w-full px-3 py-2 border rounded-md"
+                          min="1"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
-            </label>
-          </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleDriveConfigSave}
+                  className="bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700"
+                >
+                  Save Configuration
+                </button>
+              </div>
+            </div>
+          )}
+
+          {backupConfig?.googleDrive.enabled && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Available Backups</h3>
+                <button
+                  onClick={fetchDriveFiles}
+                  disabled={isLoadingDriveFiles}
+                  className="text-primary-600 hover:text-primary-700 flex items-center gap-2"
+                >
+                  <FaFolder /> Refresh
+                </button>
+              </div>
+
+              {isLoadingDriveFiles ? (
+                <div className="text-center py-4">Loading backups...</div>
+              ) : driveFiles.length > 0 ? (
+                <div className="space-y-2">
+                  {driveFiles.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FaGoogleDrive className="text-blue-600" />
+                        <div>
+                          <div className="font-medium">{file.name}</div>
+                          <div className="text-sm text-gray-500">
+                            Last modified: {new Date(file.modifiedTime).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDriveRestore(file.id)}
+                        disabled={isImporting}
+                        className="bg-secondary-600 text-white py-2 px-4 rounded-md hover:bg-secondary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isImporting ? 'Restoring...' : 'Restore'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">No backups found</div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Clear Database Section */}

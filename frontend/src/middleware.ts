@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // List of paths that don't require backend check
-const PUBLIC_PATHS = ['/login', '/backend-status'];
+const PUBLIC_PATHS = ['/login', '/backend-status', '/settings'];
 
 // This middleware runs on every request
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow access to public paths
-  if (PUBLIC_PATHS.includes(pathname)) {
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/settings/')) {
     return NextResponse.next();
   }
 
