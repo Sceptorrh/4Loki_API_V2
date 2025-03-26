@@ -74,7 +74,11 @@ export const googleConfig = {
     // Legacy endpoints (kept for reference)
     distanceMatrixUrl: 'https://maps.googleapis.com/maps/api/distancematrix/json',
     geocodingUrl: 'https://maps.googleapis.com/maps/api/geocode/json',
-    directions: 'https://maps.googleapis.com/maps/api/directions/json'
+    directions: 'https://maps.googleapis.com/maps/api/directions/json',
+    
+    // Places API v1 endpoints (new)
+    placesAutocomplete: 'https://places.googleapis.com/v1/places:searchText',
+    placesDetails: 'https://places.googleapis.com/v1/places'
   },
   
   // Default request parameters

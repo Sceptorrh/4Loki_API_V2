@@ -9,11 +9,12 @@ interface AddressAutocompleteProps {
   required?: boolean;
 }
 
-interface GoogleGeocodingResult {
-  address: string;
-  coordinates: {
-    lat: number;
-    lng: number;
+interface GooglePlaceResult {
+  description: string;
+  place_id: string;
+  structured_formatting?: {
+    main_text: string;
+    secondary_text: string;
   };
 }
 
@@ -28,7 +29,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   required = false,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [suggestions, setSuggestions] = useState<GoogleGeocodingResult[]>([]);
+  const [suggestions, setSuggestions] = useState<GooglePlaceResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
@@ -37,7 +38,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const searchQueueRef = useRef<string | null>(null);
   const requestTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Search for places via the Google Maps Geocoding API with rate limiting
+  // Search for places via the Google Places Autocomplete API with rate limiting
   const searchPlaces = async (query: string) => {
     if (!query || query.length < 3) {
       setSuggestions([]);
@@ -92,35 +93,23 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     abortControllerRef.current = new AbortController();
 
     try {
-      // Use our own API endpoint that connects to Google Maps Geocoding API
-      const response = await fetch('/api/v1/google/maps/forward-geocode', {
-        method: 'POST',
+      // Use Google Places Autocomplete API
+      const response = await fetch(`/api/v1/google/maps/places/autocomplete?input=${encodeURIComponent(query)}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ address: query }),
         signal: abortControllerRef.current.signal,
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // If the address wasn't found, clear suggestions and show error
-        if (response.status === 404) {
-          setSuggestions([]);
-          setError('Address not found. Please try a different search.');
-        } else {
-          throw new Error(data.message || `Error fetching address suggestions: ${response.statusText}`);
-        }
-        return;
+        throw new Error(data.message || `Error fetching address suggestions: ${response.statusText}`);
       }
       
-      if (data.coordinates) {
-        // Create a single result with the main address and coordinates
-        setSuggestions([{
-          address: query,
-          coordinates: data.coordinates
-        }]);
+      if (data.predictions) {
+        setSuggestions(data.predictions);
         setError(null); // Clear any previous errors
       } else {
         setSuggestions([]);
@@ -154,15 +143,31 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   };
 
   // Handle selection of a suggestion
-  const handleSuggestionClick = (suggestion: GoogleGeocodingResult) => {
-    const placeData = {
-      lat: suggestion.coordinates.lat,
-      lng: suggestion.coordinates.lng,
-      display_name: suggestion.address
-    };
-    
-    onChange(suggestion.address, placeData);
-    setSuggestions([]);
+  const handleSuggestionClick = async (suggestion: GooglePlaceResult) => {
+    try {
+      // Get place details to get coordinates
+      const response = await fetch(`/api/v1/google/maps/places/details?place_id=${suggestion.place_id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get place details');
+      }
+
+      if (data.result) {
+        const place = data.result;
+        const placeData = {
+          lat: place.geometry.location.lat,
+          lng: place.geometry.location.lng,
+          display_name: place.formatted_address
+        };
+        
+        onChange(place.formatted_address, placeData);
+        setSuggestions([]);
+      }
+    } catch (err) {
+      console.error('Error getting place details:', err);
+      setError('Failed to get place details');
+    }
   };
 
   // Clean up on unmount
@@ -215,13 +220,20 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       
       {focused && suggestions.length > 0 && (
         <div className={styles.suggestionsContainer}>
-          {suggestions.map((suggestion, index) => (
+          {suggestions.map((suggestion) => (
             <div
-              key={index}
+              key={suggestion.place_id}
               className={styles.suggestionItem}
               onClick={() => handleSuggestionClick(suggestion)}
             >
-              {suggestion.address}
+              {suggestion.structured_formatting ? (
+                <>
+                  <div className="font-medium">{suggestion.structured_formatting.main_text}</div>
+                  <div className="text-sm text-gray-600">{suggestion.structured_formatting.secondary_text}</div>
+                </>
+              ) : (
+                <div>{suggestion.description}</div>
+              )}
             </div>
           ))}
         </div>

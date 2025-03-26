@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import { Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { calculateRoute, reverseGeocode, forwardGeocode, Coordinates } from '../services/google';
 import { GoogleAuthService } from '../services/google/auth';
 import { authenticateToken } from '../middleware/auth';
 import axios from 'axios';
 import { listDriveFiles } from '../services/google/drive';
+import { loadSecrets, googleConfig } from '../services/google/config';
 
 interface GoogleUserInfo {
   id: string;
@@ -94,6 +94,108 @@ router.post('/maps/forward-geocode', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error geocoding address:', error);
     res.status(500).json({ message: 'Server error geocoding address' });
+  }
+});
+
+// Places Autocomplete route - no authentication required (uses API key only)
+router.get('/maps/places/autocomplete', async (req: Request, res: Response) => {
+  try {
+    const { input } = req.query;
+
+    if (!input || typeof input !== 'string') {
+      return res.status(400).json({ message: 'Input query is required' });
+    }
+
+    console.log('Making Places API request with:', {
+      input,
+      apiKey: googleConfig.apiKey ? 'present' : 'missing',
+      url: googleConfig.maps.placesAutocomplete
+    });
+
+    const response = await axios.post(googleConfig.maps.placesAutocomplete, {
+      textQuery: input,
+      languageCode: 'en'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': googleConfig.apiKey,
+        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.id'
+      }
+    });
+
+    console.log('Places API response:', {
+      status: response.status,
+      hasPlaces: !!response.data.places,
+      errorMessage: response.data.error?.message
+    });
+
+    if (response.data.places) {
+      // Transform the response to match the expected format
+      const predictions = response.data.places.map((place: any) => ({
+        description: place.formattedAddress,
+        place_id: place.id,
+        structured_formatting: {
+          main_text: place.displayName.text,
+          secondary_text: place.formattedAddress
+        }
+      }));
+      res.json({ predictions });
+    } else {
+      res.status(404).json({ 
+        message: 'No predictions found',
+        error: response.data.error?.message || 'Unknown error'
+      });
+    }
+  } catch (error) {
+    console.error('Error getting place autocomplete:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+    }
+    res.status(500).json({ 
+      message: 'Server error getting place suggestions',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Place Details route - no authentication required (uses API key only)
+router.get('/maps/places/details', async (req: Request, res: Response) => {
+  try {
+    const { place_id } = req.query;
+
+    if (!place_id || typeof place_id !== 'string') {
+      return res.status(400).json({ message: 'Place ID is required' });
+    }
+
+    const response = await axios.get(`${googleConfig.maps.placesDetails}/${place_id}`, {
+      headers: {
+        'X-Goog-Api-Key': googleConfig.apiKey,
+        'X-Goog-FieldMask': 'id,formattedAddress,location'
+      }
+    });
+
+    if (response.data) {
+      // Transform the response to match the expected format
+      const result = {
+        formatted_address: response.data.formattedAddress,
+        geometry: {
+          location: {
+            lat: response.data.location.latitude,
+            lng: response.data.location.longitude
+          }
+        }
+      };
+      res.json({ result });
+    } else {
+      res.status(404).json({ message: 'Place not found' });
+    }
+  } catch (error) {
+    console.error('Error getting place details:', error);
+    res.status(500).json({ message: 'Server error getting place details' });
   }
 });
 

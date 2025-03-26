@@ -8,6 +8,7 @@ import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBack
 import { authenticateToken } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { GoogleAuthService } from '../services/google/auth';
+import { BackupConfig } from '../interfaces/backupConfig';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -132,18 +133,58 @@ router.get('/config', async (req: Request, res: Response) => {
     logger.info('Headers:', req.headers);
     logger.info('Cookies:', req.headers.cookie);
     
-    const configPath = path.join(process.cwd(), 'configuration', 'backup.json');
+    const configDir = path.join(process.cwd(), 'configuration');
+    const configPath = path.join(configDir, 'backup.json');
     logger.info('Reading config from:', configPath);
     
+    // Create configuration directory if it doesn't exist
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+    
+    // Create default configuration if it doesn't exist
     if (!fs.existsSync(configPath)) {
-      logger.error('Config file does not exist at:', configPath);
-      return res.status(404).json({ message: 'Backup configuration file not found' });
+      const defaultConfig: BackupConfig = {
+        googleDrive: {
+          enabled: false,
+          folderId: '',
+          autoBackup: {
+            enabled: false,
+            interval: 'hourly',
+            maxFiles: 30
+          }
+        }
+      };
+      
+      fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+      logger.info('Created new backup configuration file with default values');
     }
     
     const configContent = fs.readFileSync(configPath, 'utf8');
-    logger.info('Config content:', configContent);
+    const config = JSON.parse(configContent);
     
-    res.json(JSON.parse(configContent));
+    // Ensure the config matches the expected structure
+    if (!config.googleDrive) {
+      config.googleDrive = {
+        enabled: false,
+        folderId: '',
+        autoBackup: {
+          enabled: false,
+          interval: 'hourly',
+          maxFiles: 30
+        }
+      };
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      logger.info('Updated existing config to match expected structure');
+    }
+    
+    // Remove time field if interval is hourly
+    if (config.googleDrive.autoBackup.interval === 'hourly') {
+      delete config.googleDrive.autoBackup.time;
+    }
+    
+    logger.info('Config content:', configContent);
+    res.json(config);
   } catch (error) {
     logger.error('Error reading backup config:', error);
     res.status(500).json({ message: 'Failed to read backup configuration' });

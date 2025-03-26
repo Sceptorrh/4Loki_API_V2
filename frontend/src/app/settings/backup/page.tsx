@@ -52,9 +52,9 @@ interface BackupConfig {
     folderId: string;
     autoBackup: {
       enabled: boolean;
-      interval: 'daily' | 'weekly' | 'monthly';
+      interval: 'hourly' | 'daily' | 'weekly' | 'monthly';
       maxFiles: number;
-      time: string;
+      time?: string;
     };
   };
 }
@@ -665,36 +665,39 @@ export default function BackupPage() {
                               ...backupConfig.googleDrive,
                               autoBackup: {
                                 ...backupConfig.googleDrive.autoBackup,
-                                interval: e.target.value as 'daily' | 'weekly' | 'monthly'
+                                interval: e.target.value as 'hourly' | 'daily' | 'weekly' | 'monthly'
                               }
                             }
                           })}
                           className="w-full px-3 py-2 border rounded-md"
                         >
+                          <option value="hourly">Hourly</option>
                           <option value="daily">Daily</option>
                           <option value="weekly">Weekly</option>
                           <option value="monthly">Monthly</option>
                         </select>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                        <input
-                          type="time"
-                          value={backupConfig.googleDrive.autoBackup.time}
-                          onChange={(e) => setBackupConfig({
-                            ...backupConfig,
-                            googleDrive: {
-                              ...backupConfig.googleDrive,
-                              autoBackup: {
-                                ...backupConfig.googleDrive.autoBackup,
-                                time: e.target.value
+                      {backupConfig.googleDrive.autoBackup.interval !== 'hourly' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                          <input
+                            type="time"
+                            value={backupConfig.googleDrive.autoBackup.time}
+                            onChange={(e) => setBackupConfig({
+                              ...backupConfig,
+                              googleDrive: {
+                                ...backupConfig.googleDrive,
+                                autoBackup: {
+                                  ...backupConfig.googleDrive.autoBackup,
+                                  time: e.target.value
+                                }
                               }
-                            }
-                          })}
-                          className="w-full px-3 py-2 border rounded-md"
-                        />
-                      </div>
+                            })}
+                            className="w-full px-3 py-2 border rounded-md"
+                          />
+                        </div>
+                      )}
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Max Files to Keep</label>
