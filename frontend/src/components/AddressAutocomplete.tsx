@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styles from '../styles/AddressAutocomplete.module.css';
+import { endpoints } from '@/lib/api';
 
 interface AddressAutocompleteProps {
   id: string;
@@ -94,22 +95,10 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
     try {
       // Use Google Places Autocomplete API
-      const response = await fetch(`/api/v1/google/maps/places/autocomplete?input=${encodeURIComponent(query)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        signal: abortControllerRef.current.signal,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `Error fetching address suggestions: ${response.statusText}`);
-      }
+      const response = await endpoints.google.maps.places.autocomplete(query);
       
-      if (data.predictions) {
-        setSuggestions(data.predictions);
+      if (response.data.predictions) {
+        setSuggestions(response.data.predictions);
         setError(null); // Clear any previous errors
       } else {
         setSuggestions([]);
@@ -146,12 +135,8 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const handleSuggestionClick = async (suggestion: GooglePlaceResult) => {
     try {
       // Get place details to get coordinates
-      const response = await fetch(`/api/v1/google/maps/places/details?place_id=${suggestion.place_id}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to get place details');
-      }
+      const response = await endpoints.google.maps.places.details(suggestion.place_id);
+      const data = response.data;
 
       if (data.result) {
         const place = data.result;

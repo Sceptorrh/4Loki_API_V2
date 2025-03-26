@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { FiUser, FiLogOut } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
+import { endpoints } from '@/lib/api';
 
 interface UserInfo {
   id: string;
@@ -25,10 +26,10 @@ export default function UserProfile({ isCollapsed }: UserProfileProps) {
     const fetchUserInfo = async () => {
       try {
         // Fetch user info from our backend API instead of directly from Google
-        const response = await fetch('/api/auth/user');
+        const response = await endpoints.google.auth.user();
 
-        if (!response.ok) {
-          const data = await response.json();
+        if (response.status === 401) {
+          const data = response.data;
           if (data.redirect) {
             // Clear cookies
             document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -40,7 +41,7 @@ export default function UserProfile({ isCollapsed }: UserProfileProps) {
           throw new Error('Failed to fetch user info');
         }
 
-        const data = await response.json();
+        const data = response.data;
         setUserInfo({
           id: data.id,
           email: data.email,

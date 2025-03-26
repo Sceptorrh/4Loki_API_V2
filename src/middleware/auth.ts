@@ -44,7 +44,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     // If no token, check for session ID
     logger.info('No token in Authorization header, checking session ID');
-    const sessionId = req.headers['x-session-id'];
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
 
     if (!sessionId) {
       logger.error('No session ID found in request');

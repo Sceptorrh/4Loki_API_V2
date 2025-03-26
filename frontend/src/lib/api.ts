@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 // Create an axios instance with default config
 const api = axios.create({
@@ -7,6 +8,15 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true, // Enable sending cookies and credentials
+});
+
+// Add request interceptor to include session ID in headers
+api.interceptors.request.use((config) => {
+  const sessionId = Cookies.get('session_id');
+  if (sessionId) {
+    config.headers['x-session-id'] = sessionId;
+  }
+  return config;
 });
 
 // API endpoints
@@ -108,6 +118,27 @@ export const endpoints = {
     updateHomeWork: (data: any) => api.post('/travel-times/update', data),
     calculate: (data: any) => api.post('/travel-times/calculate', data),
     getStats: () => api.get('/travel-times/stats'),
+  },
+
+  // Google Maps
+  google: {
+    maps: {
+      places: {
+        autocomplete: (input: string) => api.get(`/google/maps/places/autocomplete?input=${encodeURIComponent(input)}`),
+        details: (placeId: string) => api.get(`/google/maps/places/details?place_id=${placeId}`),
+      },
+      forwardGeocode: (address: string) => api.get(`/google/maps/forward-geocode?address=${encodeURIComponent(address)}`),
+    },
+    contacts: {
+      search: (query: string) => api.get(`/google/contacts?q=${encodeURIComponent(query)}`),
+    },
+    auth: {
+      token: () => api.get('/google/auth/token'),
+      user: () => api.get('/google/auth/user'),
+    },
+    settings: {
+      get: () => api.get('/api/settings/google'),
+    },
   },
 };
 

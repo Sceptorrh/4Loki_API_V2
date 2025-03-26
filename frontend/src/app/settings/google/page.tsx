@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FiKey, FiSave, FiLock, FiUser, FiCheck, FiX, FiLoader } from 'react-icons/fi';
+import { endpoints } from '@/lib/api';
 
 interface GoogleSettings {
   apiKey: string;
@@ -87,10 +88,10 @@ export default function GoogleSettingsPage() {
   const fetchCurrentSettings = async () => {
     try {
       console.log('Fetching current settings...');
-      const response = await fetch('/api/settings/google');
+      const response = await endpoints.google.settings.get();
       console.log('API response:', response);
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200) {
+        const data = response.data;
         console.log('API data:', data);
         setSettings({
           apiKey: data.apiKey || '',
@@ -107,9 +108,9 @@ export default function GoogleSettingsPage() {
 
   const fetchAuthInfo = async () => {
     try {
-      const response = await fetch('/api/auth/user');
-      if (response.ok) {
-        const userInfo = await response.json();
+      const response = await endpoints.google.auth.user();
+      if (response.status === 200) {
+        const userInfo = response.data;
         setAuthInfo(prev => ({
           ...prev,
           userInfo
@@ -117,9 +118,9 @@ export default function GoogleSettingsPage() {
       }
 
       // Get token status
-      const tokenResponse = await fetch('/api/v1/google/auth/token');
-      if (tokenResponse.ok) {
-        const { tokenStatus } = await tokenResponse.json();
+      const tokenResponse = await endpoints.google.auth.token();
+      if (tokenResponse.status === 200) {
+        const { tokenStatus } = tokenResponse.data;
         setAuthInfo(prev => ({
           ...prev,
           tokenStatus

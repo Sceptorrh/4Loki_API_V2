@@ -96,17 +96,13 @@ export default function GoogleContactsSelector({
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/google/contacts?q=${encodeURIComponent(query)}`);
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Redirect to Google login
-          window.location.href = '/api/auth/google/login';
-          return;
-        }
-        throw new Error('Failed to fetch contacts');
+      const response = await endpoints.google.contacts.search(query);
+      if (response.status === 401) {
+        // Redirect to Google login
+        window.location.href = '/api/auth/google/login';
+        return;
       }
-      const data = await response.json();
-      setContacts(data.contacts || []);
+      setContacts(response.data.contacts || []);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       setError('Failed to fetch contacts');
