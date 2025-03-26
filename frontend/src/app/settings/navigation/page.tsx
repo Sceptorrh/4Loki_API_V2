@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { loadGoogleMaps } from '@/lib/googleMapsLoader';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import LocationMap from '@/components/LocationMap';
+import api, { endpoints } from '@/lib/api';
 
 interface TravelTime {
   id: number;
@@ -140,11 +141,8 @@ export default function NavigationSettings() {
 
   const loadTravelTimes = async () => {
     try {
-      const response = await fetch('/api/v1/travel-times');
-      if (!response.ok) {
-        throw new Error('Failed to fetch travel times');
-      }
-      const data = await response.json();
+      const response = await api.get('/travel-times');
+      const data = response.data;
       
       // Transform the data to match our TravelTime interface
       const transformedData = data.map((item: any) => ({
@@ -213,30 +211,12 @@ export default function NavigationSettings() {
     setError(null);
 
     try {
-      const response = await fetch('/api/v1/travel-times/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          homeLocation,
-          workLocation,
-        }),
+      const response = await api.post('/travel-times/update', {
+        homeLocation,
+        workLocation,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Check for specific Google Maps API errors
-        if (data.message && data.message.includes('Google Maps API')) {
-          setError(`Google Maps API Error: ${data.message}. This could be due to API key issues or rate limiting.`);
-        } else if (data.message && data.message.includes('authorized to use this API')) {
-          setError('The Google Maps API key needs to be enabled for the Routes API in Google Cloud Console.');
-        } else {
-          setError(data.message || 'Failed to update travel times');
-        }
-        return;
-      }
+      const data = response.data;
 
       setSuccessMessage('Travel times updated successfully!');
       setSettingsExist(true);
@@ -244,9 +224,16 @@ export default function NavigationSettings() {
       
       // Refresh the travel times data
       await loadTravelTimes();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating travel times:', err);
-      setError('Failed to update travel times. Please try again later.');
+      // Check for specific Google Maps API errors
+      if (err.response?.data?.message?.includes('Google Maps API')) {
+        setError(`Google Maps API Error: ${err.response.data.message}. This could be due to API key issues or rate limiting.`);
+      } else if (err.response?.data?.message?.includes('authorized to use this API')) {
+        setError('The Google Maps API key needs to be enabled for the Routes API in Google Cloud Console.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to update travel times. Please try again later.');
+      }
     } finally {
       setIsUpdatingTravelTimes(false);
       setLoading(false);
@@ -346,50 +333,12 @@ export default function NavigationSettings() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/travel-times/import', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await endpoints.travelTimes.import(formData);
 
-      const contentType = response.headers.get('content-type');
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          // Join the array of errors with line breaks
-          setImportError(errorData.errors.join('\n'));
-        } else {
-          setImportError(errorData.message || 'Failed to import travel times');
-        }
-        return;
-      }
-
-      // Only handle streaming if it's an event stream
-      if (contentType?.includes('text/event-stream')) {
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('No reader available');
-
-        const decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = JSON.parse(line.slice(6));
-              setImportProgress(data);
-              
-              if (data.progress === 100) {
-                setSuccessMessage('Travel times imported successfully!');
-                await loadTravelTimes(); // Refresh the travel times list
-                setImportProgress(null);
-              }
-            }
-          }
-        }
+      // Handle the response
+      if (response.data) {
+        setSuccessMessage('Travel times imported successfully!');
+        await loadTravelTimes(); // Refresh the travel times list
       }
       
       // Clear the file input
@@ -398,7 +347,12 @@ export default function NavigationSettings() {
       }
     } catch (error: any) {
       console.error('Error importing travel times:', error);
-      setImportError(error.message || 'Failed to import travel times');
+      if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        // Join the array of errors with line breaks
+        setImportError(error.response.data.errors.join('\n'));
+      } else {
+        setImportError(error.response?.data?.message || 'Failed to import travel times');
+      }
       setImportProgress(null);
     } finally {
       setIsImporting(false);
@@ -407,12 +361,13 @@ export default function NavigationSettings() {
 
   const downloadTemplate = async () => {
     try {
-      const response = await fetch('/api/travel-times/template');
-      if (!response.ok) {
-        throw new Error('Failed to download template');
-      }
+      const response = await api.get('/travel-times/template', {
+        responseType: 'blob'
+      });
 
-      const blob = await response.blob();
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

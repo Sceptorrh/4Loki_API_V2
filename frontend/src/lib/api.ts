@@ -118,6 +118,11 @@ export const endpoints = {
     updateHomeWork: (data: any) => api.post('/travel-times/update', data),
     calculate: (data: any) => api.post('/travel-times/calculate', data),
     getStats: () => api.get('/travel-times/stats'),
+    import: (formData: FormData) => api.post('/travel-times/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
   },
 
   // Google Maps
