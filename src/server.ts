@@ -33,6 +33,7 @@ import { authenticateToken } from './middleware/auth';
 import { shouldPerformAutoBackup, performAutoBackup } from './services/google/drive';
 import db from './config/database';
 import { RowDataPacket } from 'mysql2';
+import { loadBackupConfig } from './services/google/drive';
 
 interface Session extends RowDataPacket {
   session_id: string;
@@ -260,31 +261,25 @@ export function startServer(port: number = parseInt(process.env.PORT || '3000'))
       }
     });
 
-    // Set up scheduler to check for automatic backups every hour
-    cron.schedule('0 * * * *', async () => {
-      logger.info('Checking for automatic backups');
+    // Check for automatic backups
+    const checkAutoBackup = async () => {
       try {
-        // Get all active sessions
-        const [sessions] = await db.execute<Session[]>(
-          'SELECT * FROM Sessions WHERE session_expires > NOW()'
-        );
-
-        // Check each session for backup
-        for (const session of sessions) {
-          try {
-            const shouldBackup = await shouldPerformAutoBackup(session.session_id);
-            if (shouldBackup) {
-              logger.info(`Performing automatic backup for session ${session.session_id}`);
-              await performAutoBackup(session.session_id);
-            }
-          } catch (error) {
-            logger.error(`Error checking backup for session ${session.session_id}:`, error);
+        // Check if automatic backup is needed
+        const config = await loadBackupConfig();
+        if (config?.googleDrive?.autoBackup?.enabled && config?.googleDrive?.autoBackup?.userId) {
+          const shouldBackup = await shouldPerformAutoBackup(config.googleDrive.autoBackup.userId);
+          if (shouldBackup) {
+            logger.info('Starting automatic backup...');
+            await performAutoBackup();
           }
         }
       } catch (error) {
         logger.error('Error in automatic backup check:', error);
       }
-    });
+    };
+
+    // Schedule automatic backup check using cron
+    cron.schedule('*/5 * * * *', checkAutoBackup);
   });
   
   return server;

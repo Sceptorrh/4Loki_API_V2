@@ -5,11 +5,12 @@ import path from 'path';
 import fs from 'fs';
 import { Writable } from 'stream';
 import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress, previewDriveBackup, importDriveBackup } from '../controllers/backupController';
-import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBackup, cleanupOldBackups } from '../services/google/drive';
+import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBackup, performAutoBackup, cleanupOldBackups, loadBackupConfig } from '../services/google/drive';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { GoogleAuthService } from '../services/google/auth';
 import { BackupConfig } from '../interfaces/backupConfig';
+import { SessionService } from '../services/session/sessionService';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -199,6 +200,24 @@ router.post('/config', async (req: Request, res: Response) => {
     logger.info('Cookies:', req.headers.cookie);
     logger.info('Request body:', req.body);
     
+    // Get session ID from headers or cookies
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    // Get user ID from session
+    const sessionService = SessionService.getInstance();
+    const session = await sessionService.getSession(sessionId);
+    if (!session) {
+      return res.status(401).json({ message: 'Invalid session' });
+    }
+
+    // Add user ID to the configuration if auto backup is enabled
+    if (req.body.googleDrive?.autoBackup?.enabled) {
+      req.body.googleDrive.autoBackup.userId = session.userId;
+    }
+    
     const configPath = path.join(process.cwd(), 'configuration', 'backup.json');
     logger.info('Writing config to:', configPath);
     
@@ -330,6 +349,7 @@ router.post('/export-drive', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Check if automatic backup should run
 router.get('/check-auto-backup', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.headers['x-session-id'] as string;
@@ -337,10 +357,16 @@ router.get('/check-auto-backup', authenticateToken, async (req: AuthRequest, res
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
-    const shouldBackup = await shouldPerformAutoBackup(sessionId);
+    const sessionService = SessionService.getInstance();
+    const session = await sessionService.getSession(sessionId);
+    if (!session) {
+      return res.status(401).json({ message: 'Invalid session' });
+    }
+
+    const shouldBackup = await shouldPerformAutoBackup(session.userId);
     res.json({ shouldBackup });
   } catch (error) {
-    console.error('Error checking auto backup:', error);
+    logger.error('Error checking auto backup:', error);
     res.status(500).json({ message: 'Failed to check auto backup status' });
   }
 });
@@ -364,10 +390,51 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res: Response)
       return res.status(401).json({ message: 'No valid token available' });
     }
 
-    // ... rest of the code ...
+    // Check if automatic backup is needed
+    const config = await loadBackupConfig();
+    if (config?.googleDrive?.autoBackup?.enabled) {
+      const sessionService = SessionService.getInstance();
+      const session = await sessionService.getSession(sessionId);
+      if (session) {
+        const shouldBackup = await shouldPerformAutoBackup(session.userId);
+        if (shouldBackup) {
+          logger.info('Starting automatic backup...');
+          await performAutoBackup();
+        }
+      }
+    }
   } catch (error) {
     logger.error('Error getting backup status:', error);
     res.status(500).json({ message: 'Failed to get backup status' });
+  }
+});
+
+// Test automatic backup
+router.post('/test-auto-backup', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const sessionService = SessionService.getInstance();
+    const session = await sessionService.getSession(sessionId);
+    if (!session) {
+      return res.status(401).json({ message: 'Invalid session' });
+    }
+
+    const shouldBackup = await shouldPerformAutoBackup(session.userId);
+    if (shouldBackup) {
+      logger.info('Starting test automatic backup...');
+      await performAutoBackup();
+      logger.info('Test automatic backup completed');
+      res.json({ success: true, message: 'Test automatic backup completed successfully' });
+    } else {
+      res.json({ success: true, message: 'No backup needed at this time' });
+    }
+  } catch (error) {
+    logger.error('Error in test automatic backup:', error);
+    res.status(500).json({ success: false, message: 'Failed to perform test automatic backup' });
   }
 });
 

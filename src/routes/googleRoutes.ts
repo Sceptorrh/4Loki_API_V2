@@ -53,12 +53,20 @@ router.post('/auth/callback', async (req: Request, res: Response) => {
       picture: userInfo.picture
     });
 
+    // Get the session service instance
+    const sessionService = SessionService.getInstance();
+
+    // Get token data
+    const tokenData = googleAuth.getTokenData();
+    if (!tokenData) {
+      return res.status(400).json({ error: 'Failed to get token data' });
+    }
+
     // Create session with tokens
-    const sessionId = await SessionService.createSession(
-      user.id,
+    const sessionId = await sessionService.createSession(
+      userInfo.id,
       accessToken,
-      googleAuth.getTokenData()?.refreshToken || '',
-      googleAuth.getTokenData()?.expiresIn || 3600
+      tokenData.refreshToken
     );
 
     // Redirect to frontend with session ID
@@ -110,12 +118,14 @@ router.get('/auth/callback', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Failed to get token data' });
     }
 
+    // Get the session service instance
+    const sessionService = SessionService.getInstance();
+
     // Create session with tokens
-    const sessionId = await SessionService.createSession(
+    const sessionId = await sessionService.createSession(
       userInfo.id,
       accessToken,
-      tokenData.refreshToken,
-      tokenData.expiresIn
+      tokenData.refreshToken
     );
 
     // Redirect to frontend with session ID

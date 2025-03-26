@@ -29,25 +29,29 @@ export class SessionService {
   }
 
   /**
-   * Create a new session for a user
+   * Create a new session
    */
-  public static async createSession(
-    userId: string,
-    accessToken: string,
-    refreshToken: string,
-    tokenExpiresIn: number
-  ): Promise<string> {
+  public async createSession(userId: string, accessToken: string, refreshToken: string): Promise<string> {
     try {
-      const sessionId = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      const tokenExpiresAt = new Date(Date.now() + tokenExpiresIn * 1000);
+      // Delete any existing sessions for this user
+      await pool.query('DELETE FROM Sessions WHERE user_id = ?', [userId]);
+      logger.info(`Deleted existing sessions for user ${userId}`);
 
+      // Generate session ID
+      const sessionId = crypto.randomBytes(32).toString('hex');
+      
+      // Set expiration times
+      const now = new Date();
+      const tokenExpires = new Date(now.getTime() + 1 * 60 * 60 * 1000); // 1 hour
+      const sessionExpires = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Insert new session
       await pool.query(
-        `INSERT INTO Sessions (id, user_id, access_token, refresh_token, token_expires, session_expires) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [sessionId, userId, accessToken, refreshToken, tokenExpiresAt, expiresAt]
+        'INSERT INTO Sessions (id, user_id, access_token, refresh_token, token_expires, session_expires) VALUES (?, ?, ?, ?, ?, ?)',
+        [sessionId, userId, accessToken, refreshToken, tokenExpires, sessionExpires]
       );
 
+      logger.info(`Created new session ${sessionId} for user ${userId}`);
       return sessionId;
     } catch (error) {
       logger.error('Error creating session:', error);

@@ -7,6 +7,7 @@ export interface BackupConfig {
       interval: 'hourly' | 'daily' | 'weekly' | 'monthly';
       maxFiles: number;
       time?: string;
+      userId?: string;
     };
   };
 } 

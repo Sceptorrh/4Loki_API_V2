@@ -5,6 +5,8 @@ import pool from '../../config/database';
 import { SessionService } from '../session/sessionService';
 import { logger } from '../../utils/logger';
 import crypto from 'crypto';
+import cron from 'node-cron';
+import { RowDataPacket } from 'mysql2';
 
 interface GoogleUserInfo {
   id: string;
@@ -17,20 +19,20 @@ interface GoogleUserInfo {
   locale: string;
 }
 
-interface GoogleAuthResponse {
-  access_token: string;
-  id_token: string;
-  expires_in: number;
-  token_type: string;
-  scope: string;
-  refresh_token?: string;
-}
-
 interface TokenData {
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
   expiresIn: number;
+}
+
+interface SessionRow extends RowDataPacket {
+  id: string;
+  user_id: string;
+  access_token: string;
+  refresh_token: string;
+  token_expires: Date;
+  session_expires: Date;
 }
 
 export class GoogleAuthService {
@@ -180,43 +182,60 @@ export class GoogleAuthService {
    * Start token refresh scheduler
    */
   private startTokenRefreshScheduler(): void {
-    // Check tokens every 10 minutes
-    this.tokenRefreshInterval = setInterval(async () => {
+    logger.info('Starting token refresh scheduler');
+    // Check tokens every minute using cron
+    cron.schedule('* * * * *', async () => {
       try {
-        await this.refreshTokenIfNeeded();
+        // Get all active sessions
+        const [sessions] = await pool.query<SessionRow[]>(
+          'SELECT * FROM Sessions WHERE session_expires > NOW()'
+        );
+
+        if (!Array.isArray(sessions) || sessions.length === 0) {
+          logger.info('No active sessions found');
+          return;
+        }
+
+        logger.info(`Found ${sessions.length} active sessions`);
+
+        for (const session of sessions) {
+          try {
+            // Get current time from database in UTC
+            const [currentTimeResult] = await pool.query('SELECT NOW() as db_time');
+            const currentTime = new Date((currentTimeResult as any)[0].db_time);
+            const tokenExpiresAt = new Date(session.token_expires);
+            const timeUntilExpiry = tokenExpiresAt.getTime() - currentTime.getTime();
+            const minutesUntilExpiry = Math.round(timeUntilExpiry / 1000 / 60);
+
+            // Only refresh if token expires in less than 15 minutes
+            if (timeUntilExpiry < 15 * 60 * 1000) {
+              logger.info(`Token for session ${session.id} needs refresh (expires in ${minutesUntilExpiry} minutes)`);
+              
+              const response = await axios.post('https://oauth2.googleapis.com/token', {
+                client_id: googleConfig.auth.clientId,
+                client_secret: googleConfig.auth.clientSecret,
+                refresh_token: session.refresh_token,
+                grant_type: 'refresh_token'
+              });
+
+              await this.sessionService.updateSessionTokens(
+                session.id,
+                response.data.access_token,
+                response.data.expires_in
+              );
+
+              logger.info(`Token refreshed for session ${session.id}`);
+            } else {
+              logger.info(`Token for session ${session.id} is still valid (${minutesUntilExpiry} minutes remaining)`);
+            }
+          } catch (error) {
+            logger.error(`Error refreshing token for session ${session.id}:`, error);
+          }
+        }
       } catch (error) {
-        logger.error('Error in token refresh scheduler:', error);
+        logger.error('Error checking sessions for token refresh:', error);
       }
-    }, 10 * 60 * 1000);
-  }
-
-  /**
-   * Refresh token if it's about to expire
-   */
-  private async refreshTokenIfNeeded(): Promise<void> {
-    if (!this.tokenData) return;
-
-    // Refresh if token expires in less than 15 minutes
-    const fifteenMinutesFromNow = new Date(Date.now() + 15 * 60 * 1000);
-    if (this.tokenData.expiresAt < fifteenMinutesFromNow) {
-      try {
-        const response = await axios.post('https://oauth2.googleapis.com/token', {
-          client_id: googleConfig.auth.clientId,
-          client_secret: googleConfig.auth.clientSecret,
-          refresh_token: this.tokenData.refreshToken,
-          grant_type: 'refresh_token'
-        });
-
-        this.tokenData = {
-          accessToken: response.data.access_token,
-          refreshToken: this.tokenData.refreshToken,
-          expiresAt: new Date(Date.now() + response.data.expires_in * 1000),
-          expiresIn: response.data.expires_in
-        };
-      } catch (error) {
-        logger.error('Error refreshing token:', error);
-      }
-    }
+    });
   }
 
   /**
@@ -226,12 +245,16 @@ export class GoogleAuthService {
     try {
       const session = await this.sessionService.getSession(sessionId);
       if (!session) {
+        logger.error('No valid session found for session ID:', sessionId);
         return null;
       }
 
       // Check if token needs refreshing
       if (session.tokenExpires <= new Date()) {
         try {
+          logger.info('Token expired - current token expires at:', session.tokenExpires);
+          logger.info('Refreshing token for session:', sessionId);
+          
           const response = await axios.post('https://oauth2.googleapis.com/token', {
             client_id: googleConfig.auth.clientId,
             client_secret: googleConfig.auth.clientSecret,
@@ -246,6 +269,7 @@ export class GoogleAuthService {
             response.data.expires_in
           );
 
+          logger.info('Token refreshed successfully - new token expires at:', new Date(Date.now() + response.data.expires_in * 1000));
           return response.data.access_token;
         } catch (error) {
           logger.error('Error refreshing token:', error);
@@ -253,6 +277,7 @@ export class GoogleAuthService {
         }
       }
 
+      logger.info('Using existing valid token that expires at:', session.tokenExpires);
       return session.accessToken;
     } catch (error) {
       logger.error('Error getting token:', error);
