@@ -60,7 +60,10 @@ export class SessionService {
    */
   public async getSession(sessionId: string): Promise<Session | null> {
     try {
-      const [rows] = await pool.query('SELECT * FROM Sessions WHERE id = ?', [sessionId]);
+      const [rows] = await pool.query(
+        'SELECT * FROM Sessions WHERE id = ? AND session_expires > NOW()',
+        [sessionId]
+      );
       
       if (!Array.isArray(rows) || rows.length === 0) {
         return null;

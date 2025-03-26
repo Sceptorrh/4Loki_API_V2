@@ -18,22 +18,45 @@ export default function LoginPage() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const userInfoCookie = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('user_info='))
-      ?.split('=')[1];
-
-    if (userInfoCookie) {
+    const checkAuthStatus = async () => {
       try {
-        const decoded = decodeURIComponent(userInfoCookie);
-        setUserInfo(JSON.parse(decoded));
-        // Redirect to home page if already logged in
-        router.push('/');
+        // Check for session ID
+        const sessionId = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('session_id='))
+          ?.split('=')[1];
+
+        if (sessionId) {
+          try {
+            // Fetch user data directly from the database using the session ID
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/google/auth/user`, {
+              headers: {
+                'x-session-id': sessionId
+              }
+            });
+
+            if (response.ok) {
+              const userData = await response.json();
+              setUserInfo(userData);
+              router.push('/');
+            } else {
+              // Session is invalid, clear cookies
+              document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+              document.cookie = 'user_info=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+              setUserInfo(null);
+            }
+          } catch (error) {
+            console.error('Error fetching user data:', error);
+            setUserInfo(null);
+          }
+        }
       } catch (error) {
-        console.error('Error parsing user info:', error);
+        console.error('Error checking auth status:', error);
+        setUserInfo(null);
       }
-    }
+    };
+
+    checkAuthStatus();
   }, [router]);
 
   const handleGoogleLogin = () => {

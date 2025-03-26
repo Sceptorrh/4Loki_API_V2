@@ -137,7 +137,7 @@ export const endpoints = {
       user: () => api.get('/google/auth/user'),
     },
     settings: {
-      get: () => api.get('/api/settings/google'),
+      get: () => api.get('/settings/google'),
     },
   },
 };

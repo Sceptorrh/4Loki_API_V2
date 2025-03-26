@@ -126,27 +126,13 @@ export default function GoogleSettingsPage() {
           tokenStatus
         }));
       } else {
-        // If token request fails, set token status to missing
-        setAuthInfo(prev => ({
-          ...prev,
-          tokenStatus: {
-            hasAccessToken: false,
-            hasRefreshToken: false,
-            expiresAt: null
-          }
-        }));
+        // If token request fails, redirect to login
+        window.location.href = '/login?error=not_authenticated';
       }
     } catch (error) {
       console.error('Error fetching auth info:', error);
-      // On error, set token status to missing
-      setAuthInfo(prev => ({
-        ...prev,
-        tokenStatus: {
-          hasAccessToken: false,
-          hasRefreshToken: false,
-          expiresAt: null
-        }
-      }));
+      // On error, redirect to login
+      window.location.href = '/login?error=not_authenticated';
     }
   };
 

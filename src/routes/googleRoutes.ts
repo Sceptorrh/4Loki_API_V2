@@ -10,17 +10,6 @@ import { logger } from '../utils/logger';
 import pool from '../config/database';
 import { UserService } from '../services/user/userService';
 
-interface GoogleUserInfo {
-  id: string;
-  email: string;
-  verified_email: boolean;
-  name: string;
-  given_name: string;
-  family_name: string;
-  picture: string;
-  locale: string;
-}
-
 const router = Router();
 const googleAuth = GoogleAuthService.getInstance();
 
@@ -261,113 +250,62 @@ router.get('/maps/places/details', async (req: Request, res: Response) => {
   }
 });
 
+// Get user info endpoint - no authentication required
+router.get('/auth/user', async (req: Request, res: Response) => {
+  try {
+    logger.info('GET /auth/user - Request received');
+    
+    // Check both header and cookies for session ID
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    
+    if (!sessionId || typeof sessionId !== 'string') {
+      logger.error('GET /auth/user - No session ID provided in headers or cookies');
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    logger.info(`GET /auth/user - Session ID: ${sessionId}`);
+
+    // Validate session using SessionService
+    const sessionService = SessionService.getInstance();
+    const session = await sessionService.getSession(sessionId);
+    
+    if (!session) {
+      logger.error(`GET /auth/user - Invalid session: ${sessionId}`);
+      return res.status(401).json({ message: 'Invalid session' });
+    }
+
+    logger.info(`GET /auth/user - Session found for user: ${session.userId}`);
+
+    // Get user info from session
+    const [rows] = await pool.query(
+      'SELECT u.* FROM Users u WHERE u.id = ?',
+      [session.userId]
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      logger.error(`GET /auth/user - User not found for ID: ${session.userId}`);
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    const user = rows[0] as { id: string; email: string; name: string; picture: string };
+    logger.info(`GET /auth/user - User found: ${user.email}`);
+    
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      picture: user.picture
+    });
+  } catch (error) {
+    logger.error('GET /auth/user - Error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Apply authentication middleware to all other routes
 router.use(authenticateToken);
 
-/**
- * @swagger
- * tags:
- *   name: Google
- *   description: Google API integration endpoints
- */
-
-/**
- * @swagger
- * /google/maps/route:
- *   post:
- *     summary: Calculate route between two points using Google Maps
- *     tags: [Google]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               origin:
- *                 type: object
- *                 properties:
- *                   lat:
- *                     type: number
- *                     example: 51.8331303
- *                   lng:
- *                     type: number
- *                     example: 4.6925461
- *               destination:
- *                 type: object
- *                 properties:
- *                   lat:
- *                     type: number
- *                     example: 51.8184583
- *                   lng:
- *                     type: number
- *                     example: 4.5589537
- *               includeDepartureTime:
- *                 type: boolean
- *                 default: true
- *                 example: true
- *             required:
- *               - origin
- *               - destination
- *           examples:
- *             example1:
- *               summary: Route from Oude-Tonge to Zuidland
- *               value:
- *                 origin:
- *                   lat: 51.8331303
- *                   lng: 4.6925461
- *                 destination:
- *                   lat: 51.8184583
- *                   lng: 4.5589537
- *     responses:
- *       200:
- *         description: Route calculated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 distance:
- *                   type: number
- *                   description: Distance in meters
- *                   example: 15682
- *                 distanceKm:
- *                   type: number
- *                   description: Distance in kilometers (with 1 decimal)
- *                   example: 15.7
- *                 duration:
- *                   type: number
- *                   description: Duration in seconds
- *                   example: 1042
- *                 durationMinutes:
- *                   type: number
- *                   description: Duration in minutes (rounded)
- *                   example: 17
- *                 durationInTraffic:
- *                   type: number
- *                   description: Duration with traffic in seconds
- *                   example: 1158
- *                 originAddress:
- *                   type: string
- *                   example: "51.8331303,4.6925461"
- *                 destinationAddress:
- *                   type: string
- *                   example: "51.8184583,4.5589537"
- *             examples:
- *               routeExample:
- *                 summary: Example route calculation result
- *                 value:
- *                   distance: 15682
- *                   distanceKm: 15.7
- *                   duration: 1042
- *                   durationMinutes: 17
- *                   originAddress: "51.8331303,4.6925461"
- *                   destinationAddress: "51.8184583,4.5589537"
- *       400:
- *         description: Invalid input data
- *       500:
- *         description: Server error
- */
+// All routes below this line will require authentication
 router.post('/maps/route', async (req: Request, res: Response) => {
   try {
     const { origin, destination, includeDepartureTime = true } = req.body;
@@ -403,6 +341,13 @@ router.post('/maps/route', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error calculating route' });
   }
 });
+
+/**
+ * @swagger
+ * tags:
+ *   name: Google
+ *   description: Google API integration endpoints
+ */
 
 /**
  * @swagger
@@ -571,7 +516,7 @@ router.post('/auth/logout', async (req: Request, res: Response) => {
  */
 router.get('/auth/token', async (req: Request, res: Response) => {
   try {
-    const sessionId = req.headers['x-session-id'];
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
     
     if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
@@ -630,10 +575,10 @@ router.get('/auth/token', async (req: Request, res: Response) => {
  *       401:
  *         description: Not authenticated
  */
-router.get('/contacts', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.get('/contacts', async (req: AuthRequest, res: Response) => {
   try {
-    const sessionId = req.headers['x-session-id'] as string;
-    if (!sessionId) {
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
@@ -666,10 +611,10 @@ router.get('/contacts', authenticateToken, async (req: AuthRequest, res: Respons
 });
 
 // Google Drive backup routes
-router.get('/drive-files', authenticateToken, async (req: AuthRequest, res) => {
+router.get('/drive-files', async (req: AuthRequest, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] as string;
-    if (!sessionId) {
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
@@ -688,10 +633,10 @@ router.get('/drive-files', authenticateToken, async (req: AuthRequest, res) => {
 });
 
 // Get tokens endpoint
-router.get('/drive/tokens', authenticateToken, async (req: AuthRequest, res) => {
+router.get('/drive/tokens', async (req: AuthRequest, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] as string;
-    if (!sessionId) {
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
@@ -704,10 +649,10 @@ router.get('/drive/tokens', authenticateToken, async (req: AuthRequest, res) => 
 });
 
 // Get calendar events endpoint
-router.get('/calendar/events', authenticateToken, async (req: AuthRequest, res) => {
+router.get('/calendar/events', async (req: AuthRequest, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] as string;
-    if (!sessionId) {
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
@@ -726,10 +671,10 @@ router.get('/calendar/events', authenticateToken, async (req: AuthRequest, res) 
 });
 
 // Upload to Drive endpoint
-router.post('/drive/upload', authenticateToken, async (req: AuthRequest, res) => {
+router.post('/drive/upload', async (req: AuthRequest, res) => {
   try {
-    const sessionId = req.headers['x-session-id'] as string;
-    if (!sessionId) {
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
@@ -782,43 +727,11 @@ router.post('/auth/store-state', async (req, res) => {
   }
 });
 
-// Get user info endpoint
-router.get('/auth/user', async (req: Request, res: Response) => {
-  try {
-    const sessionId = req.headers['x-session-id'];
-    
-    if (!sessionId || typeof sessionId !== 'string') {
-      return res.status(401).json({ message: 'Session ID is required' });
-    }
-
-    // Get user info from session
-    const [rows] = await pool.query(
-      'SELECT u.* FROM Users u JOIN Sessions s ON u.id = s.user_id WHERE s.id = ?',
-      [sessionId]
-    );
-
-    if (!Array.isArray(rows) || rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid session' });
-    }
-
-    const user = rows[0] as { id: string; email: string; name: string; picture: string };
-    res.json({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture
-    });
-  } catch (error) {
-    logger.error('Error getting user info:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
 // Get drive files endpoint
-router.get('/drive/files', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.get('/drive/files', async (req: AuthRequest, res: Response) => {
   try {
-    const sessionId = req.headers['x-session-id'] as string;
-    if (!sessionId) {
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
