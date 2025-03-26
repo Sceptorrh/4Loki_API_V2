@@ -7,14 +7,19 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
+    // Get the authorization header from the request
+    const authHeader = request.headers.get('authorization');
+    
     const url = `${BASE_URL}/api/v1/google/maps/forward-geocode`;
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(authHeader && { 'Authorization': authHeader }),
       },
       body: JSON.stringify(body),
+      credentials: 'include', // Include cookies in the request
     });
 
     const data = await response.json();

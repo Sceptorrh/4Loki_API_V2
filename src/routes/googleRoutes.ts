@@ -75,6 +75,28 @@ router.post('/auth/callback', async (req, res) => {
   }
 });
 
+// Forward geocode route - no authentication required (uses API key only)
+router.post('/maps/forward-geocode', async (req: Request, res: Response) => {
+  try {
+    const { address } = req.body;
+
+    if (!address) {
+      return res.status(400).json({ message: 'Address is required' });
+    }
+
+    const coordinates = await forwardGeocode(address);
+    
+    if (!coordinates) {
+      return res.status(404).json({ message: 'Could not geocode this address' });
+    }
+    
+    res.json({ coordinates });
+  } catch (error) {
+    console.error('Error geocoding address:', error);
+    res.status(500).json({ message: 'Server error geocoding address' });
+  }
+});
+
 // Apply authentication middleware to all other routes
 router.use(authenticateToken);
 
@@ -314,105 +336,6 @@ router.post('/maps/geocode', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error geocoding coordinates:', error);
     res.status(500).json({ message: 'Server error geocoding coordinates' });
-  }
-});
-
-/**
- * @swagger
- * /google/maps/forward-geocode:
- *   post:
- *     summary: Convert address to coordinates using Google Maps
- *     tags: [Google]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               address:
- *                 type: string
- *                 example: "Beatrixstraat, Oude-Tonge, Netherlands"
- *             required:
- *               - address
- *           examples:
- *             example1:
- *               summary: Geocode Oude-Tonge address
- *               value:
- *                 address: "Beatrixstraat, Oude-Tonge, Netherlands"
- *     responses:
- *       200:
- *         description: Address geocoded to coordinates successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 coordinates:
- *                   type: object
- *                   properties:
- *                     lat:
- *                       type: number
- *                       example: 51.8331303
- *                     lng:
- *                       type: number
- *                       example: 4.6925461
- *             examples:
- *               coordinatesExample:
- *                 summary: Example coordinates result
- *                 value:
- *                   coordinates:
- *                     lat: 51.8331303
- *                     lng: 4.6925461
- *       400:
- *         description: Invalid input data
- *       403:
- *         description: API authorization error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Google API Error: This API project is not authorized to use this API."
- *       404:
- *         description: Could not geocode this address
- *       500:
- *         description: Server error
- */
-router.post('/maps/forward-geocode', async (req: Request, res: Response) => {
-  try {
-    const { address } = req.body;
-    
-    // Validate input
-    if (!address || typeof address !== 'string' || address.trim() === '') {
-      return res.status(400).json({ message: 'A valid address string is required' });
-    }
-
-    // Forward geocode address to coordinates
-    const coordinates = await forwardGeocode(address.trim());
-    
-    // Get the last error message from the geocoding service
-    if (!coordinates) {
-      // Check for API authorization errors based on logs
-      const error = globalThis.lastForwardGeocodingError || 'Could not geocode this address';
-      
-      if (error.includes('not authorized') || error.includes('REQUEST_DENIED')) {
-        return res.status(403).json({ 
-          message: `Google API Error: ${error}`
-        });
-      }
-      
-      return res.status(404).json({ 
-        message: error
-      });
-    }
-    
-    res.json({ coordinates });
-  } catch (error) {
-    console.error('Error forward geocoding address:', error);
-    res.status(500).json({ message: 'Server error geocoding address' });
   }
 });
 

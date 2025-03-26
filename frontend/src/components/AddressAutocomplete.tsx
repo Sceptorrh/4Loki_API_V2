@@ -96,7 +96,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       const response = await fetch('/api/v1/google/maps/forward-geocode', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ address: query }),
         signal: abortControllerRef.current.signal,
