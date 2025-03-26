@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { Writable } from 'stream';
 import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress, previewDriveBackup, importDriveBackup } from '../controllers/backupController';
 import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBackup, cleanupOldBackups } from '../services/google/drive';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
@@ -284,36 +285,43 @@ router.post('/restore-drive', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/export-drive', async (req: Request, res: Response) => {
+router.post('/export-drive', async (req: AuthRequest, res: Response) => {
   try {
-    // Create a temporary file path
-    const tempPath = path.join(process.cwd(), 'uploads', `backup_${Date.now()}.xlsx`);
+    // Get session ID from headers or cookies
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    // Get access token
+    const accessToken = await googleAuth.getToken(sessionId);
+    if (!accessToken) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+
+    // Create a buffer to store the backup data
+    const chunks: Buffer[] = [];
     
-    // Create a writable stream for the backup file
-    const writeStream = fs.createWriteStream(tempPath);
-    
-    // Create a mock response object that writes to our file
-    const mockRes = {
-      setHeader: () => {},
-      write: (data: Buffer) => writeStream.write(data),
-      end: () => writeStream.end()
-    } as unknown as Response;
+    // Create a proper Writable stream implementation
+    const mockRes = new Writable({
+      write(chunk: Buffer, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+        chunks.push(chunk);
+        callback();
+      }
+    });
 
     // Generate the backup using the existing function
     await generateBackup(req, mockRes);
     
-    // Wait for the file to be fully written
-    await new Promise<void>((resolve) => writeStream.on('finish', () => resolve()));
+    // Combine all chunks into a single buffer
+    const fileBuffer = Buffer.concat(chunks);
     
-    // Upload the file to Google Drive
+    // Upload the file to Google Drive with the access token
     const fileName = `4loki_backup_${new Date().toISOString().split('T')[0]}.xlsx`;
-    const fileId = await uploadToDrive(tempPath, fileName, req);
+    const fileId = await uploadToDrive(fileBuffer, fileName, accessToken);
     
     // Clean up old backups if configured
-    await cleanupOldBackups(req);
-
-    // Clean up the temporary file
-    fs.unlinkSync(tempPath);
+    await cleanupOldBackups(accessToken);
 
     res.json({ success: true, fileId });
   } catch (error: any) {
@@ -322,9 +330,14 @@ router.post('/export-drive', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/check-auto-backup', async (req: Request, res: Response) => {
+router.get('/check-auto-backup', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const shouldBackup = shouldPerformAutoBackup();
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const shouldBackup = await shouldPerformAutoBackup(sessionId);
     res.json({ shouldBackup });
   } catch (error) {
     console.error('Error checking auto backup:', error);

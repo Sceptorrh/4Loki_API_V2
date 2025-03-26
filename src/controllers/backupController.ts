@@ -4,6 +4,7 @@ import db from '../config/database';
 import { AppError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
 import { downloadFromDrive } from '../services/google/drive';
+import { Writable } from 'stream';
 
 // Track SSE clients for progress updates
 const progressEmitters: Response[] = [];
@@ -443,7 +444,7 @@ const sendProgressUpdate = (progress: number, message: string) => {
 /**
  * Generate a data backup of all non-static tables
  */
-export const generateBackup = async (req: Request, res: Response) => {
+export const generateBackup = async (req: Request, res: Response | Writable) => {
   try {
     // Create a new Excel workbook
     const workbook = new ExcelJS.Workbook();
@@ -483,13 +484,15 @@ export const generateBackup = async (req: Request, res: Response) => {
       }
     }
     
-    // Set response headers
-    const date = new Date().toISOString().split('T')[0];
-    const filename = `4loki_backup_${date}.xlsx`;
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    // Set response headers if this is a direct response
+    if ('setHeader' in res) {
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `4loki_backup_${date}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    }
     
-    // Write to response
+    // Write to response using the provided write function
     await workbook.xlsx.write(res);
     
     // End the response

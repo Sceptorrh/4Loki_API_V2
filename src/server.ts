@@ -30,6 +30,17 @@ import cron from 'node-cron';
 import { fetchAndSaveTravelTimes } from './utils/navigationService';
 import cookieParser from 'cookie-parser';
 import { authenticateToken } from './middleware/auth';
+import { shouldPerformAutoBackup, performAutoBackup } from './services/google/drive';
+import db from './config/database';
+import { RowDataPacket } from 'mysql2';
+
+interface Session extends RowDataPacket {
+  session_id: string;
+  access_token: string;
+  refresh_token: string;
+  token_expires: Date;
+  session_expires: Date;
+}
 
 const app = express();
 
@@ -246,6 +257,32 @@ export function startServer(port: number = parseInt(process.env.PORT || '3000'))
         } catch (error) {
           logger.error('Error in travel time update job:', error);
         }
+      }
+    });
+
+    // Set up scheduler to check for automatic backups every hour
+    cron.schedule('0 * * * *', async () => {
+      logger.info('Checking for automatic backups');
+      try {
+        // Get all active sessions
+        const [sessions] = await db.execute<Session[]>(
+          'SELECT * FROM Sessions WHERE session_expires > NOW()'
+        );
+
+        // Check each session for backup
+        for (const session of sessions) {
+          try {
+            const shouldBackup = await shouldPerformAutoBackup(session.session_id);
+            if (shouldBackup) {
+              logger.info(`Performing automatic backup for session ${session.session_id}`);
+              await performAutoBackup(session.session_id);
+            }
+          } catch (error) {
+            logger.error(`Error checking backup for session ${session.session_id}:`, error);
+          }
+        }
+      } catch (error) {
+        logger.error('Error in automatic backup check:', error);
       }
     });
   });
