@@ -9,13 +9,36 @@ interface GoogleConfig {
   [key: string]: string;
 }
 
+// Default configuration template
+const defaultConfig: GoogleConfig = {
+  ROUTES_API_KEY: '',
+  OAUTH_CLIENT_ID: '',
+  OAUTH_CLIENT_SECRET: ''
+};
+
 /**
  * Load API keys and other configuration from configuration/google.json
+ * Creates the file with default values if it doesn't exist
  */
 export function loadSecrets(): GoogleConfig {
   try {
     // Path is relative to the project root
-    const configPath = path.join(process.cwd(), 'configuration', 'google.json');
+    const configDir = path.join(process.cwd(), 'configuration');
+    const configPath = path.join(configDir, 'google.json');
+
+    // Create configuration directory if it doesn't exist
+    if (!fs.existsSync(configDir)) {
+      fs.mkdirSync(configDir, { recursive: true });
+    }
+
+    // Create configuration file with default values if it doesn't exist
+    if (!fs.existsSync(configPath)) {
+      fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+      console.warn('Created new Google configuration file at:', configPath);
+      console.warn('Please update the configuration with your Google API credentials.');
+      return defaultConfig;
+    }
+
     const configContent = fs.readFileSync(configPath, 'utf8');
     return JSON.parse(configContent) as GoogleConfig;
   } catch (error) {

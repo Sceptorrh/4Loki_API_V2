@@ -10,17 +10,50 @@ const getNavigationSettingsPath = () => {
   return path.join(process.cwd(), 'configuration', 'navigation.json');
 };
 
+// Helper function to get the Google configuration file path
+const getGoogleConfigPath = () => {
+  return path.join(process.cwd(), 'configuration', 'google.json');
+};
+
+// Helper function to ensure configuration directory exists
+const ensureConfigDir = () => {
+  const configDir = path.join(process.cwd(), 'configuration');
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+};
+
+// Helper function to create default Google configuration
+const createDefaultGoogleConfig = () => {
+  const defaultConfig = {
+    ROUTES_API_KEY: '',
+    OAUTH_CLIENT_ID: '',
+    OAUTH_CLIENT_SECRET: ''
+  };
+  const filePath = getGoogleConfigPath();
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify(defaultConfig, null, 2));
+    console.warn('Created new Google configuration file at:', filePath);
+    console.warn('Please update the configuration with your Google API credentials.');
+  }
+};
+
 // Helper function to read navigation settings
 const readNavigationSettings = () => {
   try {
+    ensureConfigDir();
+    createDefaultGoogleConfig();
+    
     const filePath = getNavigationSettingsPath();
     if (!fs.existsSync(filePath)) {
-      return {
+      const defaultSettings = {
         homeLatitude: '',
         homeLongitude: '',
         workLatitude: '',
         workLongitude: ''
       };
+      fs.writeFileSync(filePath, JSON.stringify(defaultSettings, null, 2));
+      return defaultSettings;
     }
     const data = fs.readFileSync(filePath, 'utf8');
     return JSON.parse(data);
