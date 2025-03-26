@@ -4,38 +4,46 @@ import { cookies } from 'next/headers';
 export async function GET() {
   try {
     const cookieStore = cookies();
-    const token = cookieStore.get('google_token');
+    const sessionId = cookieStore.get('session_id')?.value;
 
-    if (!token) {
+    if (!sessionId) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { error: 'not_authenticated', redirect: '/login?error=not_authenticated' },
         { status: 401 }
       );
     }
 
-    // Fetch user info from Google
-    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    // Fetch user info from our backend API
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/google/auth/user`, {
       headers: {
-        Authorization: `Bearer ${token.value}`
+        'x-session-id': sessionId
       }
     });
 
+    if (response.status === 401) {
+      // Clear session cookie
+      const response = NextResponse.json(
+        { error: 'session_expired', redirect: '/login?error=session_expired' },
+        { status: 401 }
+      );
+      response.cookies.delete('session_id');
+      response.cookies.delete('user_info');
+      return response;
+    }
+
     if (!response.ok) {
-      throw new Error('Failed to fetch user info from Google');
+      return NextResponse.json(
+        { error: 'fetch_failed', redirect: '/login?error=fetch_failed' },
+        { status: 500 }
+      );
     }
 
     const data = await response.json();
-    
-    return NextResponse.json({
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      picture: data.picture
-    });
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching user info:', error);
+    console.error('Error in user info route:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch user info' },
+      { error: 'fetch_failed', redirect: '/login?error=fetch_failed' },
       { status: 500 }
     );
   }

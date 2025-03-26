@@ -6,6 +6,7 @@ interface GoogleConfig {
   ROUTES_API_KEY: string;
   OAUTH_CLIENT_ID: string;
   OAUTH_CLIENT_SECRET: string;
+  AUTHORIZED_USER_EMAIL: string;
   [key: string]: string;
 }
 
@@ -13,7 +14,8 @@ interface GoogleConfig {
 const defaultConfig: GoogleConfig = {
   ROUTES_API_KEY: '',
   OAUTH_CLIENT_ID: '',
-  OAUTH_CLIENT_SECRET: ''
+  OAUTH_CLIENT_SECRET: '',
+  AUTHORIZED_USER_EMAIL: ''
 };
 
 /**
@@ -56,6 +58,7 @@ export const googleConfig = {
   auth: {
     clientId: loadSecrets().OAUTH_CLIENT_ID,
     clientSecret: loadSecrets().OAUTH_CLIENT_SECRET,
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback',
     scopes: [
       'https://www.googleapis.com/auth/userinfo.profile',
       'https://www.googleapis.com/auth/userinfo.email',

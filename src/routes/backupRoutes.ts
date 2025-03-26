@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress, previewDriveBackup, importDriveBackup } from '../controllers/backupController';
 import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBackup, cleanupOldBackups } from '../services/google/drive';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { GoogleAuthService } from '../services/google/auth';
 import { BackupConfig } from '../interfaces/backupConfig';
@@ -212,9 +212,18 @@ router.post('/config', async (req: Request, res: Response) => {
 });
 
 // Google Drive backup routes
-router.get('/drive-files', async (req: Request, res: Response) => {
+router.get('/drive-files', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const accessToken = await googleAuth.getValidAccessToken(req);
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const accessToken = await googleAuth.getToken(sessionId);
+    if (!accessToken) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+
     const files = await listDriveFiles(accessToken);
     res.json({ files });
   } catch (error: any) {
@@ -328,5 +337,25 @@ router.post('/preview-drive', previewDriveBackup);
 
 // Import backup from Google Drive
 router.post('/import-drive', importDriveBackup);
+
+// Get backup status endpoint
+router.get('/status', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const accessToken = await googleAuth.getToken(sessionId);
+    if (!accessToken) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+
+    // ... rest of the code ...
+  } catch (error) {
+    logger.error('Error getting backup status:', error);
+    res.status(500).json({ message: 'Failed to get backup status' });
+  }
+});
 
 export default router; 

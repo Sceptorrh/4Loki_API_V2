@@ -18,71 +18,68 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
+    const state = searchParams.get('state');
     const redirectUri = `${FRONTEND_URL}/api/auth/google/callback`;
 
     console.log('Received callback with:', {
       code: code ? code.substring(0, 10) + '...' : null,
+      state: state ? state.substring(0, 10) + '...' : null,
       redirectUri
     });
 
-    if (!code) {
-      return NextResponse.json({ error: 'No code provided' }, { status: 400 });
+    if (!code || !state) {
+      return NextResponse.json({ error: 'Code and state are required' }, { status: 400 });
     }
 
     // Exchange code for token
     console.log('Sending token request to backend...');
     const tokenResponse = await axios.post(`${BASE_URL}/api/v1/google/auth/callback`, {
       code,
-      redirectUri
+      redirectUri,
+      state
     });
 
     console.log('Token response received:', {
-      hasAccessToken: !!tokenResponse.data.access_token,
+      hasSessionId: !!tokenResponse.data.sessionId,
       hasUserInfo: !!tokenResponse.data.userInfo
     });
 
-    if (!tokenResponse.data.access_token) {
-      return NextResponse.json({ error: 'No access token received' }, { status: 500 });
+    if (!tokenResponse.data.sessionId || !tokenResponse.data.userInfo) {
+      return NextResponse.json({ error: 'Invalid response from backend' }, { status: 500 });
     }
 
     // Create the response with redirect to frontend
     const redirectUrl = new URL('/', FRONTEND_URL);
     const nextResponse = NextResponse.redirect(redirectUrl);
 
-    // Set the access token in a cookie
-    nextResponse.cookies.set('google_token', tokenResponse.data.access_token, {
+    // Set the session ID in a cookie
+    nextResponse.cookies.set('session_id', tokenResponse.data.sessionId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 3600 // 1 hour
+      maxAge: 24 * 60 * 60 // 24 hours
     });
 
-    // Set the refresh token in a cookie if it exists
-    if (tokenResponse.data.refresh_token) {
-      nextResponse.cookies.set('google_refresh_token', tokenResponse.data.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 30 * 24 * 60 * 60 // 30 days
-      });
-    }
+    // Set the user info in a cookie
+    nextResponse.cookies.set('user_info', JSON.stringify(tokenResponse.data.userInfo), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60 // 24 hours
+    });
 
     return nextResponse;
   } catch (error) {
-    console.error('Error in Google callback:', error);
+    console.error('Error in callback:', error);
     if (axios.isAxiosError(error)) {
       console.error('Axios error details:', {
         status: error.response?.status,
         data: error.response?.data,
-        headers: error.response?.headers
+        message: error.message
       });
-      return NextResponse.json(
-        { error: error.response?.data?.message || 'Authentication failed' },
-        { status: error.response?.status || 500 }
-      );
     }
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
+    return NextResponse.redirect(`${FRONTEND_URL}/login?error=callback_failed`);
   }
 } 

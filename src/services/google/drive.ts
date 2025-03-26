@@ -3,6 +3,7 @@ import { googleConfig } from './config';
 import fs from 'fs';
 import path from 'path';
 import { GoogleAuthService } from './auth';
+import axios from 'axios';
 
 // Interface for backup configuration
 interface BackupConfig {
@@ -33,28 +34,21 @@ function loadBackupConfig(): BackupConfig {
 }
 
 /**
- * Initialize Google Drive API client with valid credentials
+ * Get Google Drive client using OAuth token
  */
-async function getDriveClient(req: any) {
+async function getDriveClient(sessionId: string) {
   const googleAuth = GoogleAuthService.getInstance();
-  const accessToken = await googleAuth.getValidAccessToken(req);
-  const tokenData = googleAuth.getTokenData();
-
-  if (!tokenData) {
-    throw new Error('No token data available');
+  const accessToken = await googleAuth.getToken(sessionId);
+  
+  if (!accessToken) {
+    throw new Error('No valid token available. User needs to authenticate.');
   }
-
+  
   const auth = new google.auth.OAuth2(
     googleConfig.auth.clientId,
     googleConfig.auth.clientSecret
   );
-
-  auth.setCredentials({
-    access_token: tokenData.access_token,
-    refresh_token: tokenData.refresh_token,
-    expiry_date: tokenData.expires_at
-  });
-
+  auth.setCredentials({ access_token: accessToken });
   return google.drive({ version: 'v3', auth });
 }
 
@@ -67,20 +61,25 @@ export async function uploadToDrive(filePath: string, fileName: string, req: any
     throw new Error('Google Drive backup is not configured');
   }
 
-  const drive = await getDriveClient(req);
-  
-  const fileMetadata = {
-    name: fileName,
-    parents: [config.googleDrive.folderId]
-  };
-
-  const media = {
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    body: fs.createReadStream(filePath)
-  };
-
   try {
-    const response = await drive.files.create({
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      throw new Error('Session ID is required');
+    }
+
+    const driveClient = await getDriveClient(sessionId);
+    
+    const fileMetadata = {
+      name: fileName,
+      parents: [config.googleDrive.folderId]
+    };
+
+    const media = {
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      body: fs.createReadStream(filePath)
+    };
+
+    const response = await driveClient.files.create({
       requestBody: fileMetadata,
       media: media,
       fields: 'id'
@@ -94,36 +93,24 @@ export async function uploadToDrive(filePath: string, fileName: string, req: any
 }
 
 /**
- * List backup files in the configured Google Drive folder
+ * List files from Google Drive
  */
-export async function listDriveFiles(accessToken: string): Promise<Array<{ id: string; name: string; modifiedTime: string }>> {
-  const config = loadBackupConfig();
-  if (!config.googleDrive.enabled || !config.googleDrive.folderId) {
-    throw new Error('Google Drive backup is not configured');
-  }
-
-  const auth = new google.auth.OAuth2(
-    googleConfig.auth.clientId,
-    googleConfig.auth.clientSecret
-  );
-  auth.setCredentials({ access_token: accessToken });
-  const drive = google.drive({ version: 'v3', auth });
-
+export async function listDriveFiles(accessToken: string): Promise<any[]> {
   try {
-    const response = await drive.files.list({
-      q: `'${config.googleDrive.folderId}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'`,
-      fields: 'files(id, name, modifiedTime)',
-      orderBy: 'modifiedTime desc'
+    const response = await axios.get('https://www.googleapis.com/drive/v3/files', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      },
+      params: {
+        fields: 'files(id, name, mimeType, createdTime, modifiedTime)',
+        pageSize: 100
+      }
     });
 
-    return (response.data.files || []).map(file => ({
-      id: file.id || '',
-      name: file.name || '',
-      modifiedTime: file.modifiedTime || ''
-    }));
+    return response.data.files || [];
   } catch (error) {
     console.error('Error listing Google Drive files:', error);
-    throw new Error('Failed to list files from Google Drive');
+    throw new Error('Failed to list Google Drive files');
   }
 }
 
@@ -136,7 +123,12 @@ export async function downloadFromDrive(fileId: string, req: any): Promise<Buffe
     throw new Error('Google Drive backup is not configured');
   }
 
-  const drive = await getDriveClient(req);
+  const sessionId = req.headers['x-session-id'] as string;
+  if (!sessionId) {
+    throw new Error('Session ID is required');
+  }
+
+  const drive = await getDriveClient(sessionId);
 
   try {
     const response = await drive.files.get({
@@ -164,7 +156,12 @@ export async function cleanupOldBackups(req: any): Promise<void> {
     return;
   }
 
-  const drive = await getDriveClient(req);
+  const sessionId = req.headers['x-session-id'] as string;
+  if (!sessionId) {
+    throw new Error('Session ID is required');
+  }
+
+  const drive = await getDriveClient(sessionId);
   const maxFiles = config.googleDrive.autoBackup.maxFiles;
 
   try {

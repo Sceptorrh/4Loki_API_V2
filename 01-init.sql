@@ -639,15 +639,43 @@ CREATE TABLE IF NOT EXISTS `TravelTime` (
   PRIMARY KEY (`Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Create GoogleAuth table to store Google authentication tokens
-CREATE TABLE IF NOT EXISTS `GoogleAuth` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `access_token` text NOT NULL,
-  `refresh_token` text NOT NULL,
-  `expires_at` datetime NOT NULL,
+-- Create Users table to store user information
+CREATE TABLE IF NOT EXISTS `Users` (
+  `id` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `picture` varchar(255) NOT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `users_email_unique` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Add the Sessions table to support session-based authentication
+CREATE TABLE IF NOT EXISTS `Sessions` (
+  `id` varchar(64) NOT NULL,
+  `user_id` varchar(255) NOT NULL,
+  `access_token` text NOT NULL,
+  `refresh_token` text NOT NULL,
+  `token_expires` datetime NOT NULL,
+  `session_expires` datetime NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `sessions_user_id_index` (`user_id`),
+  KEY `sessions_expires_index` (`session_expires`),
+  CONSTRAINT `sessions_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `Users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Create OAuthState table for CSRF protection
+CREATE TABLE IF NOT EXISTS `OAuthState` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `state` varchar(32) NOT NULL,
+  `expires` datetime NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `oauth_state_state_unique` (`state`),
+  KEY `oauth_state_expires_index` (`expires`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

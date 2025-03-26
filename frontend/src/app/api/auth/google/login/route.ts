@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { googleConfig } from '../../../../../config/google';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
+import crypto from 'crypto';
 
 // Load Google configuration from json file
 function loadGoogleConfig() {
@@ -27,22 +29,23 @@ export async function GET() {
     authUrl.searchParams.append('access_type', 'offline'); // Get refresh token
     authUrl.searchParams.append('prompt', 'consent'); // Always show consent screen
     
-    // Generate a state parameter to prevent CSRF
-    const state = Math.random().toString(36).substring(7);
+    // Generate a secure state parameter
+    const state = crypto.randomBytes(16).toString('hex');
     authUrl.searchParams.append('state', state);
     
-    // Store state in cookie for validation in callback
-    const response = NextResponse.redirect(authUrl.toString());
-    response.cookies.set('oauth_state', state, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 10 // 10 minutes
-    });
+    // Store state in the database through our backend
+    try {
+      await axios.post('http://localhost:3000/api/v1/google/auth/store-state', {
+        state,
+        expires: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+      });
+    } catch (error) {
+      console.error('Failed to store state:', error);
+      return NextResponse.redirect('http://localhost:3001/login?error=state_storage_failed');
+    }
     
-    console.log('Setting OAuth state:', state);
-    return response;
+    console.log('Generated OAuth URL with state:', state);
+    return NextResponse.redirect(authUrl.toString());
   } catch (error) {
     console.error('Failed to generate auth URL:', error);
     if (error instanceof Error) {

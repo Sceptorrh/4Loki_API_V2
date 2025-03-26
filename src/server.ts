@@ -29,6 +29,7 @@ import { convertDatesToUTC, convertDatesInResponse } from './middleware/dateHand
 import cron from 'node-cron';
 import { fetchAndSaveTravelTimes } from './utils/navigationService';
 import cookieParser from 'cookie-parser';
+import { authenticateToken } from './middleware/auth';
 
 const app = express();
 
@@ -118,6 +119,9 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Apply date handling middleware
 app.use(convertDatesToUTC);
 app.use(convertDatesInResponse);
+
+// Apply global authentication middleware
+app.use(authenticateToken);
 
 // Add error logging middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
@@ -213,6 +217,9 @@ app.use('/api/v1/static', staticRoutes);
 app.use('/api/v1/exports', exportRoutes);
 app.use('/api/v1/reports', reportsRoutes);
 app.use('/api/v1/google', googleRoutes);
+
+// Also register Google routes without the v1 prefix for direct OAuth redirects
+app.use('/api/auth/google', googleRoutes);
 
 // Error handling
 app.use(notFoundHandler);

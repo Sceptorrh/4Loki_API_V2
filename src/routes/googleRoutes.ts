@@ -1,10 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { calculateRoute, reverseGeocode, forwardGeocode, Coordinates } from '../services/google';
 import { GoogleAuthService } from '../services/google/auth';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
 import axios from 'axios';
 import { listDriveFiles } from '../services/google/drive';
 import { loadSecrets, googleConfig } from '../services/google/config';
+import { SessionService } from '../services/session/sessionService';
+import { logger } from '../utils/logger';
+import pool from '../config/database';
+import { UserService } from '../services/user/userService';
 
 interface GoogleUserInfo {
   id: string;
@@ -21,57 +25,115 @@ const router = Router();
 const googleAuth = GoogleAuthService.getInstance();
 
 // Auth callback route - no authentication required
-router.post('/auth/callback', async (req, res) => {
+router.post('/auth/callback', async (req: Request, res: Response) => {
   try {
-    console.log('Auth callback received:', {
-      body: req.body,
-      headers: req.headers,
-      cookies: req.cookies
-    });
-
-    const { code, redirectUri } = req.body;
-
-    if (!code || !redirectUri) {
-      console.error('Missing required parameters:', { code, redirectUri });
-      return res.status(400).json({ message: 'Code and redirect URI are required' });
+    const { code, redirectUri, state } = req.body;
+    if (!code || !redirectUri || !state) {
+      return res.status(400).json({ message: 'Missing required parameters' });
     }
 
-    // Exchange code for access token
-    console.log('Attempting to exchange code for token...');
-    const tokenResponse = await googleAuth.getAccessToken(code, redirectUri, res);
-    console.log('Token exchange successful:', {
-      hasAccessToken: !!tokenResponse.access_token,
-      hasRefreshToken: !!tokenResponse.refresh_token,
-      expiresIn: tokenResponse.expires_in
-    });
+    // Verify state parameter
+    const isValidState = await googleAuth.verifyOAuthState(state);
+    if (!isValidState) {
+      return res.status(400).json({ message: 'Invalid state parameter' });
+    }
 
-    // Get user information using the access token directly
-    console.log('Attempting to get user info...');
-    const userInfoResponse = await axios.get<GoogleUserInfo>('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        Authorization: `Bearer ${tokenResponse.access_token}`
-      }
-    });
-    const userInfo = userInfoResponse.data;
-    console.log('User info retrieved successfully:', {
+    // Exchange code for tokens
+    const accessToken = await googleAuth.getAccessToken(code, redirectUri);
+    if (!accessToken) {
+      return res.status(400).json({ message: 'Failed to get access token' });
+    }
+
+    // Get user info
+    const userInfo = await googleAuth.getUserInfo(accessToken);
+    if (!userInfo) {
+      return res.status(400).json({ message: 'Failed to get user info' });
+    }
+
+    // Verify user is authorized
+    const googleConfig = loadSecrets();
+    if (userInfo.email !== googleConfig.AUTHORIZED_USER_EMAIL) {
+      return res.status(403).json({ message: 'Unauthorized user' });
+    }
+
+    // Create or update user
+    const user = await UserService.createOrUpdateUser({
       id: userInfo.id,
       email: userInfo.email,
-      name: userInfo.name
+      name: userInfo.name,
+      picture: userInfo.picture
     });
 
-    res.json({ 
-      access_token: tokenResponse.access_token,
-      userInfo 
+    // Create session with tokens
+    const sessionId = await SessionService.createSession(
+      user.id,
+      accessToken,
+      googleAuth.getTokenData()?.refreshToken || '',
+      googleAuth.getTokenData()?.expiresIn || 3600
+    );
+
+    // Redirect to frontend with session ID
+    res.json({
+      sessionId,
+      userInfo: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture
+      }
     });
   } catch (error) {
-    console.error('Error in auth callback:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack
-      });
+    logger.error('Error in Google OAuth callback:', error);
+    res.status(500).json({ message: 'Failed to complete authentication' });
+  }
+});
+
+// Auth callback route for GET requests (from OAuth redirect)
+router.get('/auth/callback', async (req: Request, res: Response) => {
+  try {
+    const { code, state, redirectUri } = req.query;
+
+    if (!code || !state || !redirectUri || typeof code !== 'string' || typeof state !== 'string' || typeof redirectUri !== 'string') {
+      return res.status(400).json({ error: 'Missing required parameters' });
     }
-    res.status(500).json({ message: 'Authentication failed' });
+
+    // Verify state parameter
+    const isValidState = await googleAuth.verifyOAuthState(state);
+    if (!isValidState) {
+      return res.status(400).json({ error: 'Invalid state parameter' });
+    }
+
+    // Get access token
+    const accessToken = await googleAuth.getAccessToken(code, redirectUri);
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Failed to get access token' });
+    }
+
+    // Get user info
+    const userInfo = await googleAuth.getUserInfo(accessToken);
+    if (!userInfo) {
+      return res.status(400).json({ error: 'Failed to get user info' });
+    }
+
+    // Get token data
+    const tokenData = googleAuth.getTokenData();
+    if (!tokenData) {
+      return res.status(400).json({ error: 'Failed to get token data' });
+    }
+
+    // Create session with tokens
+    const sessionId = await SessionService.createSession(
+      userInfo.id,
+      accessToken,
+      tokenData.refreshToken,
+      tokenData.expiresIn
+    );
+
+    // Redirect to frontend with session ID
+    res.redirect(`http://localhost:3001/auth-success?sessionId=${sessionId}`);
+  } catch (error) {
+    logger.error('Error in Google OAuth callback:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -447,13 +509,6 @@ router.post('/maps/geocode', async (req: Request, res: Response) => {
  *   get:
  *     summary: Get Google OAuth login URL
  *     tags: [Google]
- *     parameters:
- *       - in: query
- *         name: redirectUri
- *         required: true
- *         schema:
- *           type: string
- *         description: The redirect URI after successful login
  *     responses:
  *       200:
  *         description: Login URL generated successfully
@@ -465,19 +520,13 @@ router.post('/maps/geocode', async (req: Request, res: Response) => {
  *                 loginUrl:
  *                   type: string
  */
-router.get('/auth/login', (req, res) => {
+router.get('/auth/login', async (req: Request, res: Response) => {
   try {
-    const { redirectUri } = req.query;
-    
-    if (!redirectUri || typeof redirectUri !== 'string') {
-      return res.status(400).json({ message: 'Redirect URI is required' });
-    }
-
-    const loginUrl = googleAuth.getLoginUrl(redirectUri);
-    res.json({ loginUrl });
+    const loginUrl = await googleAuth.generateLoginUrl();
+    res.json({ url: loginUrl });
   } catch (error) {
-    console.error('Error generating login URL:', error);
-    res.status(500).json({ message: 'Failed to generate login URL' });
+    logger.error('Error generating login URL:', error);
+    res.status(500).json({ error: 'Failed to generate login URL' });
   }
 });
 
@@ -491,13 +540,13 @@ router.get('/auth/login', (req, res) => {
  *       200:
  *         description: Successfully logged out
  */
-router.post('/auth/logout', (req, res) => {
+router.post('/auth/logout', async (req: Request, res: Response) => {
   try {
-    googleAuth.clearTokenData(res);
-    res.json({ message: 'Logged out successfully' });
+    const loginUrl = await googleAuth.generateLoginUrl();
+    res.json({ url: loginUrl });
   } catch (error) {
-    console.error('Error logging out:', error);
-    res.status(500).json({ message: 'Failed to logout' });
+    logger.error('Error generating login URL:', error);
+    res.status(500).json({ error: 'Failed to generate login URL' });
   }
 });
 
@@ -520,29 +569,19 @@ router.post('/auth/logout', (req, res) => {
  *       401:
  *         description: Not authenticated
  */
-router.get('/auth/token', async (req, res) => {
+router.get('/auth/token', async (req: Request, res: Response) => {
   try {
-    const token = await googleAuth.getValidAccessToken(req);
-    const tokenData = googleAuth.getTokenData();
+    const sessionId = req.headers['x-session-id'];
     
-    res.json({ 
-      token,
-      tokenStatus: {
-        hasAccessToken: !!token,
-        hasRefreshToken: !!tokenData?.refresh_token,
-        expiresAt: tokenData?.expires_at
-      }
-    });
+    if (!sessionId || typeof sessionId !== 'string') {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const token = await googleAuth.getToken(sessionId);
+    res.json({ hasToken: !!token });
   } catch (error) {
-    console.error('Error getting access token:', error);
-    res.status(401).json({ 
-      message: 'Failed to get access token',
-      tokenStatus: {
-        hasAccessToken: false,
-        hasRefreshToken: false,
-        expiresAt: null
-      }
-    });
+    logger.error('Error checking token:', error);
+    res.status(500).json({ message: 'Failed to check token status' });
   }
 });
 
@@ -591,10 +630,18 @@ router.get('/auth/token', async (req, res) => {
  *       401:
  *         description: Not authenticated
  */
-router.get('/contacts', async (req, res) => {
+router.get('/contacts', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    const accessToken = await googleAuth.getValidAccessToken(req);
-    
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const accessToken = await googleAuth.getToken(sessionId);
+    if (!accessToken) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+
     // Fetch contacts from Google People API
     const response = await axios.get(
       'https://people.googleapis.com/v1/people/me/connections',
@@ -613,24 +660,178 @@ router.get('/contacts', async (req, res) => {
       contacts: response.data.connections || []
     });
   } catch (error) {
-    console.error('Error fetching contacts:', error);
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      res.status(401).json({ error: 'Not authenticated' });
-    } else {
-      res.status(500).json({ error: 'Failed to fetch contacts' });
-    }
+    logger.error('Error getting contacts:', error);
+    res.status(500).json({ message: 'Failed to get contacts' });
   }
 });
 
 // Google Drive backup routes
-router.get('/drive-files', async (req, res) => {
+router.get('/drive-files', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const accessToken = await googleAuth.getValidAccessToken(req);
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const accessToken = await googleAuth.getToken(sessionId);
+    
+    if (!accessToken) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+    
     const files = await listDriveFiles(accessToken);
     res.json({ files });
   } catch (error) {
     console.error('Error listing drive files:', error);
-    res.status(500).json({ message: 'Failed to list Google Drive files' });
+    res.status(500).json({ message: 'Failed to list drive files' });
+  }
+});
+
+// Get tokens endpoint
+router.get('/drive/tokens', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const token = await googleAuth.getToken(sessionId);
+    res.json({ hasToken: !!token });
+  } catch (error) {
+    console.error('Error checking tokens:', error);
+    res.status(500).json({ message: 'Failed to check token status' });
+  }
+});
+
+// Get calendar events endpoint
+router.get('/calendar/events', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const token = await googleAuth.getToken(sessionId);
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+    
+    // Add actual calendar implementation here
+    res.json({ message: 'Calendar events endpoint' });
+  } catch (error) {
+    console.error('Error getting calendar events:', error);
+    res.status(500).json({ message: 'Failed to get calendar events' });
+  }
+});
+
+// Upload to Drive endpoint
+router.post('/drive/upload', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const token = await googleAuth.getToken(sessionId);
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+    
+    // Add actual upload implementation here
+    res.json({ message: 'File upload endpoint' });
+  } catch (error) {
+    console.error('Error uploading to Drive:', error);
+    res.status(500).json({ message: 'Failed to upload to Drive' });
+  }
+});
+
+// Login URL generation endpoint
+router.get('/auth/login-url', async (req, res) => {
+  try {
+    logger.info('Login URL requested');
+    const loginUrl = await googleAuth.generateLoginUrl();
+    logger.info(`Generated login URL: ${loginUrl}`);
+    res.json({ loginUrl });
+  } catch (error) {
+    logger.error('Error generating login URL:', error);
+    res.status(500).json({ message: 'Failed to generate login URL' });
+  }
+});
+
+// Store OAuth state endpoint
+router.post('/auth/store-state', async (req, res) => {
+  try {
+    const { state, expires } = req.body;
+
+    if (!state || !expires) {
+      return res.status(400).json({ message: 'State and expiration time are required' });
+    }
+
+    // Store the state in the database
+    await pool.query(
+      'INSERT INTO OAuthState (state, expires) VALUES (?, ?)',
+      [state, new Date(expires)]
+    );
+
+    res.json({ message: 'State stored successfully' });
+  } catch (error) {
+    console.error('Error storing OAuth state:', error);
+    res.status(500).json({ message: 'Failed to store OAuth state' });
+  }
+});
+
+// Get user info endpoint
+router.get('/auth/user', async (req: Request, res: Response) => {
+  try {
+    const sessionId = req.headers['x-session-id'];
+    
+    if (!sessionId || typeof sessionId !== 'string') {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    // Get user info from session
+    const [rows] = await pool.query(
+      'SELECT u.* FROM Users u JOIN Sessions s ON u.id = s.user_id WHERE s.id = ?',
+      [sessionId]
+    );
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid session' });
+    }
+
+    const user = rows[0] as { id: string; email: string; name: string; picture: string };
+    res.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      picture: user.picture
+    });
+  } catch (error) {
+    logger.error('Error getting user info:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Get drive files endpoint
+router.get('/drive/files', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const sessionId = req.headers['x-session-id'] as string;
+    if (!sessionId) {
+      return res.status(401).json({ message: 'Session ID is required' });
+    }
+
+    const accessToken = await googleAuth.getToken(sessionId);
+    if (!accessToken) {
+      return res.status(401).json({ message: 'No valid token available' });
+    }
+
+    const files = await listDriveFiles(accessToken);
+    res.json({ files });
+  } catch (error) {
+    logger.error('Error getting drive files:', error);
+    res.status(500).json({ message: 'Failed to get drive files' });
   }
 });
 

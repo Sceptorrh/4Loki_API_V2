@@ -1,60 +1,69 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { SessionService } from '../services/session/sessionService';
 import { logger } from '../utils/logger';
+import pool from '../config/database';
 
 // Extend the Request type to include the user property
 export interface AuthRequest extends Request {
   user?: any;
 }
 
-export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-  logger.info('Authentication middleware - Request received');
-  logger.info('Headers:', req.headers);
-  logger.info('Cookies:', req.headers.cookie);
-  logger.info('Full path:', req.originalUrl);
+// Paths that don't require authentication
+const publicPaths = [
+  '/api/v1/health',
+  '/api/v1/google/auth/login-url',
+  '/api/v1/google/auth/callback',
+  '/api/auth/google/callback',
+  '/api/auth/google/login-url',
+  '/api/v1/google/auth/store-state',
+  '/api/v1/google/maps/forward-geocode',
+  '/api/v1/google/maps/places/autocomplete',
+  '/api/v1/google/maps/places/details'
+];
 
-  // First check Authorization header
-  const authHeader = req.headers['authorization'];
-  let token = authHeader && authHeader.split(' ')[1];
-
-  // If no token in header, check cookies
-  if (!token) {
-    logger.info('No token in Authorization header, checking cookies');
-    const cookies = req.headers.cookie?.split('; ') || [];
-    const tokenCookie = cookies.find(cookie => cookie.startsWith('google_token='));
-    if (tokenCookie) {
-      token = tokenCookie.split('=')[1];
-      logger.info('Found Google token in cookies');
-    } else {
-      logger.info('No Google token found in cookies');
-    }
-  } else {
-    logger.info('Found token in Authorization header');
-  }
-
-  if (!token) {
-    logger.error('No token found in request');
-    return res.status(401).json({ message: 'Authentication token is required' });
-  }
-
-  // Check if this is a backup route using the full path
-  const isBackupRoute = req.originalUrl.includes('/api/v1/backup/') || req.originalUrl === '/api/v1/backup';
-  logger.info(`Full path: ${req.originalUrl}, isBackupRoute: ${isBackupRoute}`);
-
-  // For backup routes or Google auth routes, just pass the token through
-  if (isBackupRoute || req.originalUrl.includes('/api/v1/google/')) {
-    logger.info('Backup or Google route detected, passing through token');
-    req.user = { token }; // Just pass the token through
-    return next();
-  }
-
-  // For all other routes, verify the JWT token
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = decoded as any;
+    logger.info('Authentication middleware - Request received');
+    logger.info('Full path:', req.originalUrl);
+
+    // Check if the path is public
+    if (publicPaths.some(path => req.originalUrl.startsWith(path))) {
+      logger.info('Public path detected, skipping authentication');
+      return next();
+    }
+
+    // First try to get token from Authorization header
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+      logger.info('Token found in Authorization header');
+      // TODO: Implement JWT token validation if needed
+      return next();
+    }
+
+    // If no token, check for session ID
+    logger.info('No token in Authorization header, checking session ID');
+    const sessionId = req.headers['x-session-id'];
+
+    if (!sessionId) {
+      logger.error('No session ID found in request');
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    // Validate session using SessionService
+    const sessionService = SessionService.getInstance();
+    const isValid = await sessionService.validateSession(sessionId as string);
+
+    if (!isValid) {
+      logger.error('Invalid or expired session');
+      return res.status(401).json({ message: 'Invalid or expired session' });
+    }
+
+    logger.info('Session validated successfully');
     next();
   } catch (error) {
-    logger.error('JWT verification failed:', error);
-    return res.status(403).json({ message: 'Invalid token' });
+    logger.error('Error in authentication middleware:', error);
+    res.status(500).json({ message: 'Internal server error during authentication' });
   }
 }; 

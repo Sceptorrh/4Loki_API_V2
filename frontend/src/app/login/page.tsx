@@ -40,6 +40,25 @@ export default function LoginPage() {
     window.location.href = '/api/auth/google/login';
   };
 
+  const getErrorMessage = () => {
+    switch (error) {
+      case 'not_authenticated':
+        return 'Please sign in to continue';
+      case 'session_expired':
+        return 'Your session has expired. Please sign in again';
+      case 'fetch_failed':
+        return 'Failed to fetch user information. Please try again';
+      case 'callback_failed':
+        return 'Failed to complete sign in. Please try again';
+      case 'state_storage_failed':
+        return 'Failed to initialize login. Please try again';
+      case 'init_failed':
+        return 'Failed to start login process. Please try again';
+      default:
+        return 'An error occurred during sign in. Please try again';
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -57,11 +76,7 @@ export default function LoginPage() {
                   Error signing in
                 </h3>
                 <div className="mt-2 text-sm text-red-700">
-                  {error === 'invalid_state' 
-                    ? 'Invalid login attempt. Please try again.' 
-                    : error === 'callback_failed'
-                    ? 'Failed to complete sign in. Please try again.'
-                    : 'An error occurred during sign in. Please try again.'}
+                  {getErrorMessage()}
                 </div>
               </div>
             </div>
