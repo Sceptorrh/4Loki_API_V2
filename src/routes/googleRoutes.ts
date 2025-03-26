@@ -587,12 +587,16 @@ router.get('/contacts', async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'No valid token available' });
     }
 
+    // Get search query from request
+    const query = req.query.q as string;
+
     // Fetch contacts from Google People API
     const response = await axios.get(
-      'https://people.googleapis.com/v1/people/me/connections',
+      'https://people.googleapis.com/v1/people:searchContacts',
       {
         params: {
-          personFields: 'names,emailAddresses,phoneNumbers',
+          query: query,
+          readMask: 'names,emailAddresses,phoneNumbers',
           pageSize: 100
         },
         headers: {
@@ -602,7 +606,7 @@ router.get('/contacts', async (req: AuthRequest, res: Response) => {
     );
 
     res.json({
-      contacts: response.data.connections || []
+      contacts: response.data.results || []
     });
   } catch (error) {
     logger.error('Error getting contacts:', error);

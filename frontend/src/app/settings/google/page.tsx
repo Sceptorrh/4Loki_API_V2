@@ -10,20 +10,6 @@ interface GoogleSettings {
   oauthClientSecret: string;
 }
 
-interface AuthInfo {
-  userInfo: {
-    id: string;
-    email: string;
-    name: string;
-    picture: string;
-  } | null;
-  tokenStatus: {
-    hasAccessToken: boolean;
-    hasRefreshToken: boolean;
-    expiresAt: string | null;
-  };
-}
-
 interface ValidationResult {
   apiKey?: {
     valid: boolean;
@@ -62,14 +48,6 @@ export default function GoogleSettingsPage() {
     oauthClientId: '',
     oauthClientSecret: ''
   });
-  const [authInfo, setAuthInfo] = useState<AuthInfo>({
-    userInfo: null,
-    tokenStatus: {
-      hasAccessToken: false,
-      hasRefreshToken: false,
-      expiresAt: null
-    }
-  });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [validationStatus, setValidationStatus] = useState<ValidationStatus>({
@@ -82,7 +60,6 @@ export default function GoogleSettingsPage() {
   useEffect(() => {
     // Fetch current settings when component mounts
     fetchCurrentSettings();
-    fetchAuthInfo();
   }, []);
 
   const fetchCurrentSettings = async () => {
@@ -103,36 +80,6 @@ export default function GoogleSettingsPage() {
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
-    }
-  };
-
-  const fetchAuthInfo = async () => {
-    try {
-      const response = await endpoints.google.auth.user();
-      if (response.status === 200) {
-        const userInfo = response.data;
-        setAuthInfo(prev => ({
-          ...prev,
-          userInfo
-        }));
-      }
-
-      // Get token status
-      const tokenResponse = await endpoints.google.auth.token();
-      if (tokenResponse.status === 200) {
-        const { tokenStatus } = tokenResponse.data;
-        setAuthInfo(prev => ({
-          ...prev,
-          tokenStatus
-        }));
-      } else {
-        // If token request fails, redirect to login
-        window.location.href = '/login?error=not_authenticated';
-      }
-    } catch (error) {
-      console.error('Error fetching auth info:', error);
-      // On error, redirect to login
-      window.location.href = '/login?error=not_authenticated';
     }
   };
 
@@ -297,271 +244,221 @@ export default function GoogleSettingsPage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold text-dog-gray mb-6">Google Settings</h1>
       
-      {/* Authentication Status Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Authentication Status</h2>
-        <div className="space-y-4">
-          {authInfo.userInfo ? (
-            <div className="flex items-center space-x-4">
-              <img 
-                src={authInfo.userInfo.picture} 
-                alt={authInfo.userInfo.name}
-                className="w-10 h-10 rounded-full"
-              />
-              <div>
-                <p className="font-medium">{authInfo.userInfo.name}</p>
-                <p className="text-sm text-gray-600">{authInfo.userInfo.email}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-gray-600">Not authenticated</div>
-          )}
-
-          <div className="border-t pt-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Token Status</h3>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  authInfo.tokenStatus.hasAccessToken ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-                <span className="text-sm">
-                  Access Token: {authInfo.tokenStatus.hasAccessToken ? 'Valid' : 'Missing'}
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  authInfo.tokenStatus.hasRefreshToken ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-                <span className="text-sm">
-                  Refresh Token: {authInfo.tokenStatus.hasRefreshToken ? 'Available' : 'Missing'}
-                </span>
-              </div>
-              {authInfo.tokenStatus.expiresAt && (
-                <div className="text-sm text-gray-600">
-                  Token expires: {new Date(authInfo.tokenStatus.expiresAt).toLocaleString()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* API Key Field */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label htmlFor="apiKey" className="block text-sm font-medium text-dog-gray">
-                Google API Key
-              </label>
-              <button
-                type="button"
-                onClick={() => validateCredentials('apiKey')}
-                disabled={validationStatus.apiKey.loading || !settings.apiKey}
-                className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-400 disabled:cursor-not-allowed"
-              >
-                {validationStatus.apiKey.loading ? (
-                  <FiLoader className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
-                Validate
-              </button>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiKey className="h-5 w-5 text-secondary-400" />
-              </div>
-              <input
-                type="text"
-                id="apiKey"
-                value={settings.apiKey}
-                onChange={handleChange('apiKey')}
-                className="block w-full pl-10 pr-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Enter your Google API key"
-              />
-            </div>
-            {validationResult.apiKey && (
-              <div className="mt-2 flex items-center space-x-2">
-                {getValidationIcon(validationResult.apiKey.valid)}
-                <span className={`text-sm ${validationResult.apiKey.valid ? 'text-green-600' : 'text-red-600'}`}>
-                  {validationResult.apiKey.message}
-                </span>
-              </div>
-            )}
-            {validationResult.apiKey?.valid && validationResult.apiKey.apis && (
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowApis(!showApis)}
-                  className="text-sm text-primary-600 hover:text-primary-700"
-                >
-                  {showApis ? 'Hide' : 'Show'} Available APIs
-                </button>
-                {showApis && (
-                  <ul className="mt-2 text-sm text-secondary-600 list-disc list-inside">
-                    {validationResult.apiKey.apis.map((api, index) => (
-                      <li key={index}>{api}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-            <p className="mt-1 text-sm text-secondary-600">
-              This API key is used for Google Maps and other Google services.
-            </p>
-          </div>
-
-          {/* OAuth Client ID Field */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label htmlFor="oauthClientId" className="block text-sm font-medium text-dog-gray">
-                OAuth Client ID
-              </label>
-              <button
-                type="button"
-                onClick={() => validateCredentials('oauthClientId')}
-                disabled={validationStatus.oauthClientId.loading || !settings.oauthClientId}
-                className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-400 disabled:cursor-not-allowed"
-              >
-                {validationStatus.oauthClientId.loading ? (
-                  <FiLoader className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
-                Validate
-              </button>
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiUser className="h-5 w-5 text-secondary-400" />
-              </div>
-              <input
-                type="text"
-                id="oauthClientId"
-                value={settings.oauthClientId}
-                onChange={handleChange('oauthClientId')}
-                className="block w-full pl-10 pr-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Enter your OAuth Client ID"
-              />
-            </div>
-            {validationResult.oauthClientId && (
-              <div className="mt-2">
-                <div className={`p-3 rounded-md ${
-                  validationResult.oauthClientId.valid 
-                    ? 'bg-green-50 text-green-800' 
-                    : 'bg-red-50 text-red-800'
-                }`}>
-                  <p className="font-medium">{validationResult.oauthClientId.message}</p>
-                  <p className="text-sm mt-1">{validationResult.oauthClientId.details}</p>
-                  
-                  {validationResult.oauthClientId.valid && (
-                    <div className="mt-4">
-                      <button
-                        onClick={validateFullConfig}
-                        disabled={validationStatus.oauthClientId.fullConfigLoading}
-                        className={`px-4 py-2 rounded-md text-sm font-medium ${
-                          validationStatus.oauthClientId.fullConfigLoading
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                        }`}
-                      >
-                        {validationStatus.oauthClientId.fullConfigLoading ? (
-                          <span className="flex items-center">
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Validating Full Configuration...
-                          </span>
-                        ) : (
-                          'Validate Full Configuration'
-                        )}
-                      </button>
-
-                      {validationStatus.oauthClientId.fullConfigError && (
-                        <p className="mt-2 text-sm text-red-600">
-                          {validationStatus.oauthClientId.fullConfigError}
-                        </p>
-                      )}
-
-                      {validationResult.oauthClientId.consentScreen && (
-                        <div className="mt-4 p-3 bg-white rounded-md border border-gray-200">
-                          <h4 className="font-medium text-gray-900">OAuth Consent Screen</h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Status: {validationResult.oauthClientId.consentScreen.status}
-                          </p>
-                          <div className="mt-2">
-                            <h5 className="text-sm font-medium text-gray-700">Configured Scopes:</h5>
-                            <ul className="mt-1 text-sm text-gray-600 list-disc list-inside">
-                              {validationResult.oauthClientId.consentScreen.scopes.map((scope, index) => (
-                                <li key={index}>{scope}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="mt-2">
-                            <h5 className="text-sm font-medium text-gray-700">Test Users:</h5>
-                            <ul className="mt-1 text-sm text-gray-600 list-disc list-inside">
-                              {validationResult.oauthClientId.consentScreen.testUsers.map((user, index) => (
-                                <li key={index}>{user}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            <p className="mt-1 text-sm text-secondary-600">
-              Required for Google Sign-In and user authentication.
-            </p>
-          </div>
-
-          {/* OAuth Client Secret Field */}
-          <div>
-            <label htmlFor="oauthClientSecret" className="block text-sm font-medium text-dog-gray mb-2">
-              OAuth Client Secret
+      {/* Settings Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* API Key Field */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label htmlFor="apiKey" className="block text-sm font-medium text-dog-gray">
+              Google API Key
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiLock className="h-5 w-5 text-secondary-400" />
-              </div>
-              <input
-                type="password"
-                id="oauthClientSecret"
-                value={settings.oauthClientSecret}
-                onChange={handleChange('oauthClientSecret')}
-                className="block w-full pl-10 pr-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Enter your OAuth Client Secret"
-              />
-            </div>
-            <p className="mt-1 text-sm text-secondary-600">
-              Keep this secret secure. It's used to authenticate your application with Google.
-            </p>
-          </div>
-
-          {message && (
-            <div className={`p-3 rounded-md ${
-              status === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-            }`}>
-              {message}
-            </div>
-          )}
-
-          <div className="flex justify-end">
             <button
-              type="submit"
-              disabled={status === 'loading'}
-              className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-                ${status === 'loading' 
-                  ? 'bg-primary-400 cursor-not-allowed' 
-                  : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-                }`}
+              type="button"
+              onClick={() => validateCredentials('apiKey')}
+              disabled={validationStatus.apiKey.loading || !settings.apiKey}
+              className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-400 disabled:cursor-not-allowed"
             >
-              <FiSave className="h-4 w-4 mr-2" />
-              {status === 'loading' ? 'Saving...' : 'Save Changes'}
+              {validationStatus.apiKey.loading ? (
+                <FiLoader className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Validate
             </button>
           </div>
-        </form>
-      </div>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiKey className="h-5 w-5 text-secondary-400" />
+            </div>
+            <input
+              type="text"
+              id="apiKey"
+              value={settings.apiKey}
+              onChange={handleChange('apiKey')}
+              className="block w-full pl-10 pr-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Enter your Google API key"
+            />
+          </div>
+          {validationResult.apiKey && (
+            <div className="mt-2 flex items-center space-x-2">
+              {getValidationIcon(validationResult.apiKey.valid)}
+              <span className={`text-sm ${validationResult.apiKey.valid ? 'text-green-600' : 'text-red-600'}`}>
+                {validationResult.apiKey.message}
+              </span>
+            </div>
+          )}
+          {validationResult.apiKey?.valid && validationResult.apiKey.apis && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowApis(!showApis)}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                {showApis ? 'Hide' : 'Show'} Available APIs
+              </button>
+              {showApis && (
+                <ul className="mt-2 text-sm text-secondary-600 list-disc list-inside">
+                  {validationResult.apiKey.apis.map((api, index) => (
+                    <li key={index}>{api}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          <p className="mt-1 text-sm text-secondary-600">
+            This API key is used for Google Maps and other Google services.
+          </p>
+        </div>
+
+        {/* OAuth Client ID Field */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label htmlFor="oauthClientId" className="block text-sm font-medium text-dog-gray">
+              OAuth Client ID
+            </label>
+            <button
+              type="button"
+              onClick={() => validateCredentials('oauthClientId')}
+              disabled={validationStatus.oauthClientId.loading || !settings.oauthClientId}
+              className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-400 disabled:cursor-not-allowed"
+            >
+              {validationStatus.oauthClientId.loading ? (
+                <FiLoader className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Validate
+            </button>
+          </div>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiUser className="h-5 w-5 text-secondary-400" />
+            </div>
+            <input
+              type="text"
+              id="oauthClientId"
+              value={settings.oauthClientId}
+              onChange={handleChange('oauthClientId')}
+              className="block w-full pl-10 pr-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Enter your OAuth Client ID"
+            />
+          </div>
+          {validationResult.oauthClientId && (
+            <div className="mt-2">
+              <div className={`p-3 rounded-md ${
+                validationResult.oauthClientId.valid 
+                  ? 'bg-green-50 text-green-800' 
+                  : 'bg-red-50 text-red-800'
+              }`}>
+                <p className="font-medium">{validationResult.oauthClientId.message}</p>
+                <p className="text-sm mt-1">{validationResult.oauthClientId.details}</p>
+                
+                {validationResult.oauthClientId.valid && (
+                  <div className="mt-4">
+                    <button
+                      onClick={validateFullConfig}
+                      disabled={validationStatus.oauthClientId.fullConfigLoading}
+                      className={`px-4 py-2 rounded-md text-sm font-medium ${
+                        validationStatus.oauthClientId.fullConfigLoading
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                      }`}
+                    >
+                      {validationStatus.oauthClientId.fullConfigLoading ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Validating Full Configuration...
+                        </span>
+                      ) : (
+                        'Validate Full Configuration'
+                      )}
+                    </button>
+
+                    {validationStatus.oauthClientId.fullConfigError && (
+                      <p className="mt-2 text-sm text-red-600">
+                        {validationStatus.oauthClientId.fullConfigError}
+                      </p>
+                    )}
+
+                    {validationResult.oauthClientId.consentScreen && (
+                      <div className="mt-4 p-3 bg-white rounded-md border border-gray-200">
+                        <h4 className="font-medium text-gray-900">OAuth Consent Screen</h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Status: {validationResult.oauthClientId.consentScreen.status}
+                        </p>
+                        <div className="mt-2">
+                          <h5 className="text-sm font-medium text-gray-700">Configured Scopes:</h5>
+                          <ul className="mt-1 text-sm text-gray-600 list-disc list-inside">
+                            {validationResult.oauthClientId.consentScreen.scopes.map((scope, index) => (
+                              <li key={index}>{scope}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="mt-2">
+                          <h5 className="text-sm font-medium text-gray-700">Test Users:</h5>
+                          <ul className="mt-1 text-sm text-gray-600 list-disc list-inside">
+                            {validationResult.oauthClientId.consentScreen.testUsers.map((user, index) => (
+                              <li key={index}>{user}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <p className="mt-1 text-sm text-secondary-600">
+            Required for Google Sign-In and user authentication.
+          </p>
+        </div>
+
+        {/* OAuth Client Secret Field */}
+        <div>
+          <label htmlFor="oauthClientSecret" className="block text-sm font-medium text-dog-gray mb-2">
+            OAuth Client Secret
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiLock className="h-5 w-5 text-secondary-400" />
+            </div>
+            <input
+              type="password"
+              id="oauthClientSecret"
+              value={settings.oauthClientSecret}
+              onChange={handleChange('oauthClientSecret')}
+              className="block w-full pl-10 pr-3 py-2 border border-secondary-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Enter your OAuth Client Secret"
+            />
+          </div>
+          <p className="mt-1 text-sm text-secondary-600">
+            Keep this secret secure. It's used to authenticate your application with Google.
+          </p>
+        </div>
+
+        {message && (
+          <div className={`p-3 rounded-md ${
+            status === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}>
+            {message}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
+              ${status === 'loading' 
+                ? 'bg-primary-400 cursor-not-allowed' 
+                : 'bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+              }`}
+          >
+            <FiSave className="h-4 w-4 mr-2" />
+            {status === 'loading' ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 } 

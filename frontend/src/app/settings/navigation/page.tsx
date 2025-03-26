@@ -51,7 +51,7 @@ export default function NavigationSettings() {
   const loadExistingSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/navigation-settings');
+      const response = await fetch('/api/v1/settings/navigation');
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -170,7 +170,7 @@ export default function NavigationSettings() {
     setSuccessMessage(null);
 
     try {
-      const response = await fetch('/api/navigation-settings', {
+      const response = await fetch('/api/v1/settings/navigation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
