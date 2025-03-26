@@ -212,10 +212,10 @@ router.post('/config', async (req: Request, res: Response) => {
 });
 
 // Google Drive backup routes
-router.get('/drive-files', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.get('/drive-files', async (req: AuthRequest, res: Response) => {
   try {
-    const sessionId = req.headers['x-session-id'] as string;
-    if (!sessionId) {
+    const sessionId = req.headers['x-session-id'] || req.cookies['session_id'];
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(401).json({ message: 'Session ID is required' });
     }
 
@@ -227,7 +227,7 @@ router.get('/drive-files', authenticateToken, async (req: AuthRequest, res: Resp
     const files = await listDriveFiles(accessToken);
     res.json({ files });
   } catch (error: any) {
-    console.error('Error listing drive files:', error);
+    logger.error('Error listing drive files:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -187,7 +187,7 @@ export default function BackupPage() {
   const fetchDriveFiles = async () => {
     try {
       setIsLoadingDriveFiles(true);
-      const response = await api.get('/backup/drive-files');
+      const response = await api.get('/google/drive-files');
       setDriveFiles(response.data.files);
     } catch (err: any) {
       setError(err.message);

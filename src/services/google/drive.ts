@@ -96,6 +96,11 @@ export async function uploadToDrive(filePath: string, fileName: string, req: any
  * List files from Google Drive
  */
 export async function listDriveFiles(accessToken: string): Promise<any[]> {
+  const config = loadBackupConfig();
+  if (!config.googleDrive.enabled || !config.googleDrive.folderId) {
+    throw new Error('Google Drive backup is not configured');
+  }
+
   try {
     const response = await axios.get('https://www.googleapis.com/drive/v3/files', {
       headers: {
@@ -103,7 +108,9 @@ export async function listDriveFiles(accessToken: string): Promise<any[]> {
       },
       params: {
         fields: 'files(id, name, mimeType, createdTime, modifiedTime)',
-        pageSize: 100
+        pageSize: 100,
+        q: `'${config.googleDrive.folderId}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'`,
+        orderBy: 'modifiedTime desc'
       }
     });
 

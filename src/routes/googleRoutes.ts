@@ -631,8 +631,8 @@ router.get('/drive-files', async (req: AuthRequest, res) => {
     const files = await listDriveFiles(accessToken);
     res.json({ files });
   } catch (error) {
-    console.error('Error listing drive files:', error);
-    res.status(500).json({ message: 'Failed to list drive files' });
+    logger.error('Error listing drive files:', error);
+    res.status(500).json({ message: 'Failed to get drive files' });
   }
 });
 
