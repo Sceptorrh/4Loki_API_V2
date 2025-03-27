@@ -1,6 +1,4 @@
 import pool from '../config/database';
-import { NavigationSettings, TravelTime } from '../types';
-import { RowDataPacket } from 'mysql2';
 import { logger } from './logger';
 import { calculateRoute as googleCalculateRoute, Coordinates } from '../services/google';
 import * as fs from 'fs';

@@ -442,72 +442,68 @@ export default function AppointmentForm({
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {mode === 'new' ? 'New Appointment' : 'Edit Appointment'}
-        </h1>
-        <div className="flex space-x-4">
-          <Link href="/appointments" className="text-primary-600 hover:text-primary-900">
-            Cancel
-          </Link>
+    <div className="h-screen flex flex-col">
+      <div className="px-4 py-4">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {mode === 'new' ? 'New Appointment' : 'Edit Appointment'}
+          </h1>
+          <div className="flex space-x-4">
+            <Link href="/appointments" className="text-primary-600 hover:text-primary-900">
+              Cancel
+            </Link>
+          </div>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mt-4">
+            {error}
+          </div>
+        )}
+
+        {warningBanner && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md mt-4">
+            {warningBanner}
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
-          {error}
-        </div>
-      )}
-
-      {warningBanner && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md mb-6">
-          {warningBanner}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <form onSubmit={handleSubmit} className="flex-1 flex flex-col px-4 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
           {/* Left Column - Customer and Dog Selection */}
-          <div className="lg:col-span-1 space-y-6">
-            <CustomerSelection
-              selectedCustomerId={selectedCustomerId}
-              customers={customers}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              setSelectedCustomerId={setSelectedCustomerId}
-              setShowCustomerModal={setShowCustomerModal}
-              onCustomerSelected={handleCustomerSelection}
-            />
-            
-            {selectedCustomerId && (
-              <DogServiceSelection
+          <div className="lg:col-span-3 flex flex-col min-h-0 overflow-auto">
+            <div className="space-y-4">
+              <CustomerSelection
                 selectedCustomerId={selectedCustomerId}
-                customerDogs={customerDogs}
-                selectedDogIds={selectedDogIds}
-                setSelectedDogIds={setSelectedDogIds}
-                dogServices={dogServices}
-                setDogServices={setDogServices}
-                dogNotes={dogNotes}
-                setDogNotes={setDogNotes}
-                dogServiceStats={dogServiceStats}
-                services={services}
-                setShowDogModal={setShowDogModal}
-                onDogSelectionChanged={handleDogSelectionChanged}
+                customers={customers}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                setSelectedCustomerId={setSelectedCustomerId}
+                setShowCustomerModal={setShowCustomerModal}
+                onCustomerSelected={handleCustomerSelection}
               />
-            )}
+              
+              {selectedCustomerId && (
+                <DogServiceSelection
+                  selectedCustomerId={selectedCustomerId}
+                  customerDogs={customerDogs}
+                  selectedDogIds={selectedDogIds}
+                  setSelectedDogIds={setSelectedDogIds}
+                  dogServices={dogServices}
+                  setDogServices={setDogServices}
+                  dogNotes={dogNotes}
+                  setDogNotes={setDogNotes}
+                  dogServiceStats={dogServiceStats}
+                  services={services}
+                  setShowDogModal={setShowDogModal}
+                  onDogSelectionChanged={handleDogSelectionChanged}
+                />
+              )}
+            </div>
           </div>
 
-          {/* Right Column - Schedule and History */}
-          <div className="lg:col-span-2">
-            {selectedCustomerId && (
-              <AppointmentHistory
-                customerId={selectedCustomerId}
-                appointmentDate={appointmentDate}
-                onServiceStatsCalculated={handleServiceStatsCalculated}
-              />
-            )}
-
+          {/* Middle Column - Schedule */}
+          <div className="lg:col-span-5 flex flex-col min-h-0">
             {selectedDogIds.length > 0 && Object.values(dogServices).some(services => services.length > 0) && (
               <AppointmentSchedule
                 appointmentDate={appointmentDate}
@@ -524,10 +520,21 @@ export default function AppointmentForm({
               />
             )}
           </div>
+
+          {/* Right Column - History */}
+          <div className="lg:col-span-4 flex flex-col min-h-0">
+            {selectedCustomerId && (
+              <AppointmentHistory
+                customerId={selectedCustomerId}
+                appointmentDate={appointmentDate}
+                onServiceStatsCalculated={handleServiceStatsCalculated}
+              />
+            )}
+          </div>
         </div>
 
         {/* Submit Button */}
-        <div className="mt-8 flex justify-end">
+        <div className="py-4 flex justify-end border-t mt-4">
           <button
             type="submit"
             disabled={loading}

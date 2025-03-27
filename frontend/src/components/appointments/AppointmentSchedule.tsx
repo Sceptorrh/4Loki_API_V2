@@ -168,8 +168,8 @@ export default function AppointmentSchedule({
   }, [appointmentDate]);
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b">
+    <div className="flex flex-col h-full">
+      <div className="flex-none p-4 border-b">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-medium text-gray-900">
             Schedule Appointment
@@ -187,7 +187,7 @@ export default function AppointmentSchedule({
         </div>
       </div>
       
-      <div className="px-4 pt-2">
+      <div className="flex-none px-4 pt-2">
         <div className="flex justify-between mb-2">
           <div className="text-sm text-gray-600">
             <div className="mb-1">
@@ -200,40 +200,42 @@ export default function AppointmentSchedule({
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center space-x-1.5">
+          <div className="flex flex-wrap gap-2 items-center text-[10px]">
+            <div className="flex items-center space-x-1">
               <div className="w-1.5 h-1.5 rounded-none bg-green-100 border-l-4 border-green-300"></div>
-              <span className="text-xs">Under estimated time</span>
+              <span>Under</span>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1">
               <div className="w-1.5 h-1.5 rounded-none bg-gray-100 border-l-4 border-gray-300"></div>
-              <span className="text-xs">On estimated time</span>
+              <span>On time</span>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1">
               <div className="w-1.5 h-1.5 rounded-none bg-orange-100 border-l-4 border-orange-300"></div>
-              <span className="text-xs">Slightly over estimated</span>
+              <span>Over</span>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1">
               <div className="w-1.5 h-1.5 rounded-none bg-red-100 border-l-4 border-red-300"></div>
-              <span className="text-xs">Well over estimated</span>
+              <span>Well over</span>
             </div>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-1">
               <div className="w-1.5 h-1.5 rounded-none bg-blue-100 border-l-4 border-blue-500 border-dashed"></div>
-              <span className="text-xs">Current selection</span>
+              <span>Current</span>
             </div>
           </div>
         </div>
       </div>
       
       {/* Calendar */}
-      <AppointmentCalendar
-        appointmentDate={appointmentDate}
-        startTime={startTime}
-        setStartTime={setStartTime}
-        endTime={endTime}
-        setEndTime={setEndTime}
-        dailyAppointments={dailyAppointments}
-      />
+      <div className="flex-1 min-h-0">
+        <AppointmentCalendar
+          appointmentDate={appointmentDate}
+          startTime={startTime}
+          setStartTime={setStartTime}
+          endTime={endTime}
+          setEndTime={setEndTime}
+          dailyAppointments={dailyAppointments}
+        />
+      </div>
       
       {/* Appointment Details Input Section */}
       {appointmentData && (

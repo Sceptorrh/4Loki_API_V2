@@ -55,7 +55,6 @@ export default function AppointmentHistory({
   const [sortedAppointments, setSortedAppointments] = useState<PreviousAppointment[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [dogServiceStats, setDogServiceStats] = useState<Record<number, ServiceStat[]>>({});
-  const [viewAll, setViewAll] = useState<boolean>(false);
 
   // Fetch previous appointments when customer is selected
   useEffect(() => {
@@ -256,96 +255,74 @@ export default function AppointmentHistory({
     );
   }
 
-  // Display either all appointments or just the first 2 based on viewAll state
-  const displayedAppointments = viewAll 
-    ? sortedAppointments
-    : sortedAppointments.slice(0, 2);
-
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-900">Past Appointments</h3>
+    <div className="h-auto">
+      <div className="flex justify-between items-center mb-2 px-2">
+        <h3 className="text-sm font-medium text-gray-900">Past Appointments</h3>
         {daysSinceLastAppointment !== null && (
-          <div className="text-sm text-gray-600">
+          <div className="text-xs text-gray-600">
             <span className="font-medium">{daysSinceLastAppointment} days</span> since last visit
           </div>
         )}
       </div>
-      <div className={`${viewAll ? 'max-h-[600px] overflow-y-auto' : ''} pr-2`}>
-        {displayedAppointments.map((appointment, index) => {
-          // Calculate total price for this appointment
-          let totalPrice = 0;
-          
-          appointment.dogServices?.forEach(dogService => {
-            dogService.services?.forEach(service => {
-              totalPrice += Number(service.Price || 0);
+      <div className="relative">
+        <div className="flex space-x-3 overflow-x-auto pb-2 px-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400">
+          {sortedAppointments.map((appointment, index) => {
+            let totalPrice = 0;
+            appointment.dogServices?.forEach(dogService => {
+              dogService.services?.forEach(service => {
+                totalPrice += Number(service.Price || 0);
+              });
             });
-          });
 
-          // Format date and time
-          const appointmentDate = new Date(appointment.Date);
-          const formattedDate = appointmentDate.toLocaleDateString();
-          
-          return (
-            <div key={appointment.Id} className="bg-white shadow-sm border rounded-md p-3 mb-3">
-              <div className="flex justify-between items-start mb-2">
-                <div className="font-medium">{formattedDate}</div>
-                <div className="text-right">
-                  <div className="font-medium text-primary-600">€{totalPrice.toFixed(2)}</div>
-                  <div className="text-xs text-gray-500">
-                    {appointment.ActualDuration ? (
-                      <>
-                        {Math.floor(appointment.ActualDuration / 60)}h {appointment.ActualDuration % 60}m
-                      </>
-                    ) : (
-                      'Duration not available'
-                    )}
+            const appointmentDate = new Date(appointment.Date);
+            const formattedDate = appointmentDate.toLocaleDateString();
+            
+            return (
+              <div key={appointment.Id} className="flex-none w-56 bg-white shadow-sm border rounded-md p-2">
+                <div className="flex justify-between items-start mb-1">
+                  <div className="font-medium text-sm">{formattedDate}</div>
+                  <div className="text-right">
+                    <div className="font-medium text-primary-600 text-sm">€{totalPrice.toFixed(2)}</div>
+                    <div className="text-xs text-gray-500">
+                      {appointment.ActualDuration ? (
+                        `${Math.floor(appointment.ActualDuration / 60)}h ${appointment.ActualDuration % 60}m`
+                      ) : (
+                        'N/A'
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              {appointment.dogServices && appointment.dogServices.length > 0 && (
-                <div className="mb-3">
+                
+                <div className="space-y-1">
                   {appointment.dogServices.map(dogService => (
-                    <div key={dogService.DogId} className="ml-2 mb-2">
-                      <div className="font-medium text-sm">{dogService.DogName}</div>
+                    <div key={dogService.DogId} className="text-xs">
+                      <div className="font-medium">{dogService.DogName}</div>
                       {dogService.services && dogService.services.length > 0 ? (
-                        <ul className="pl-4 text-xs space-y-1">
+                        <ul className="pl-2 space-y-0.5">
                           {dogService.services.map(service => (
                             <li key={service.ServiceId} className="flex justify-between">
-                              <span>{service.ServiceName}</span>
+                              <span className="truncate mr-2">{service.ServiceName}</span>
                               <span>€{Number(service.Price).toFixed(2)}</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <div className="text-xs text-gray-500 ml-4">No services</div>
+                        <div className="text-gray-400 pl-2">No services</div>
                       )}
                     </div>
                   ))}
                 </div>
-              )}
-              
-              {appointment.interval && (
-                <div className="text-xs text-gray-500 border-t pt-2">
-                  <span className="font-medium">Interval to previous:</span> {appointment.interval} days
-                </div>
-              )}
-            </div>
-          );
-        })}
-        
-        {sortedAppointments.length > 2 && (
-          <div className="flex justify-center my-2">
-            <button
-              type="button"
-              onClick={() => setViewAll(!viewAll)}
-              className="text-primary-600 text-sm py-1 px-3 border border-primary-300 rounded-md hover:bg-primary-50 transition-colors"
-            >
-              {viewAll ? 'Show less' : `View all ${sortedAppointments.length} appointments`}
-            </button>
-          </div>
-        )}
+                
+                {appointment.interval && (
+                  <div className="text-xs text-gray-500 border-t mt-1 pt-1">
+                    <span className="font-medium">Interval:</span> {appointment.interval} days
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

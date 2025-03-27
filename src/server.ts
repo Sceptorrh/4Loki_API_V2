@@ -4,9 +4,6 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
-import path from 'path';
-import { logStartupStatus } from './utils/startupLogger';
 import { setupRoutes } from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { swaggerSpec } from './config/swagger';
@@ -30,17 +27,7 @@ import { fetchAndSaveTravelTimes } from './utils/navigationService';
 import cookieParser from 'cookie-parser';
 import { authenticateToken } from './middleware/auth';
 import { shouldPerformAutoBackup, performAutoBackup } from './services/google/drive';
-import db from './config/database';
-import { RowDataPacket } from 'mysql2';
 import { loadBackupConfig } from './services/google/drive';
-
-interface Session extends RowDataPacket {
-  session_id: string;
-  access_token: string;
-  refresh_token: string;
-  token_expires: Date;
-  session_expires: Date;
-}
 
 const app = express();
 

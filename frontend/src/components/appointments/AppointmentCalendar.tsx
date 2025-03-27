@@ -128,29 +128,32 @@ export default function AppointmentCalendar({
       }
       .rbc-time-header {
         background-color: #f9fafb;
+        min-height: 25px;
       }
       .rbc-timeslot-group {
-        min-height: 40px;
+        min-height: 30px;
       }
       .rbc-time-slot {
-        min-height: 10px;
+        min-height: 8px;
       }
       .rbc-time-gutter {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: #4b5563;
         background-color: #f9fafb;
         border-right: 1px solid #e5e7eb;
+        padding: 0 4px;
       }
       .rbc-day-slot .rbc-events-container {
         margin-right: 1px;
       }
       .rbc-current-time-indicator {
         background-color: #3b82f6;
-        height: 2px;
+        height: 1px;
       }
       .rbc-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 500;
+        padding: 2px;
       }
       .rbc-day-slot .rbc-time-slot {
         border-top: 1px solid #f3f4f6;
@@ -159,6 +162,7 @@ export default function AppointmentCalendar({
         background-color: #f9fafb;
         border-bottom: 1px solid #e5e7eb;
         border-right: 1px solid #e5e7eb;
+        padding: 2px;
       }
       .rbc-event {
         background-color: transparent;
@@ -294,11 +298,11 @@ export default function AppointmentCalendar({
     
     return (
       <div 
-        className={`${colorClass} h-full border-l-4 px-1 py-0.5 text-xs overflow-hidden shadow-sm ${isCurrentSelection ? 'current-selection-event' : ''}`}
+        className={`${colorClass} h-full border-l-2 px-0.5 py-0.5 text-[10px] overflow-hidden shadow-sm ${isCurrentSelection ? 'current-selection-event' : ''}`}
       >
-        <div className="font-semibold truncate">{resource.CustomerName}</div>
+        <div className="font-medium truncate leading-tight">{resource.CustomerName}</div>
         {resource.Dogs && resource.Dogs.length > 0 && (
-          <div className="truncate text-[10px] text-gray-600">
+          <div className="truncate text-[9px] text-gray-600 leading-tight">
             {resource.Dogs.join(', ')}
           </div>
         )}
@@ -310,14 +314,14 @@ export default function AppointmentCalendar({
   const maxTime = new Date(new Date(appointmentDate).setHours(21, 0, 0, 0));
 
   return (
-    <div className="h-[600px] border rounded-md overflow-hidden">
+    <div className="h-full">
       <Calendar
         localizer={localizer}
         events={allEvents}
         defaultView={Views.DAY}
         views={[Views.DAY]}
         step={15}
-        timeslots={2}
+        timeslots={1}
         date={appointmentDate}
         min={minTime}
         max={maxTime}

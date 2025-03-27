@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import pool from '../../config/database';
 import { logger } from '../../utils/logger';
 import crypto from 'crypto';
@@ -14,7 +13,6 @@ interface Session {
 
 export class SessionService {
   private static instance: SessionService;
-  private tokenRefreshScheduler: NodeJS.Timeout | null = null;
 
   private constructor() {
     // Start token refresh scheduler
