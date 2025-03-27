@@ -19,6 +19,8 @@ import dropdownRoutes from './routes/dropdownRoutes';
 import staticRoutes from './routes/staticRoutes';
 import exportRoutes from './routes/exportRoutes';
 import googleRoutes from './routes/googleRoutes';
+import aiSearchRoutes from './routes/aiSearch';
+import aiSettingsRoutes from './routes/aiSettings';
 import { NextFunction, Request, Response } from 'express';
 import { Server } from 'http';
 import { convertDatesToUTC, convertDatesInResponse } from './middleware/dateHandler';
@@ -214,6 +216,8 @@ app.use('/api/v1/dropdowns', dropdownRoutes);
 app.use('/api/v1/static', staticRoutes);
 app.use('/api/v1/exports', exportRoutes);
 app.use('/api/v1/google', googleRoutes);
+app.use('/api/v1', aiSearchRoutes);
+app.use('/api/v1', aiSettingsRoutes);
 
 // Also register Google routes without the v1 prefix for direct OAuth redirects
 app.use('/api/auth/google', googleRoutes);

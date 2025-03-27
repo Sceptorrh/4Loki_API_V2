@@ -16,7 +16,8 @@ import {
   FiX,
   FiDownload,
   FiSettings,
-  FiClock
+  FiClock,
+  FiSearch
 } from 'react-icons/fi';
 import UserProfile from './UserProfile';
 
@@ -33,6 +34,7 @@ const navItems = [
   { name: 'Hours', href: '/hours', icon: FiClock },
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
+  { name: 'AI Search', href: '/ai-search', icon: FiSearch },
   { name: 'Exports', href: '/exports', icon: FiDownload },
   { name: 'Settings', href: '/settings', icon: FiSettings }
 ];
