@@ -34,7 +34,6 @@ const navItems = [
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
   { name: 'Exports', href: '/exports', icon: FiDownload },
-  { name: 'Reports', href: '/reports', icon: FiBarChart2 },
   { name: 'Settings', href: '/settings', icon: FiSettings }
 ];
 
