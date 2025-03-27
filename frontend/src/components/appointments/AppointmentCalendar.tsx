@@ -30,6 +30,7 @@ interface AppointmentCalendarProps {
   endTime: Date;
   setEndTime: (time: Date) => void;
   dailyAppointments: DailyAppointment[];
+  totalDuration: number;
 }
 
 // Helper function to safely parse time and convert to Date
@@ -61,14 +62,36 @@ function formatDuration(minutes: number): string {
   }
 }
 
+// Helper function to get color class based on duration ratio
+function getDurationColorClass(actualDuration: number, estimatedDuration: number): string {
+  if (!actualDuration || !estimatedDuration) {
+    return 'bg-gray-100 border-gray-300';
+  }
+  
+  const ratio = actualDuration / estimatedDuration;
+  
+  if (ratio >= 1.2) {
+    return 'bg-green-100 border-green-300';
+  } else if (ratio >= 0.95) {
+    return 'bg-gray-100 border-gray-300';
+  } else if (ratio >= 0.8) {
+    return 'bg-orange-100 border-orange-300';
+  } else {
+    return 'bg-red-100 border-red-300';
+  }
+}
+
 export default function AppointmentCalendar({
   appointmentDate,
   startTime,
   setStartTime,
   endTime,
   setEndTime,
-  dailyAppointments
+  dailyAppointments,
+  totalDuration
 }: AppointmentCalendarProps) {
+  // Add state for the current selection being dragged
+  const [currentSelection, setCurrentSelection] = useState<{ start: Date; end: Date } | null>(null);
   
   // Convert dailyAppointments to events for the calendar
   const calendarEvents = dailyAppointments.map(appointment => {
@@ -76,22 +99,7 @@ export default function AppointmentCalendar({
     const start = parseTimeToDate(appointment.TimeStart, appointmentDate);
     const end = parseTimeToDate(appointment.TimeEnd, appointmentDate);
     
-    // Calculate ratio for color coding
-    let colorClass = 'bg-gray-100 border-gray-300';
-    
-    if (appointment.ActualDuration && appointment.EstimatedDuration) {
-      const ratio = appointment.ActualDuration / appointment.EstimatedDuration;
-      
-      if (ratio >= 1.2) {
-        colorClass = 'bg-green-100 border-green-300';
-      } else if (ratio >= 0.95) {
-        colorClass = 'bg-gray-100 border-gray-300';
-      } else if (ratio >= 0.8) {
-        colorClass = 'bg-orange-100 border-orange-300';
-      } else {
-        colorClass = 'bg-red-100 border-red-300';
-      }
-    }
+    const colorClass = getDurationColorClass(appointment.ActualDuration, appointment.EstimatedDuration);
     
     return {
       id: appointment.Id,
@@ -104,19 +112,21 @@ export default function AppointmentCalendar({
   });
   
   // Add current appointment selection as an event
-  const currentAppointment = {
+  const currentAppointment = currentSelection ? {
     id: 'current',
     title: 'Current Selection',
-    start: startTime,
-    end: endTime,
+    start: currentSelection.start,
+    end: currentSelection.end,
     colorClass: 'bg-blue-100 border-blue-500 border-dashed',
     resource: { 
       CustomerName: 'Current Selection',
-      Dogs: []
+      Dogs: [],
+      ActualDuration: Math.round((currentSelection.end.getTime() - currentSelection.start.getTime()) / 60000),
+      EstimatedDuration: totalDuration
     }
-  };
+  } : null;
   
-  const allEvents = [...calendarEvents, currentAppointment];
+  const allEvents = [...calendarEvents, ...(currentAppointment ? [currentAppointment] : [])];
   
   // Add custom CSS for React Big Calendar
   useEffect(() => {
@@ -128,20 +138,20 @@ export default function AppointmentCalendar({
       }
       .rbc-time-header {
         background-color: #f9fafb;
-        min-height: 25px;
+        min-height: 20px;
       }
       .rbc-timeslot-group {
-        min-height: 30px;
+        min-height: 20px;
       }
       .rbc-time-slot {
-        min-height: 8px;
+        min-height: 4px;
       }
       .rbc-time-gutter {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         color: #4b5563;
         background-color: #f9fafb;
         border-right: 1px solid #e5e7eb;
-        padding: 0 4px;
+        padding: 0 2px;
       }
       .rbc-day-slot .rbc-events-container {
         margin-right: 1px;
@@ -151,9 +161,9 @@ export default function AppointmentCalendar({
         height: 1px;
       }
       .rbc-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         font-weight: 500;
-        padding: 2px;
+        padding: 1px;
       }
       .rbc-day-slot .rbc-time-slot {
         border-top: 1px solid #f3f4f6;
@@ -162,7 +172,7 @@ export default function AppointmentCalendar({
         background-color: #f9fafb;
         border-bottom: 1px solid #e5e7eb;
         border-right: 1px solid #e5e7eb;
-        padding: 2px;
+        padding: 1px;
       }
       .rbc-event {
         background-color: transparent;
@@ -171,11 +181,14 @@ export default function AppointmentCalendar({
         border-radius: 0.25rem;
         box-shadow: none;
         padding: 0;
+        opacity: 0.7;
       }
       .rbc-day-slot .rbc-event {
         border: none;
         padding: 0;
         overflow: hidden;
+        width: 90% !important;
+        margin-left: 5% !important;
       }
       .rbc-day-slot .rbc-background-event {
         opacity: 1;
@@ -185,6 +198,9 @@ export default function AppointmentCalendar({
       }
       .current-selection-event {
         position: relative;
+        opacity: 1 !important;
+        width: 100% !important;
+        margin-left: 0 !important;
       }
       .current-selection-event:after {
         content: '';
@@ -202,6 +218,29 @@ export default function AppointmentCalendar({
       .rbc-slot-selection {
         background-color: rgba(59, 130, 246, 0.2);
         border: 1px solid #3b82f6;
+      }
+      /* Hide the default selection overlay */
+      .rbc-slot-selection,
+      .rbc-selecting {
+        background-color: transparent !important;
+        border: none !important;
+      }
+      .rbc-time-content {
+        height: calc(100% - 25px) !important;
+      }
+      .rbc-time-view-resources {
+        height: 100% !important;
+      }
+      /* Hide time labels for non-hour slots */
+      .rbc-time-slot:not(:first-child) .rbc-label {
+        display: none;
+      }
+      /* Add subtle grid lines for 15-minute intervals */
+      .rbc-time-slot:nth-child(4n+1) {
+        border-top: 1px solid #e5e7eb;
+      }
+      .rbc-time-slot:not(:nth-child(4n+1)) {
+        border-top: 1px solid #f3f4f6;
       }
     `;
     document.head.appendChild(style);
@@ -291,20 +330,44 @@ export default function AppointmentCalendar({
     setEndTime(newEndTime);
   }, [appointmentDate, setStartTime, setEndTime]);
 
+  // Handle selection while dragging
+  const handleSelecting = useCallback(({ start, end }: { start: Date, end: Date }) => {
+    setCurrentSelection({ start, end });
+    return true; // Allow the selection to continue
+  }, []);
+
   // Custom event component
   const EventComponent = ({ event }: { event: any }) => {
-    const { colorClass, resource, id } = event;
+    const { colorClass, resource, id, start, end } = event;
     const isCurrentSelection = id === 'current';
     
     return (
       <div 
-        className={`${colorClass} h-full border-l-2 px-0.5 py-0.5 text-[10px] overflow-hidden shadow-sm ${isCurrentSelection ? 'current-selection-event' : ''}`}
+        className={`${colorClass} h-full border-l-2 px-0.5 py-0.5 text-[12px] overflow-hidden shadow-sm ${isCurrentSelection ? 'current-selection-event' : ''}`}
       >
-        <div className="font-medium truncate leading-tight">{resource.CustomerName}</div>
-        {resource.Dogs && resource.Dogs.length > 0 && (
-          <div className="truncate text-[9px] text-gray-600 leading-tight">
-            {resource.Dogs.join(', ')}
-          </div>
+        {isCurrentSelection ? (
+          <>
+            <div className="font-medium truncate leading-tight">
+              {format(start, 'HH:mm')} - {format(end, 'HH:mm')}
+            </div>
+            <div className="truncate text-[10px] text-gray-600 leading-tight">
+              {formatDuration(Math.round((end.getTime() - start.getTime()) / 60000))}
+              {resource.EstimatedDuration > 0 && (
+                <span className={`ml-1 ${getDurationColorClass(resource.ActualDuration, resource.EstimatedDuration).replace('border-l-2', '')}`}>
+                  (Est: {formatDuration(resource.EstimatedDuration)})
+                </span>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="font-medium truncate leading-tight text-[12px]">{resource.CustomerName}</div>
+            {resource.Dogs && resource.Dogs.length > 0 && (
+              <div className="truncate text-[11px] text-gray-600 leading-tight">
+                {resource.Dogs.join(', ')}
+              </div>
+            )}
+          </>
         )}
       </div>
     );
@@ -327,16 +390,17 @@ export default function AppointmentCalendar({
         max={maxTime}
         selectable
         onSelectSlot={handleSelectSlot}
+        onSelecting={handleSelecting}
         components={{
           event: EventComponent
         }}
         formats={{
           timeGutterFormat: (date: Date) => {
             const hours = date.getHours();
-            const minutes = date.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             const hour = hours % 12 || 12;
-            return minutes === 0 ? `${hour} ${ampm}` : `${hour}:${minutes.toString().padStart(2, '0')}`;
+            // Only show time for whole hours
+            return date.getMinutes() === 0 ? `${hour} ${ampm}` : '';
           }
         }}
         className="h-full"

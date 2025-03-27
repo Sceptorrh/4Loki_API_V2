@@ -187,44 +187,6 @@ export default function AppointmentSchedule({
         </div>
       </div>
       
-      <div className="flex-none px-4 pt-2">
-        <div className="flex justify-between mb-2">
-          <div className="text-sm text-gray-600">
-            <div className="mb-1">
-              <span className="font-medium">Selected Duration:</span> {formatDuration(Math.round((endTime.getTime() - startTime.getTime()) / 60000))}
-            </div>
-            {totalDuration > 0 && (
-              <div className="text-sm text-gray-500">
-                <span className="font-medium">Estimated Duration:</span> {formatDuration(totalDuration)} 
-                <span className="text-xs ml-1 italic">(based on selected services)</span>
-              </div>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2 items-center text-[10px]">
-            <div className="flex items-center space-x-1">
-              <div className="w-1.5 h-1.5 rounded-none bg-green-100 border-l-4 border-green-300"></div>
-              <span>Under</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-1.5 h-1.5 rounded-none bg-gray-100 border-l-4 border-gray-300"></div>
-              <span>On time</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-1.5 h-1.5 rounded-none bg-orange-100 border-l-4 border-orange-300"></div>
-              <span>Over</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-1.5 h-1.5 rounded-none bg-red-100 border-l-4 border-red-300"></div>
-              <span>Well over</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <div className="w-1.5 h-1.5 rounded-none bg-blue-100 border-l-4 border-blue-500 border-dashed"></div>
-              <span>Current</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
       {/* Calendar */}
       <div className="flex-1 min-h-0">
         <AppointmentCalendar
@@ -234,6 +196,7 @@ export default function AppointmentSchedule({
           endTime={endTime}
           setEndTime={setEndTime}
           dailyAppointments={dailyAppointments}
+          totalDuration={totalDuration}
         />
       </div>
       
