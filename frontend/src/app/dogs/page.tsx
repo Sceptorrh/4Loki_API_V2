@@ -121,13 +121,16 @@ export default function DogsPage() {
 
   // Helper function to format date to show only month and day
   const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return 'Not set';
     const date = new Date(dateString);
+    if (isNaN(date.getTime()) || date.getFullYear() < 1910) return 'Not set';
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   // Calculate age from birthday
   const calculateAge = (birthday: Date): number => {
+    if (!birthday || isNaN(birthday.getTime()) || birthday.getFullYear() < 1910) return -1;
+    
     const today = new Date();
     let age = today.getFullYear() - birthday.getFullYear();
     const monthDiff = today.getMonth() - birthday.getMonth();
@@ -141,12 +144,14 @@ export default function DogsPage() {
 
   // Format age with appropriate units
   const formatAge = (dateString: string | undefined): string => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return 'Not set';
     
-    const birthday = new Date(dateString || '');
+    const birthday = new Date(dateString);
+    if (isNaN(birthday.getTime()) || birthday.getFullYear() < 1910) return 'Not set';
+    
     const ageYears = calculateAge(birthday);
     
-    if (ageYears < 0) return 'Invalid date';
+    if (ageYears < 0) return 'Not set';
     if (ageYears === 0) {
       // Calculate age in months for puppies
       const today = new Date();
