@@ -257,36 +257,64 @@ export default function AppointmentForm({
       // Validate required fields
       if (!selectedCustomerId) {
         setError('Please select a customer');
+        setLoading(false);
         return;
       }
       
       if (!selectedDogIds.length) {
         setError('Please select at least one dog');
+        setLoading(false);
         return;
       }
       
       const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
       if (!selectedCustomer) {
         setError('Selected customer not found');
+        setLoading(false);
         return;
       }
+
+      // Ensure we have valid dates
+      if (!appointmentDate || !startTime || !endTime) {
+        setError('Please select valid appointment date and times');
+        setLoading(false);
+        return;
+      }
+
+      // Create dates with the correct appointment date
+      const timeStart = new Date(appointmentDate);
+      timeStart.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+      
+      const timeEnd = new Date(appointmentDate);
+      timeEnd.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
 
       // Format the appointment data
       const appointmentData = {
         Date: format(appointmentDate, 'yyyy-MM-dd'),
-        TimeStart: format(startTime, 'HH:mm'),
-        TimeEnd: format(endTime, 'HH:mm'),
+        TimeStart: format(timeStart, 'HH:mm'),
+        TimeEnd: format(timeEnd, 'HH:mm'),
         DateEnd: format(appointmentDate, 'yyyy-MM-dd'),
-        ActualDuration: Math.max(0, Math.round((endTime.getTime() - startTime.getTime()) / 60000)),
-        CustomerId: Number(selectedCustomerId),
-        AppointmentStatusId: statusId,
+        ActualDuration: Math.max(0, Math.round((timeEnd.getTime() - timeStart.getTime()) / 60000)),
+        CustomerId: selectedCustomerId,
+        AppointmentStatusId: statusId || 'Pln', // Default to 'Pln' if not set
         Note: notes || '',
         IsPaidInCash: false
       };
 
+      // Debug logging
+      console.log('Debug - Raw values:', {
+        appointmentDate,
+        startTime,
+        endTime,
+        selectedCustomerId,
+        statusId
+      });
+
+      console.log('Debug - Formatted appointment data:', appointmentData);
+
       // Format the appointment dogs data
       const appointmentDogs = selectedDogIds.map(dogId => ({
-        DogId: Number(dogId),
+        DogId: dogId,
         Note: dogNotes[dogId] || '',
         services: (dogServices[dogId] || []).map(service => ({
           ServiceId: service.ServiceId,
@@ -294,16 +322,52 @@ export default function AppointmentForm({
         }))
       }));
 
+      console.log('Debug - Request payload:', {
+        appointment: appointmentData,
+        appointmentDogs
+      });
+
       let response;
       if (mode === 'new') {
+        // Send the data in the format expected by the backend
         response = await endpoints.appointments.create({
-          appointment: appointmentData,
-          appointmentDogs
+          Date: appointmentData.Date,
+          TimeStart: appointmentData.TimeStart,
+          TimeEnd: appointmentData.TimeEnd,
+          DateEnd: appointmentData.DateEnd,
+          ActualDuration: appointmentData.ActualDuration,
+          CustomerId: appointmentData.CustomerId,
+          AppointmentStatusId: appointmentData.AppointmentStatusId,
+          Note: appointmentData.Note,
+          IsPaidInCash: appointmentData.IsPaidInCash,
+          AppointmentDog: appointmentDogs.map(dog => ({
+            DogId: dog.DogId,
+            Note: dog.Note,
+            services: dog.services.map(service => ({
+              ServiceId: service.ServiceId,
+              Price: service.Price
+            }))
+          }))
         });
       } else if (mode === 'edit' && appointmentId) {
         response = await endpoints.appointments.updateComplete(appointmentId, {
-          appointment: appointmentData,
-          appointmentDogs
+          Date: appointmentData.Date,
+          TimeStart: appointmentData.TimeStart,
+          TimeEnd: appointmentData.TimeEnd,
+          DateEnd: appointmentData.DateEnd,
+          ActualDuration: appointmentData.ActualDuration,
+          CustomerId: appointmentData.CustomerId,
+          AppointmentStatusId: appointmentData.AppointmentStatusId,
+          Note: appointmentData.Note,
+          IsPaidInCash: appointmentData.IsPaidInCash,
+          AppointmentDog: appointmentDogs.map(dog => ({
+            DogId: dog.DogId,
+            Note: dog.Note,
+            services: dog.services.map(service => ({
+              ServiceId: service.ServiceId,
+              Price: service.Price
+            }))
+          }))
         });
       }
 
@@ -319,47 +383,144 @@ export default function AppointmentForm({
       }
     } catch (err: any) {
       console.error('Error saving appointment:', err);
+      console.log('Raw error response:', err.response?.data);
       
       // Handle validation errors from the backend
-      if (err.response?.data?.message?.includes('Validation failed')) {
+      if (err.response?.data) {
         try {
-          // Extract validation errors from the message
-          const validationErrorsMatch = err.response.data.message.match(/\[(.*?)\]/);
-          if (validationErrorsMatch) {
-            const validationErrors = JSON.parse(validationErrorsMatch[1]);
-            const errorMessages = validationErrors.map((error: { field: string; message: string }) => {
-              // Map field names to user-friendly labels
-              const fieldLabels: Record<string, string> = {
-                Date: 'Appointment Date',
-                TimeStart: 'Start Time',
-                TimeEnd: 'End Time',
-                DateEnd: 'End Date',
-                ActualDuration: 'Duration',
-                CustomerId: 'Customer',
-                AppointmentStatusId: 'Status'
-              };
-              
-              return `${fieldLabels[error.field] || error.field}: ${error.message}`;
-            });
-            
-            setError(
-              <div>
-                <p className="font-medium mb-2">Please fix the following errors:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  {errorMessages.map((message: string, index: number) => (
-                    <li key={index} className="text-sm">{message}</li>
-                  ))}
-                </ul>
-              </div>
-            );
-            return;
+          // First try to get validation errors directly from the response
+          let validationErrors;
+          
+          if (Array.isArray(err.response.data.validationErrors)) {
+            validationErrors = err.response.data.validationErrors;
+          } else if (err.response.data.message) {
+            // Try to extract the array from the message string
+            const match = err.response.data.message.match(/\[([\s\S]*)\]/);
+            if (match) {
+              // Clean up the string before parsing
+              const cleanJson = match[1].replace(/\\n/g, '')
+                                    .replace(/\\"/g, '"')
+                                    .trim();
+              console.log('Attempting to parse:', cleanJson);
+              validationErrors = JSON.parse(`[${cleanJson}]`);
+            } else {
+              validationErrors = [{ field: 'general', message: err.response.data.message }];
+            }
+          } else {
+            validationErrors = [{ field: 'general', message: 'Unknown validation error' }];
           }
-        } catch (parseError) {
+
+          console.log('Parsed validation errors:', validationErrors);
+          
+          // Map field names to user-friendly labels and add debug info
+          const fieldLabels: Record<string, string> = {
+            Date: 'Appointment Date',
+            TimeStart: 'Start Time',
+            TimeEnd: 'End Time',
+            DateEnd: 'End Date',
+            ActualDuration: 'Duration',
+            CustomerId: 'Customer',
+            AppointmentStatusId: 'Status'
+          };
+
+          // Get the actual values that were sent for each field
+          const fieldValues: Record<string, string> = {
+            Date: format(appointmentDate, 'yyyy-MM-dd'),
+            TimeStart: format(startTime, 'HH:mm'),
+            TimeEnd: format(endTime, 'HH:mm'),
+            DateEnd: format(appointmentDate, 'yyyy-MM-dd'),
+            ActualDuration: Math.max(0, Math.round((endTime.getTime() - startTime.getTime()) / 60000)).toString(),
+            CustomerId: selectedCustomerId?.toString() || 'not set',
+            AppointmentStatusId: statusId || 'not set'
+          };
+
+          console.log('Field values being sent:', fieldValues);
+          
+          const errorMessages = validationErrors.map((error: { field: string; message: string }) => {
+            const fieldLabel = fieldLabels[error.field] || error.field;
+            const actualValue = fieldValues[error.field];
+            return {
+              field: fieldLabel,
+              message: error.message,
+              value: actualValue
+            };
+          });
+          
+          setError(
+            <div className="space-y-4">
+              <p className="font-medium text-red-800">Please fix the following validation errors:</p>
+              <div className="bg-white rounded-md shadow-sm border border-red-200 overflow-hidden">
+                <table className="min-w-full divide-y divide-red-200">
+                  <thead className="bg-red-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-red-900">Field</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-red-900">Error</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-red-900">Current Value</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-red-200">
+                    {errorMessages.map((error: { field: string; message: string; value: string }, index: number) => (
+                      <tr key={index} className="text-sm hover:bg-red-50">
+                        <td className="px-3 py-2 text-red-900 font-medium whitespace-nowrap">{error.field}</td>
+                        <td className="px-3 py-2 text-red-700">{error.message}</td>
+                        <td className="px-3 py-2 text-red-600 font-mono text-xs">
+                          {error.value || <span className="text-red-400 italic">empty</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
+                <p className="font-medium">Debug Information:</p>
+                <pre className="mt-2 text-xs overflow-auto">
+                  {JSON.stringify({
+                    rawData: {
+                      appointmentDate: appointmentDate.toISOString(),
+                      startTime: startTime.toISOString(),
+                      endTime: endTime.toISOString(),
+                      selectedCustomerId,
+                      statusId
+                    },
+                    formattedData: {
+                      Date: fieldValues.Date,
+                      TimeStart: fieldValues.TimeStart,
+                      TimeEnd: fieldValues.TimeEnd,
+                      DateEnd: fieldValues.DateEnd,
+                      ActualDuration: fieldValues.ActualDuration,
+                      CustomerId: fieldValues.CustomerId,
+                      AppointmentStatusId: fieldValues.AppointmentStatusId
+                    },
+                    rawError: err.response?.data
+                  }, null, 2)}
+                </pre>
+              </div>
+            </div>
+          );
+          return;
+        } catch (parseError: any) {
           console.error('Error parsing validation errors:', parseError);
+          setError(
+            <div className="space-y-2">
+              <p className="font-medium">An error occurred while processing the validation errors:</p>
+              <pre className="text-xs bg-red-50 p-2 rounded overflow-auto">
+                Raw Error Response: {JSON.stringify(err.response?.data, null, 2)}
+                {'\n\n'}
+                Parse Error: {parseError.message}
+              </pre>
+            </div>
+          );
         }
+      } else {
+        setError(
+          <div className="space-y-2">
+            <p>Failed to save appointment. Please try again.</p>
+            <pre className="text-xs bg-red-50 p-2 rounded overflow-auto">
+              {err.message || 'Unknown error'}
+            </pre>
+          </div>
+        );
       }
-      
-      setError('Failed to save appointment. Please try again.');
     } finally {
       setLoading(false);
     }
