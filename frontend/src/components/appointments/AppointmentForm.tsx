@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { endpoints } from '@/lib/api';
-import { format, setHours, setMinutes, parse } from 'date-fns';
+import { format, setHours, setMinutes, parse, getDay } from 'date-fns';
 import CustomerModal from '@/components/CustomerModal';
 import DogModal from '@/components/DogModal';
 import { getEstimatedDuration } from '@/lib/appointments';
@@ -10,6 +10,8 @@ import AppointmentHistory from '@/components/appointments/AppointmentHistory';
 import CustomerSelection from '@/components/appointments/CustomerSelection';
 import DogServiceSelection from '@/components/appointments/DogServiceSelection';
 import AppointmentSchedule from '@/components/appointments/AppointmentSchedule';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 interface Dog {
   Id: number;
@@ -471,6 +473,12 @@ export default function AppointmentForm({
     }
   };
 
+  // Function to filter out weekends
+  const isWeekday = (date: Date) => {
+    const day = getDay(date);
+    return day !== 0 && day !== 6; // 0 is Sunday, 6 is Saturday
+  };
+
   return (
     <div className="h-screen flex flex-col">
       <div className="px-4 py-4">
@@ -512,6 +520,23 @@ export default function AppointmentForm({
                 setShowCustomerModal={setShowCustomerModal}
                 onCustomerSelected={handleCustomerSelection}
               />
+
+              {/* Date Selection */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Appointment Date
+                </label>
+                <div className="w-full">
+                  <DatePicker
+                    selected={appointmentDate}
+                    onChange={(date: Date) => setAppointmentDate(date)}
+                    dateFormat="yyyy-MM-dd"
+                    className="w-full border-gray-300 rounded-md shadow-sm text-sm p-2 focus:ring-primary-500 focus:border-primary-500"
+                    filterDate={isWeekday}
+                    placeholderText="Select date"
+                  />
+                </div>
+              </div>
               
               {selectedCustomerId && (
                 <DogServiceSelection

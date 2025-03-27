@@ -169,24 +169,6 @@ export default function AppointmentSchedule({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-none p-4 border-b">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium text-gray-900">
-            Schedule Appointment
-          </h2>
-          <div className="w-48">
-            <DatePicker
-              selected={appointmentDate}
-              onChange={(date: Date) => setAppointmentDate(date)}
-              dateFormat="yyyy-MM-dd"
-              className="w-full border-gray-300 rounded-md shadow-sm text-sm p-2 focus:ring-primary-500 focus:border-primary-500"
-              filterDate={isWeekday}
-              placeholderText="Select date"
-            />
-          </div>
-        </div>
-      </div>
-      
       {/* Calendar */}
       <div className="flex-1 min-h-0">
         <AppointmentCalendar

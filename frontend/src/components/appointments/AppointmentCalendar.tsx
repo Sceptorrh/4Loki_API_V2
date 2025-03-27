@@ -137,8 +137,13 @@ export default function AppointmentCalendar({
         overflow: hidden;
       }
       .rbc-time-header {
-        background-color: #f9fafb;
-        min-height: 20px;
+        display: none;
+      }
+      .rbc-time-header-content {
+        display: none;
+      }
+      .rbc-time-header-gutter {
+        display: none;
       }
       .rbc-timeslot-group {
         min-height: 20px;
@@ -373,6 +378,9 @@ export default function AppointmentCalendar({
     );
   };
 
+  // Empty component to hide the toolbar
+  const EmptyToolbar = () => null;
+
   const minTime = new Date(new Date(appointmentDate).setHours(8, 0, 0, 0));
   const maxTime = new Date(new Date(appointmentDate).setHours(21, 0, 0, 0));
 
@@ -392,7 +400,9 @@ export default function AppointmentCalendar({
         onSelectSlot={handleSelectSlot}
         onSelecting={handleSelecting}
         components={{
-          event: EventComponent
+          event: EventComponent,
+          toolbar: EmptyToolbar,
+          header: EmptyToolbar
         }}
         formats={{
           timeGutterFormat: (date: Date) => {
