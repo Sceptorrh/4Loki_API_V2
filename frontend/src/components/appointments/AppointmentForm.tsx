@@ -330,17 +330,19 @@ export default function AppointmentForm({
       let response;
       if (mode === 'new') {
         // Send the data in the format expected by the backend
-        response = await endpoints.appointments.create({
-          Date: appointmentData.Date,
-          TimeStart: appointmentData.TimeStart,
-          TimeEnd: appointmentData.TimeEnd,
-          DateEnd: appointmentData.DateEnd,
-          ActualDuration: appointmentData.ActualDuration,
-          CustomerId: appointmentData.CustomerId,
-          AppointmentStatusId: appointmentData.AppointmentStatusId,
-          Note: appointmentData.Note,
-          IsPaidInCash: appointmentData.IsPaidInCash,
-          AppointmentDog: appointmentDogs.map(dog => ({
+        response = await endpoints.appointments.createComplete({
+          appointment: {
+            Date: appointmentData.Date,
+            TimeStart: appointmentData.TimeStart,
+            TimeEnd: appointmentData.TimeEnd,
+            DateEnd: appointmentData.DateEnd,
+            ActualDuration: appointmentData.ActualDuration,
+            CustomerId: appointmentData.CustomerId,
+            AppointmentStatusId: appointmentData.AppointmentStatusId,
+            Note: appointmentData.Note,
+            IsPaidInCash: appointmentData.IsPaidInCash
+          },
+          appointmentDogs: appointmentDogs.map(dog => ({
             DogId: dog.DogId,
             Note: dog.Note,
             services: dog.services.map(service => ({
