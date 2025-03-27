@@ -1,6 +1,8 @@
 'use client';
 
 import { FaPlus } from 'react-icons/fa';
+import { useState } from 'react';
+import { endpoints } from '@/lib/api';
 
 interface DogService {
   ServiceId: string;
@@ -17,6 +19,8 @@ interface Dog {
   id?: number;
   name?: string;
   services?: DogService[];
+  ServiceNote?: string;
+  serviceNote?: string;
 }
 
 interface Service {
@@ -70,7 +74,10 @@ export default function DogServiceSelection({
   setShowDogModal,
   onDogSelectionChanged
 }: DogServiceSelectionProps) {
-  
+  const [editingNoteDogId, setEditingNoteDogId] = useState<number | null>(null);
+  const [editedNote, setEditedNote] = useState<string>('');
+  const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
+
   const handleDogSelection = (dogId: number, isSelected: boolean) => {
     let newSelectedDogIds;
     if (isSelected) {
@@ -166,138 +173,64 @@ export default function DogServiceSelection({
     });
   };
 
-  // Render service selection for a specific dog
-  const renderServiceSelection = (dogId: number, service: Service) => {
-    const isServiceSelected = dogServices[dogId]?.some(s => s.ServiceId === service.Id) || false;
-    const servicePrice = dogServices[dogId]?.find(s => s.ServiceId === service.Id)?.Price || service.StandardPrice;
-    
-    // Get service statistics
-    const stats = dogServiceStats[dogId]?.find(s => s.ServiceId === service.Id);
-    const usagePercentage = stats ? Math.round(stats.percentage) : 0;
-    const priceHistory = stats?.prices || [];
-    const hasPriceHistory = priceHistory.length > 0;
-    const averagePrice = hasPriceHistory 
-      ? (priceHistory.reduce((sum, entry) => sum + entry.price, 0) / priceHistory.length).toFixed(2)
-      : null;
-    
-    // The most recent price is the first in the sorted array
-    const mostRecentPrice = hasPriceHistory ? priceHistory[0].price : null;
-    const mostRecentDate = hasPriceHistory ? new Date(priceHistory[0].date).toLocaleDateString() : null;
-    
-    // Duration history
-    const durationHistory = stats?.durations || [];
-    const hasDurationHistory = durationHistory.length > 0;
-    const averageDuration = hasDurationHistory 
-      ? Math.round(durationHistory.reduce((sum, entry) => sum + entry.duration, 0) / durationHistory.length)
-      : null;
-    
-    // The most recent duration is the first in the sorted array
-    const mostRecentDuration = hasDurationHistory ? durationHistory[0].duration : null;
-    
-    return (
-      <div key={service.Id} className="flex flex-col sm:flex-row sm:items-center mb-3">
-        <div className="flex items-center mb-2 sm:mb-0 sm:flex-1">
-          <input
-            type="checkbox"
-            id={`service-${dogId}-${service.Id}`}
-            checked={isServiceSelected}
-            onChange={(e) => handleServiceSelection(dogId, service.Id, e.target.checked)}
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-          />
-          <label htmlFor={`service-${dogId}-${service.Id}`} className="ml-2 text-gray-700 flex items-center">
-            {service.Name}
-            {usagePercentage > 0 && (
-              <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
-                usagePercentage >= 75 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-              }`}>
-                {usagePercentage}%
-              </span>
-            )}
-          </label>
-        </div>
-        
-        {isServiceSelected && (
-          <div className="sm:w-40 flex items-center relative group">
-            <span className="text-gray-500 mr-2">€</span>
-            <div className="relative flex-grow">
-              <input
-                type="number"
-                value={isNaN(Number(servicePrice)) ? 0 : Number(servicePrice)}
-                onChange={(e) => {
-                  const newPrice = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                  handleServicePriceChange(dogId, service.Id, newPrice);
-                }}
-                className={`w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 ${
-                  hasPriceHistory || hasDurationHistory ? 'pr-7' : ''
-                }`}
-                step="0.01"
-                min="0"
-              />
-              {(hasPriceHistory || hasDurationHistory) && (
-                <div className="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              )}
-            </div>
-            
-            {(hasPriceHistory || hasDurationHistory) && (
-              <div className="absolute top-full left-0 mt-1 w-64 bg-white shadow-md border border-gray-200 rounded-md p-2 text-xs z-10 hidden group-hover:block">
-                {hasPriceHistory && (
-                  <div>
-                    <div className="font-medium mb-1 text-sm border-b pb-1">Price History</div>
-                    <div className="mb-1">
-                      <span className="font-medium">Most recent:</span> €{mostRecentPrice !== null ? mostRecentPrice.toFixed(2) : '0.00'}
-                      {mostRecentDate && <span className="text-gray-500 ml-1">({mostRecentDate})</span>}
-                    </div>
-                    {averagePrice && (
-                      <div>
-                        <span className="font-medium">Average:</span> €{averagePrice}
-                      </div>
-                    )}
-                    {priceHistory.length > 1 && (
-                      <div className="mt-1">
-                        <span className="font-medium">Range:</span> €
-                        {Math.min(...priceHistory.map(p => p.price)).toFixed(2)} - €
-                        {Math.max(...priceHistory.map(p => p.price)).toFixed(2)}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {hasDurationHistory && (
-                  <div className={hasPriceHistory ? "mt-3" : ""}>
-                    <div className="font-medium mb-1 text-sm border-b pb-1">Duration History</div>
-                    <div className="mb-1">
-                      <span className="font-medium">Most recent:</span> {mostRecentDuration !== null ? 
-                        `${Math.floor(mostRecentDuration / 60)}h ${mostRecentDuration % 60}m` : 
-                        'Not available'}
-                    </div>
-                    {averageDuration && (
-                      <div>
-                        <span className="font-medium">Average:</span> {Math.floor(averageDuration / 60)}h {averageDuration % 60}m
-                      </div>
-                    )}
-                    {durationHistory.length > 1 && (
-                      <div className="mt-1">
-                        <span className="font-medium">Range:</span> {Math.floor(Math.min(...durationHistory.map(d => d.duration)) / 60)}h {Math.min(...durationHistory.map(d => d.duration)) % 60}m - 
-                        {Math.floor(Math.max(...durationHistory.map(d => d.duration)) / 60)}h {Math.max(...durationHistory.map(d => d.duration)) % 60}m
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
+  const handleEditNote = (dogId: number, currentNote: string) => {
+    setEditingNoteDogId(dogId);
+    setEditedNote(currentNote);
+  };
+
+  const handleSaveNote = async (dogId: number) => {
+    try {
+      setIsSavingNote(true);
+      
+      // Find the dog to get its required fields
+      const dog = customerDogs.find(d => d.Id === dogId || d.id === dogId);
+      if (!dog) {
+        throw new Error('Dog not found');
+      }
+
+      // Make API call to update the dog's service note with all required fields
+      const response = await endpoints.dogs.update(dogId, {
+        CustomerId: dog.CustomerId || dog.customerId,
+        Name: dog.Name || dog.name,
+        ServiceNote: editedNote
+      });
+      
+      // Update local state with the response data
+      const updatedDog = response.data;
+      const updatedDogs = customerDogs.map(dog => {
+        if (dog.Id === dogId || dog.id === dogId) {
+          return {
+            ...dog,
+            ServiceNote: updatedDog.ServiceNote,
+            serviceNote: updatedDog.ServiceNote // Update both fields for compatibility
+          };
+        }
+        return dog;
+      });
+      
+      // Update the dog in the parent component
+      if (onDogSelectionChanged) {
+        onDogSelectionChanged();
+      }
+      
+      setEditingNoteDogId(null);
+    } catch (error) {
+      console.error('Error saving service note:', error);
+      // Show error message to user
+      alert('Failed to save service note. Please try again.');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNoteDogId(null);
+    setEditedNote('');
   };
 
   return (
     <div className="mt-6">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-4">
         <label className="block text-sm font-medium text-gray-700">
           Select Dogs *
         </label>
@@ -339,51 +272,198 @@ export default function DogServiceSelection({
             return (
               <div 
                 key={dogId} 
-                className={`border rounded-md p-4 ${
+                className={`rounded-lg shadow-sm transition-all duration-200 cursor-pointer ${
                   isSelected 
-                    ? 'border-primary-500' 
-                    : 'border-gray-300'
+                    ? 'ring-2 ring-primary-500 bg-white' 
+                    : 'bg-gray-50 hover:bg-white hover:shadow-md'
                 }`}
+                onClick={() => handleDogSelection(dogId, !isSelected)}
               >
-                <div className="flex items-center mb-3">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={(e) => handleDogSelection(dogId, e.target.checked)}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                    id={`dog-${dogId}`}
-                  />
-                  <label htmlFor={`dog-${dogId}`} className="ml-2 text-lg font-medium text-gray-900">
-                    {dog.Name || dog.name || dog.DogName || 'Unnamed Dog'}
-                    {dogStats && dogStats.length > 0 && (
-                      <span className="ml-2 text-xs text-gray-500 font-normal">
-                        {hasAutoSelectedServices 
-                          ? '(Has common services)' 
-                          : '(Service history available)'}
-                      </span>
-                    )}
-                  </label>
-                </div>
-                
-                {isSelected && (
-                  <div className="mt-3 pl-6">
-                    <h4 className="font-medium text-gray-700 mb-2">Services</h4>
-                    <div className="space-y-3">
-                      {services.map(service => renderServiceSelection(dogId, service))}
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        isSelected ? 'bg-primary-100 text-primary-600' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {(dog.Name || dog.name || dog.DogName || '?')[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">
+                          {dog.Name || dog.name || dog.DogName || 'Unnamed Dog'}
+                        </h3>
+                        {dogStats && dogStats.length > 0 && (
+                          <p className="text-sm text-gray-500">
+                            {hasAutoSelectedServices 
+                              ? 'Common services available' 
+                              : 'Has service history'}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div className="mt-4">
-                      <label htmlFor={`dog-note-${dogId}`} className="block text-sm font-medium text-gray-700 mb-1">
-                        Notes for this dog
-                      </label>
-                      <textarea
-                        id={`dog-note-${dogId}`}
-                        value={dogNotes[dogId] || ""}
-                        onChange={(e) => handleDogNoteChange(dogId, e.target.value)}
-                        rows={2}
-                        placeholder="E.g., Prefers gentle brushing"
-                        className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
-                      />
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      isSelected 
+                        ? 'border-primary-500 bg-primary-500' 
+                        : 'border-gray-300 bg-white'
+                    }`}>
+                      {isSelected && (
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {isSelected && (
+                  <div className="border-t" onClick={(e) => e.stopPropagation()}>
+                    <div className="p-4">
+                      <h4 className="font-medium text-gray-700 mb-3">Services</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {services.map(service => {
+                          const isServiceSelected = dogServices[dogId]?.some(s => s.ServiceId === service.Id) || false;
+                          const servicePrice = dogServices[dogId]?.find(s => s.ServiceId === service.Id)?.Price || service.StandardPrice;
+                          const stats = dogServiceStats[dogId]?.find(s => s.ServiceId === service.Id);
+                          const usagePercentage = stats ? Math.round(stats.percentage) : 0;
+                          
+                          return (
+                            <div 
+                              key={service.Id} 
+                              className={`relative rounded-lg p-3 cursor-pointer transition-all duration-200 ${
+                                isServiceSelected 
+                                  ? 'bg-primary-50 border-primary-200 shadow-sm' 
+                                  : 'bg-gray-50 hover:bg-gray-100'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleServiceSelection(dogId, service.Id, !isServiceSelected);
+                              }}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-grow">
+                                  <div className="flex items-center">
+                                    <span className="font-medium text-gray-900">{service.Name}</span>
+                                    {usagePercentage > 0 && (
+                                      <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                                        usagePercentage >= 75 ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'
+                                      }`}>
+                                        {usagePercentage}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                  isServiceSelected 
+                                    ? 'border-primary-500 bg-primary-500' 
+                                    : 'border-gray-300 bg-white'
+                                }`}>
+                                  {isServiceSelected && (
+                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {isServiceSelected && (
+                                <div className="mt-3">
+                                  <div className="flex items-center">
+                                    <span className="text-gray-600 mr-2">€</span>
+                                    <div className="relative flex items-center">
+                                      <button
+                                        type="button"
+                                        className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const newPrice = Math.max(0, Number(servicePrice) - 2.5);
+                                          handleServicePriceChange(dogId, service.Id, newPrice);
+                                        }}
+                                      >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                        </svg>
+                                      </button>
+                                      <input
+                                        type="number"
+                                        value={servicePrice}
+                                        onChange={(e) => {
+                                          e.stopPropagation();
+                                          const newPrice = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                          handleServicePriceChange(dogId, service.Id, newPrice);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-20 mx-2 text-center border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                        step="2.5"
+                                      />
+                                      <button
+                                        type="button"
+                                        className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const newPrice = Number(servicePrice) + 2.5;
+                                          handleServicePriceChange(dogId, service.Id, newPrice);
+                                        }}
+                                      >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Service Notes Section - Always show when dog is selected */}
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Service Notes
+                          </label>
+                          {editingNoteDogId === dogId ? (
+                            <div className="flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={handleCancelEdit}
+                                className="text-sm text-gray-600 hover:text-gray-900"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveNote(dogId)}
+                                disabled={isSavingNote}
+                                className="text-sm text-primary-600 hover:text-primary-900 disabled:opacity-50"
+                              >
+                                {isSavingNote ? 'Saving...' : 'Save'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleEditNote(dogId, dog.ServiceNote || dog.serviceNote || '')}
+                              className="text-sm text-primary-600 hover:text-primary-900"
+                            >
+                              {dog.ServiceNote || dog.serviceNote ? 'Edit' : 'Add Note'}
+                            </button>
+                          )}
+                        </div>
+                        {editingNoteDogId === dogId ? (
+                          <textarea
+                            value={editedNote}
+                            onChange={(e) => setEditedNote(e.target.value)}
+                            className="w-full text-sm text-gray-600 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                            rows={3}
+                            placeholder="Enter service notes..."
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                            {dog.ServiceNote || dog.serviceNote || 'No service notes available'}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

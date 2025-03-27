@@ -19,6 +19,8 @@ interface Dog {
   CustomerId: number;
   customerId: number;
   services: DogService[];
+  ServiceNote?: string;
+  serviceNote?: string;
 }
 
 interface DogService {
@@ -140,7 +142,8 @@ export default function AppointmentForm({
           name: dog.Name || dog.name,
           CustomerId: dog.CustomerId || dog.customerId,
           customerId: dog.CustomerId || dog.customerId,
-          services: dog.services || []
+          services: dog.services || [],
+          ServiceNote: dog.ServiceNote || dog.serviceNote
         }));
         setDogs(processedDogs || []);
         
@@ -387,7 +390,8 @@ export default function AppointmentForm({
       name: dog.Name,
       CustomerId: dog.CustomerId,
       customerId: dog.CustomerId,
-      services: dog.services
+      services: dog.services,
+      ServiceNote: dog.ServiceNote || dog.serviceNote
     }));
     
     setDogs(processedDogs);
@@ -437,8 +441,34 @@ export default function AppointmentForm({
     setEndTime(time);
   };
 
-  const handleDogSelectionChanged = () => {
-    // Implementation of handleDogSelectionChanged
+  const handleDogSelectionChanged = async () => {
+    try {
+      // Refresh dogs list
+      const dogsResponse = await endpoints.dogs.getAll();
+      const processedDogs = dogsResponse.data.map((dog: any) => ({
+        Id: dog.Id || dog.id,
+        id: dog.Id || dog.id,
+        Name: dog.Name || dog.name,
+        name: dog.Name || dog.name,
+        CustomerId: dog.CustomerId || dog.customerId,
+        customerId: dog.CustomerId || dog.customerId,
+        services: dog.services || [],
+        ServiceNote: dog.ServiceNote || dog.serviceNote
+      }));
+      
+      setDogs(processedDogs);
+      
+      // Update available dogs for the selected customer
+      if (selectedCustomerId) {
+        const customerDogs = processedDogs.filter((dog: Dog) => 
+          dog.CustomerId === selectedCustomerId || dog.customerId === selectedCustomerId
+        );
+        setAvailableDogs(customerDogs);
+        setCustomerDogs(customerDogs);
+      }
+    } catch (error) {
+      console.error('Error refreshing dogs list:', error);
+    }
   };
 
   return (
