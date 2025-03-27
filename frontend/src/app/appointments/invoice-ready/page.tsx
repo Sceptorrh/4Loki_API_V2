@@ -483,6 +483,34 @@ export default function InvoiceReadyPage() {
     return minutes % 60;
   };
 
+  // Helper function to calculate planned duration in minutes
+  const getPlannedDuration = (timeStart: string, timeEnd: string): number => {
+    const [startHours, startMinutes] = timeStart.split(':').map(Number);
+    const [endHours, endMinutes] = timeEnd.split(':').map(Number);
+    
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
+    
+    return endTotalMinutes - startTotalMinutes;
+  };
+
+  // Helper function to format duration difference
+  const formatDurationDifference = (planned: number, actual: number): string => {
+    const diff = actual - planned;
+    if (diff === 0) return '';
+    
+    const absDiff = Math.abs(diff);
+    const hours = Math.floor(absDiff / 60);
+    const minutes = absDiff % 60;
+    
+    const sign = diff > 0 ? '+' : '-';
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || hours === 0) parts.push(`${minutes}m`);
+    
+    return `${sign}${parts.join(' ')}`;
+  };
+
   const handleSelectAppointment = (id: number) => {
     setSelectedAppointments(prev => {
       if (prev.includes(id)) {
@@ -739,32 +767,44 @@ export default function InvoiceReadyPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="flex items-center space-x-2">
                         <FaClock className="text-gray-400 mr-1" />
-                        <div className="flex items-center">
-                          <input
-                            type="number"
-                            value={hours}
-                            onChange={(e) => {
-                              const newHours = parseInt(e.target.value, 10) || 0;
-                              handleActualDurationChange(appointment.Id, newHours, minutes);
-                            }}
-                            min="0"
-                            className="w-16 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <span className="ml-1">h</span>
-                        </div>
-                        <div className="flex items-center">
-                          <input
-                            type="number"
-                            value={minutes}
-                            onChange={(e) => {
-                              const newMinutes = parseInt(e.target.value, 10) || 0;
-                              handleActualDurationChange(appointment.Id, hours, newMinutes);
-                            }}
-                            min="0"
-                            max="59"
-                            className="w-16 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <span className="ml-1">m</span>
+                        <div className="flex flex-col">
+                          <div className="flex items-center bg-gray-50 border border-gray-300 rounded-md">
+                            <button
+                              onClick={() => {
+                                const newMinutes = Math.max(0, (hours * 60 + minutes) - 15);
+                                handleActualDurationChange(appointment.Id, Math.floor(newMinutes / 60), newMinutes % 60);
+                              }}
+                              className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded-l-md focus:outline-none"
+                            >
+                              -
+                            </button>
+                            <div className="px-3 py-1 border-x border-gray-300">
+                              {hours}h {minutes}m
+                            </div>
+                            <button
+                              onClick={() => {
+                                const newMinutes = (hours * 60 + minutes) + 15;
+                                handleActualDurationChange(appointment.Id, Math.floor(newMinutes / 60), newMinutes % 60);
+                              }}
+                              className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded-r-md focus:outline-none"
+                            >
+                              +
+                            </button>
+                          </div>
+                          {(() => {
+                            const plannedDuration = getPlannedDuration(appointment.TimeStart, appointment.TimeEnd);
+                            const actualDuration = appointment.ActualDuration || 0;
+                            const diff = formatDurationDifference(plannedDuration, actualDuration);
+                            
+                            if (diff) {
+                              return (
+                                <div className={`text-xs mt-1 ${diff.startsWith('+') ? 'text-red-600' : 'text-green-600'}`}>
+                                  {diff} from planned
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                     </td>
@@ -774,7 +814,7 @@ export default function InvoiceReadyPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <Link
-                          href={`/appointments/${appointment.Id}`}
+                          href={`/appointments/${appointment.Id}/edit?returnTo=/appointments/invoice-ready`}
                           className="text-blue-600 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-50 flex items-center"
                         >
                           <FaEdit className="mr-1" />

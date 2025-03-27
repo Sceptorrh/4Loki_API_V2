@@ -89,6 +89,7 @@ interface AppointmentFormProps {
   initialCustomerId?: number;
   initialDate?: Date;
   onSuccess?: () => void;
+  returnTo?: string;
 }
 
 export default function AppointmentForm({ 
@@ -96,7 +97,8 @@ export default function AppointmentForm({
   appointmentId, 
   initialCustomerId, 
   initialDate,
-  onSuccess 
+  onSuccess,
+  returnTo 
 }: AppointmentFormProps) {
   const router = useRouter();
   const [customers, setCustomers] = useState<CustomerDropdownItem[]>([]);
@@ -353,16 +355,18 @@ export default function AppointmentForm({
         });
       } else if (mode === 'edit' && appointmentId) {
         response = await endpoints.appointments.updateComplete(appointmentId, {
-          Date: appointmentData.Date,
-          TimeStart: appointmentData.TimeStart,
-          TimeEnd: appointmentData.TimeEnd,
-          DateEnd: appointmentData.DateEnd,
-          ActualDuration: appointmentData.ActualDuration,
-          CustomerId: appointmentData.CustomerId,
-          AppointmentStatusId: appointmentData.AppointmentStatusId,
-          Note: appointmentData.Note,
-          IsPaidInCash: appointmentData.IsPaidInCash,
-          AppointmentDog: appointmentDogs.map(dog => ({
+          appointment: {
+            Date: appointmentData.Date,
+            TimeStart: appointmentData.TimeStart,
+            TimeEnd: appointmentData.TimeEnd,
+            DateEnd: appointmentData.DateEnd,
+            ActualDuration: appointmentData.ActualDuration,
+            CustomerId: appointmentData.CustomerId,
+            AppointmentStatusId: appointmentData.AppointmentStatusId,
+            Note: appointmentData.Note,
+            IsPaidInCash: appointmentData.IsPaidInCash
+          },
+          appointmentDogs: appointmentDogs.map(dog => ({
             DogId: dog.DogId,
             Note: dog.Note,
             services: dog.services.map(service => ({
@@ -378,8 +382,8 @@ export default function AppointmentForm({
         if (onSuccess) {
           onSuccess();
         }
-        // Navigate back to appointments list
-        router.push('/appointments');
+        // Navigate back to the specified return path or default to appointments list
+        router.push(returnTo || '/appointments');
       } else {
         setError('Failed to save appointment. Please try again.');
       }
