@@ -264,8 +264,8 @@ export default function AppointmentHistory({
     
     // Sort appointments by date (newest first)
     const sortedAppointments = [...appointments].sort((a, b) => {
-      return new Date(b.Date).getTime() - new Date(a.Date).getTime();
-    });
+        return new Date(b.Date).getTime() - new Date(a.Date).getTime();
+      });
 
     // Process each appointment
     sortedAppointments.forEach((appointment, index) => {
@@ -295,21 +295,21 @@ export default function AppointmentHistory({
         // Calculate price
         const totalPrice = dogService.services.reduce((sum, service) => sum + Number(service.Price), 0);
         stats.averagePrice = ((stats.averagePrice * (stats.totalAppointments - 1)) + totalPrice) / stats.totalAppointments;
-        stats.lastPrice = totalPrice;
-
-        // Calculate duration
-        if (appointment.ActualDuration) {
-          stats.averageDuration = ((stats.averageDuration * (stats.totalAppointments - 1)) + appointment.ActualDuration) / stats.totalAppointments;
-          stats.lastDuration = appointment.ActualDuration;
-        }
-
-        // Store last services
+        
+        // Set last price and duration only from the most recent appointment
         if (index === 0) {
+          stats.lastPrice = totalPrice;
+          stats.lastDuration = appointment.ActualDuration || 0;
           stats.lastServices = dogService.services.map(service => ({
             serviceId: service.ServiceId,
             serviceName: service.ServiceName,
             price: Number(service.Price)
           }));
+        }
+
+        // Calculate duration
+        if (appointment.ActualDuration) {
+          stats.averageDuration = ((stats.averageDuration * (stats.totalAppointments - 1)) + appointment.ActualDuration) / stats.totalAppointments;
         }
 
         // Calculate intervals
@@ -517,20 +517,20 @@ export default function AppointmentHistory({
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center">
                     {dog.dogName[0].toUpperCase()}
-                  </div>
+          </div>
                   <div>
                     <h3 className="font-medium text-gray-900">{dog.dogName}</h3>
                     <div className="text-sm text-gray-500">
                       {getDaysSinceLastVisit(dog.lastAppointmentDate)} days ago • 
                       €{dog.lastPrice.toFixed(2)} • {formatDuration(dog.lastDuration)}
-                    </div>
+      </div>
                   </div>
                 </div>
                 <div className="text-sm text-gray-500">
                   {dog.totalAppointments} appointment{dog.totalAppointments !== 1 ? 's' : ''}
                 </div>
               </div>
-
+              
               {hoveredDogId === dog.dogId && (
                 <div 
                   ref={popoverRef}
@@ -653,18 +653,18 @@ export default function AppointmentHistory({
                               className="text-xs bg-gray-100 px-2 py-1 rounded-full"
                             >
                               {service.serviceName} ({Math.round(service.percentage)}%)
-                            </div>
-                          ))}
+                    </div>
+                  ))}
                         </div>
-                      </div>
-                    )}
+                </div>
+              )}
                   </div>
                 </div>
               )}
             </div>
           ))}
-        </div>
-      )}
+          </div>
+        )}
     </div>
   );
 } 
