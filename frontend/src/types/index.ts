@@ -40,6 +40,7 @@ export interface Dog {
   BreedNames?: string;
   SizeName?: string;
   CustomerName?: string;
+  Contactpersoon?: string;
   Breeds?: DogBreed[];
   
   // Alternative property names (for API compatibility)
@@ -55,6 +56,10 @@ export interface Dog {
   dogBreeds?: DogBreed[];
   dogSize?: DogSize;
   size?: string;
+  customerName?: string;
+  contactpersoon?: string;
+  appointments?: Appointment[];
+  Appointments?: Appointment[];
 }
 
 // Customer interface
@@ -91,41 +96,42 @@ export interface Customer {
 
 // Appointment interface
 export interface Appointment {
-  // Frontend expected properties (lowercase)
+  Id: number;
+  Date: string;
+  TimeStart: string;
+  TimeEnd: string;
+  DateEnd: string;
+  ActualDuration: number;
+  CustomerId: number;
+  AppointmentStatusId: string;
+  Note: string;
+  SerialNumber: number;
+  IsPaidInCash: boolean;
+  CreatedOn: string;
+  UpdatedOn: string;
+  Dogs?: Array<{
+    Id: number;
+    Name: string;
+  } | string>;
+  
+  // Alternative property names (for API compatibility)
   id?: number;
   date?: string;
-  time?: string;
-  customer_id?: number;
-  customer_name?: string;
-  status?: string;
-  statusLabel?: string;
-  notes?: string;
-  dogs?: Dog[];
-  isPaidInCash?: boolean;
+  timeStart?: string;
+  timeEnd?: string;
+  dateEnd?: string;
   actualDuration?: number;
-  daysSincePrevious?: number | null;
-  
-  // Backend properties (uppercase)
-  Id?: number;
-  Date?: string;
-  TimeStart?: string;
-  TimeEnd?: string;
-  DateEnd?: string;
-  CustomerId?: number;
-  ContactPerson?: string;
-  CustomerName?: string;
-  Status?: {
-    Id: string;
-    Label: string;
-    Color: string;
-  };
-  StatusLabel?: string;
-  AppointmentStatusId?: string;
-  Note?: string;
-  Dogs?: Dog[];
-  AppointmentId?: number;
-  IsPaidInCash?: boolean | number;
-  ActualDuration?: number;
+  customerId?: number;
+  appointmentStatusId?: string;
+  note?: string;
+  serialNumber?: number;
+  isPaidInCash?: boolean;
+  createdOn?: string;
+  updatedOn?: string;
+  dogs?: Array<{
+    id?: number;
+    name?: string;
+  } | string>;
 }
 
 // Service interface

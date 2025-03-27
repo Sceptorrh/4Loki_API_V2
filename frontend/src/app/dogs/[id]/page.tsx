@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Dog } from '@/types';
+import { Dog, Appointment } from '@/types';
 
 export default function DogDetailPage() {
   const params = useParams();
@@ -23,12 +23,40 @@ export default function DogDetailPage() {
         
         // Fetch dog by ID
         const dogResponse = await endpoints.dogs.getById(Number(dogId));
-        
         console.log('Dog API Response:', dogResponse.data);
-        setDog(dogResponse.data || null);
+        
+        // Fetch customer details if we have a CustomerId
+        let customerData = null;
+        if (dogResponse.data?.CustomerId || dogResponse.data?.customerId) {
+          const customerResponse = await endpoints.customers.getById(
+            dogResponse.data.CustomerId || dogResponse.data.customerId
+          );
+          customerData = customerResponse.data;
+          console.log('Customer API Response:', customerData);
+        }
+        
+        // Fetch appointments for the customer
+        let appointmentsData = [];
+        if (customerData?.Id || customerData?.id) {
+          const appointmentsResponse = await endpoints.appointments.getByCustomerId(
+            customerData.Id || customerData.id
+          );
+          appointmentsData = appointmentsResponse.data || [];
+          console.log('Appointments API Response:', appointmentsData);
+        }
+        
+        // Combine all data
+        const combinedDogData = {
+          ...dogResponse.data,
+          CustomerName: customerData?.Contactpersoon || customerData?.Naam,
+          Appointments: appointmentsData
+        };
+        
+        console.log('Combined Dog Data:', combinedDogData);
+        setDog(combinedDogData || null);
         setError(null);
       } catch (err) {
-        console.error('Error fetching dog data:', err);
+        console.error('Error fetching data:', err);
         setError('Failed to load dog information. Please try again later.');
       } finally {
         setLoading(false);
@@ -42,13 +70,56 @@ export default function DogDetailPage() {
 
   // Helper function to format date
   const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'Unknown';
-    try {
-      return new Date(dateString).toLocaleDateString();
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Unknown';
+    if (!dateString) return 'Not set';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime()) || date.getFullYear() < 1910) return 'Not set';
+    return date.toLocaleDateString();
+  };
+
+  // Calculate age from birthday
+  const calculateAge = (birthday: Date): number => {
+    if (!birthday || isNaN(birthday.getTime()) || birthday.getFullYear() < 1910) return -1;
+    
+    const today = new Date();
+    let age = today.getFullYear() - birthday.getFullYear();
+    const monthDiff = today.getMonth() - birthday.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
+      age--;
     }
+    
+    return age;
+  };
+
+  // Format age with appropriate units
+  const formatAge = (dateString: string | undefined): string => {
+    if (!dateString) return 'Not set';
+    
+    const birthday = new Date(dateString);
+    if (isNaN(birthday.getTime()) || birthday.getFullYear() < 1910) return 'Not set';
+    
+    const ageYears = calculateAge(birthday);
+    
+    if (ageYears < 0) return 'Not set';
+    if (ageYears === 0) {
+      const today = new Date();
+      const monthDiff = today.getMonth() - birthday.getMonth() + 
+                       (12 * (today.getFullYear() - birthday.getFullYear()));
+      
+      if (monthDiff <= 0) {
+        const oneDay = 24 * 60 * 60 * 1000;
+        const diffDays = Math.round(Math.abs((today.getTime() - birthday.getTime()) / oneDay));
+        const weeks = Math.floor(diffDays / 7);
+        
+        if (weeks <= 0) {
+          return `${diffDays} days`;
+        }
+        return `${weeks} weeks`;
+      }
+      return `${monthDiff} months`;
+    }
+    
+    return `${ageYears} years`;
   };
 
   const handleDelete = async () => {
@@ -152,6 +223,11 @@ export default function DogDetailPage() {
                 </div>
                 
                 <div>
+                  <h3 className="text-sm font-medium text-gray-500">Age</h3>
+                  <p className="mt-1 text-sm text-gray-900">{formatAge(dog.Birthday || dog.birthday)}</p>
+                </div>
+                
+                <div>
                   <h3 className="text-sm font-medium text-gray-500">Size</h3>
                   <p className="mt-1 text-sm text-gray-900">         
                     {dog.Size || dog.size || dog.SizeName || (dog.DogSize && dog.DogSize.label) || 'Unknown'}
@@ -201,7 +277,7 @@ export default function DogDetailPage() {
                       href={`/customers/${dog.CustomerId || dog.customerId}`}
                       className="text-sm text-primary-600 hover:text-primary-900"
                     >
-                      {dog.CustomerName || 'View Owner'}
+                      {dog.Contactpersoon || dog.contactpersoon || dog.CustomerName || dog.customerName || 'Unknown Owner'}
                     </Link>
                   </p>
                 </div>
@@ -211,7 +287,38 @@ export default function DogDetailPage() {
           
           <div className="mt-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Appointment History</h2>
-            <p className="text-sm text-gray-500">Appointment history functionality coming soon.</p>
+            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+              <ul className="divide-y divide-gray-200">
+                {(dog.Appointments || []).length > 0 ? (
+                  [...(dog.Appointments || [])].map((appointment: Appointment) => (
+                    <li key={appointment.Id} className="px-6 py-4 hover:bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatDate(appointment.Date)}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {appointment.TimeStart} - {appointment.TimeEnd}
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {appointment.AppointmentStatusId}
+                        </div>
+                      </div>
+                      {appointment.Note && (
+                        <p className="mt-2 text-sm text-gray-600">
+                          {appointment.Note}
+                        </p>
+                      )}
+                    </li>
+                  ))
+                ) : (
+                  <li className="px-6 py-4">
+                    <p className="text-sm text-gray-500">No appointments found</p>
+                  </li>
+                )}
+              </ul>
+            </div>
           </div>
         </div>
       </div>
