@@ -230,19 +230,20 @@ export default function DogServiceSelection({
 
   return (
     <div className="mt-6">
-      <div className="flex justify-between items-center mb-4">
-        <label className="block text-sm font-medium text-gray-700">
-          Select Dogs *
-        </label>
+      <div className="flex items-center gap-2 mb-4">
         {selectedCustomerId && (
           <button
             type="button"
-            className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center text-sm"
+            className="text-gray-400 hover:text-gray-600"
             onClick={() => setShowDogModal(true)}
+            title="Add New Dog"
           >
-            <FaPlus className="mr-1" size={12} /> Add New Dog
+            <FaPlus size={14} />
           </button>
         )}
+        <label className="block text-sm font-medium text-gray-700">
+          Select Dogs *
+        </label>
       </div>
       {customerDogs.length === 0 ? (
         <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-center">
@@ -254,10 +255,11 @@ export default function DogServiceSelection({
           {selectedCustomerId && (
             <button
               type="button"
-              className="px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm inline-flex items-center"
+              className="text-gray-400 hover:text-gray-600"
               onClick={() => setShowDogModal(true)}
+              title="Add First Dog"
             >
-              <FaPlus className="mr-1" size={12} /> Add First Dog
+              <FaPlus size={14} />
             </button>
           )}
         </div>
@@ -291,13 +293,6 @@ export default function DogServiceSelection({
                         <h3 className="text-lg font-medium text-gray-900">
                           {dog.Name || dog.name || dog.DogName || 'Unnamed Dog'}
                         </h3>
-                        {dogStats && dogStats.length > 0 && (
-                          <p className="text-sm text-gray-500">
-                            {hasAutoSelectedServices 
-                              ? 'Common services available' 
-                              : 'Has service history'}
-                          </p>
-                        )}
                       </div>
                     </div>
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${

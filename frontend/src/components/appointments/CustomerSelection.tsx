@@ -90,9 +90,19 @@ export default function CustomerSelection({
 
   return (
     <div>
-      <label htmlFor="customer" className="block text-sm font-medium text-gray-700 mb-1">
-        Customer *
-      </label>
+      <div className="flex items-center gap-2 mb-1">
+        <button
+          type="button"
+          className="text-gray-400 hover:text-gray-600"
+          onClick={() => setShowCustomerModal(true)}
+          title="Add New Customer"
+        >
+          <FaPlus size={14} />
+        </button>
+        <label htmlFor="customer" className="block text-sm font-medium text-gray-700">
+          Customer *
+        </label>
+      </div>
       <div className="relative" ref={dropdownRef}>
         <div className="flex">
           <div className="relative flex-grow">
@@ -125,13 +135,6 @@ export default function CustomerSelection({
               </button>
             )}
           </div>
-          <button
-            type="button"
-            className="ml-2 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
-            onClick={() => router.push('/appointments/new')}
-          >
-            <FaPlus className="mr-1" size={14} /> New
-          </button>
         </div>
         
         {dropdownOpen && !selectedCustomerId && (
