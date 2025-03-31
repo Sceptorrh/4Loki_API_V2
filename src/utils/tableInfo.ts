@@ -18,9 +18,9 @@ interface ForeignKey {
 }
 
 interface TableColumn {
-  name: string;
-  type: string;
-  description: string;
+    name: string;
+    type: string;
+    description: string;
   nullable?: boolean;
   defaultValue?: string;
   autoIncrement?: boolean;
