@@ -34,6 +34,14 @@ interface AISearchResponse {
   originalQuery?: string;
   fixedQuery?: string;
   error?: string;
+  costs?: {
+    total: string;
+    breakdown: {
+      sqlGeneration: string;
+      visualization: string;
+      summary: string;
+    };
+  };
 }
 
 export default function AISearchPage() {
@@ -64,16 +72,16 @@ export default function AISearchPage() {
         // Initialize container
         const chartContainer = chartContainerRef.current;
 
-        // Check if the visualization is a chart configuration
-        const optionsMatch = visualization.match(/const options = ({[\s\S]*?});/);
-        if (!optionsMatch) {
-          // If not a chart configuration, display as HTML
-          chartContainer.innerHTML = visualization;
+        // Extract the configuration code, handling cases with explanatory text
+        const configMatch = visualization.match(/const options = ({[\s\S]*?});(?:\s*$|\n|$)/);
+        if (!configMatch) {
+          console.error('Could not find valid ECharts configuration');
+          toast.error('Invalid visualization format');
           return;
         }
 
         // Handle chart visualization
-        const optionsStr = optionsMatch[1];
+        const optionsStr = configMatch[1];
         const options = JSON.parse(JSON.stringify(eval(`(${optionsStr})`)));
 
         // Initialize chart
@@ -179,6 +187,16 @@ export default function AISearchPage() {
       const data: AISearchResponse = await response.json();
 
       if (!response.ok) {
+        // Handle specific error cases
+        if (data.error?.includes('maximum context length')) {
+          throw new Error('Your query is too complex. Please try breaking it down into smaller, more specific questions.');
+        } else if (data.error?.includes('SQL syntax')) {
+          throw new Error('There was an issue with the generated query. Please try rephrasing your question.');
+        } else if (data.error?.includes('table does not exist')) {
+          throw new Error('The requested data is not available in the system. Please try a different question.');
+        } else if (data.error?.includes('column does not exist')) {
+          throw new Error('Some of the requested information is not available. Please try rephrasing your question.');
+        }
         throw new Error(data.error || 'Failed to fetch results');
       }
 
@@ -249,6 +267,23 @@ export default function AISearchPage() {
         {response && (
           <div className="bg-white rounded-lg shadow p-6 space-y-4">
             <h2 className="text-xl font-semibold">Execution Details</h2>
+            
+            {/* Cost Summary */}
+            {response.costs && (
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-2">API Cost Summary</h3>
+                <div className="space-y-1 text-sm">
+                  <p className="text-blue-800">
+                    <span className="font-medium">Total Cost:</span> {response.costs.total}
+                  </p>
+                  <div className="text-blue-700 pl-4">
+                    <p>• SQL Generation: {response.costs.breakdown.sqlGeneration}</p>
+                    <p>• Visualization: {response.costs.breakdown.visualization}</p>
+                    <p>• Summary: {response.costs.breakdown.summary}</p>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Steps Timeline */}
             <div className="space-y-2">
