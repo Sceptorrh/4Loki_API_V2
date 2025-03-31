@@ -4,7 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { Writable } from 'stream';
-import { generateBackup, importBackup, clearDatabase, previewBackup, importProgress, previewDriveBackup, importDriveBackup } from '../controllers/backupController';
+import { generateBackup, importBackup, clearDatabase, previewBackup, previewDriveBackup, importDriveBackup } from '../controllers/backupController';
 import { uploadToDrive, listDriveFiles, downloadFromDrive, shouldPerformAutoBackup, performAutoBackup, cleanupOldBackups, loadBackupConfig } from '../services/google/drive';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
@@ -16,14 +16,8 @@ const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 const googleAuth = GoogleAuthService.getInstance();
 
-// Apply authentication middleware to all routes except progress endpoint
-router.use((req, res, next) => {
-  if (req.path === '/import/progress') {
-    next();
-  } else {
-    authenticateToken(req, res, next);
-  }
-});
+// Apply authentication middleware to all routes
+router.use(authenticateToken);
 
 /**
  * @swagger
@@ -70,33 +64,6 @@ router.get('/export', generateBackup);
  *         description: Server error
  */
 router.post('/preview', upload.single('file'), previewBackup);
-
-/**
- * @swagger
- * /api/backup/import/progress:
- *   get:
- *     summary: Get progress updates during import process using SSE
- *     tags: [Backup]
- *     responses:
- *       200:
- *         description: Stream of progress updates
- *         content:
- *           text/event-stream:
- *             schema:
- *               type: string
- */
-router.options('/import/progress', (req, res) => {
-  // Preflight response for CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Connection');
-  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
-  res.status(204).end();
-});
-
-router.get('/import/progress', importProgress);
 
 /**
  * @swagger
@@ -350,7 +317,7 @@ router.post('/export-drive', async (req: AuthRequest, res: Response) => {
 });
 
 // Check if automatic backup should run
-router.get('/check-auto-backup', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.get('/check-auto-backup', async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.headers['x-session-id'] as string;
     if (!sessionId) {
@@ -378,7 +345,7 @@ router.post('/preview-drive', previewDriveBackup);
 router.post('/import-drive', importDriveBackup);
 
 // Get backup status endpoint
-router.get('/status', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.get('/status', async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.headers['x-session-id'] as string;
     if (!sessionId) {
@@ -410,7 +377,7 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res: Response)
 });
 
 // Test automatic backup
-router.post('/test-auto-backup', authenticateToken, async (req: AuthRequest, res: Response) => {
+router.post('/test-auto-backup', async (req: AuthRequest, res: Response) => {
   try {
     const sessionId = req.headers['x-session-id'] as string;
     if (!sessionId) {

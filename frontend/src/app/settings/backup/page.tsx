@@ -163,8 +163,6 @@ export default function BackupPage() {
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [importProgress, setImportProgress] = useState(0);
-  const [progressMessage, setProgressMessage] = useState('');
   const [backupConfig, setBackupConfig] = useState<BackupConfig | null>(null);
   const [driveFiles, setDriveFiles] = useState<Array<{ id: string; name: string; modifiedTime: string }>>([]);
   const [isLoadingDriveFiles, setIsLoadingDriveFiles] = useState(false);
@@ -207,90 +205,10 @@ export default function BackupPage() {
   };
 
   const handleDriveRestore = async (fileId: string) => {
-    // Explicitly define the EventSource type
-    let eventSource: EventSource | null = null;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
-
-    // Helper function to safely close the EventSource
-    const closeEventSource = (source: EventSource | null) => {
-      if (source) {
-        try {
-          source.close();
-        } catch (err) {
-          console.error('Error closing EventSource:', err);
-        }
-        return null;
-      }
-      return null;
-    };
-
-    const setupEventSource = () => {
-      // Close existing connection if any
-      eventSource = closeEventSource(eventSource);
-
-      // Set up event source for progress updates with error handling
-      const eventSourceUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/import/progress`;
-      console.log('Connecting to EventSource:', eventSourceUrl);
-      
-      eventSource = new EventSource(eventSourceUrl);
-      
-      eventSource.onopen = () => {
-        console.log('EventSource connection opened');
-        retryCount = 0; // Reset retry count on successful connection
-      };
-      
-      eventSource.onmessage = (event) => {
-        console.log('Received progress update:', event.data);
-        try {
-          const data = JSON.parse(event.data);
-          if (data.progress !== undefined) {
-            setImportProgress(data.progress);
-            setProgressMessage(data.message || 'Importing...');
-            
-            // If we've reached 100%, close the connection
-            if (data.progress === 100) {
-              console.log('Import complete, closing EventSource');
-              eventSource = closeEventSource(eventSource);
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing progress data:', err);
-        }
-      };
-      
-      eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
-        
-        // Try to reconnect a few times
-        if (retryCount < MAX_RETRIES) {
-          retryCount++;
-          console.log(`Attempting to reconnect (attempt ${retryCount} of ${MAX_RETRIES})...`);
-          // Close current connection
-          eventSource = closeEventSource(eventSource);
-          // Wait a second before reconnecting
-          setTimeout(setupEventSource, 1000);
-        } else {
-          console.log('Max retry attempts reached, giving up on EventSource connection');
-          // Only close if we still have a reference
-          eventSource = closeEventSource(eventSource);
-          // Don't set an error here as the import might still be working
-        }
-      };
-    };
-
     try {
       setIsImporting(true);
       setError(null);
       setImportResult(null);
-      setImportProgress(0);
-      setProgressMessage('Starting restore from Google Drive...');
-
-      // Set up the EventSource connection
-      setupEventSource();
-
-      // Wait a short moment to ensure the EventSource connection is established
-      await new Promise(resolve => setTimeout(resolve, 500));
 
       // First, get the file data and preview it
       const response = await api.post('/backup/preview-drive', { fileId });
@@ -301,15 +219,10 @@ export default function BackupPage() {
       const importResponse = await api.post('/backup/import-drive', { fileId });
       setImportResult(importResponse.data);
       setShowPreview(false);
-      setImportProgress(100);
-      setProgressMessage('Restore complete');
     } catch (err: any) {
       console.error('Import error:', err);
       setError(err.message);
-      setImportProgress(0);
     } finally {
-      // Make absolutely sure we close the EventSource
-      eventSource = closeEventSource(eventSource);
       setIsImporting(false);
     }
   };
@@ -377,90 +290,10 @@ export default function BackupPage() {
   const handleImport = async () => {
     if (!selectedFile) return;
 
-    // Explicitly define the EventSource type
-    let eventSource: EventSource | null = null;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
-
-    // Helper function to safely close the EventSource
-    const closeEventSource = (source: EventSource | null) => {
-      if (source) {
-        try {
-          source.close();
-        } catch (err) {
-          console.error('Error closing EventSource:', err);
-        }
-        return null;
-      }
-      return null;
-    };
-
-    const setupEventSource = () => {
-      // Close existing connection if any
-      eventSource = closeEventSource(eventSource);
-
-      // Set up event source for progress updates with error handling
-      const eventSourceUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/backup/import/progress`;
-      console.log('Connecting to EventSource:', eventSourceUrl);
-      
-      eventSource = new EventSource(eventSourceUrl);
-      
-      eventSource.onopen = () => {
-        console.log('EventSource connection opened');
-        retryCount = 0; // Reset retry count on successful connection
-      };
-      
-      eventSource.onmessage = (event) => {
-        console.log('Received progress update:', event.data);
-        try {
-          const data = JSON.parse(event.data);
-          if (data.progress !== undefined) {
-            setImportProgress(data.progress);
-            setProgressMessage(data.message || 'Importing...');
-            
-            // If we've reached 100%, close the connection
-            if (data.progress === 100) {
-              console.log('Import complete, closing EventSource');
-              eventSource = closeEventSource(eventSource);
-            }
-          }
-        } catch (err) {
-          console.error('Error parsing progress data:', err);
-        }
-      };
-      
-      eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
-        
-        // Try to reconnect a few times
-        if (retryCount < MAX_RETRIES) {
-          retryCount++;
-          console.log(`Attempting to reconnect (attempt ${retryCount} of ${MAX_RETRIES})...`);
-          // Close current connection
-          eventSource = closeEventSource(eventSource);
-          // Wait a second before reconnecting
-          setTimeout(setupEventSource, 1000);
-        } else {
-          console.log('Max retry attempts reached, giving up on EventSource connection');
-          // Only close if we still have a reference
-          eventSource = closeEventSource(eventSource);
-          // Don't set an error here as the import might still be working
-        }
-      };
-    };
-
     try {
       setIsImporting(true);
       setError(null);
       setImportResult(null);
-      setImportProgress(0);
-      setProgressMessage('Starting import...');
-      
-      // Set up the EventSource connection
-      setupEventSource();
-
-      // Wait a short moment to ensure the EventSource connection is established
-      await new Promise(resolve => setTimeout(resolve, 500));
 
       const formData = new FormData();
       formData.append('file', selectedFile);
@@ -474,21 +307,13 @@ export default function BackupPage() {
       
       console.log('Import request completed');
       
-      // Close the event source if it's still open
-      eventSource = closeEventSource(eventSource);
-      
       setImportResult(response.data);
       setShowPreview(false);
       setSelectedFile(null);
-      setImportProgress(100);
-      setProgressMessage('Import complete');
     } catch (err: any) {
       console.error('Import error:', err);
       setError(err.message);
-      setImportProgress(0);
     } finally {
-      // Make absolutely sure we close the EventSource
-      eventSource = closeEventSource(eventSource);
       setIsImporting(false);
     }
   };
@@ -879,23 +704,6 @@ export default function BackupPage() {
             >
               {isImporting ? 'Importing...' : 'Confirm Import'}
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Import Progress Bar */}
-      {isImporting && (
-        <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Import Progress</h2>
-          <div className="mb-2 flex justify-between">
-            <span>{progressMessage}</span>
-            <span>{importProgress}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-4">
-            <div 
-              className="bg-primary-600 h-4 rounded-full transition-all duration-300 ease-in-out" 
-              style={{ width: `${importProgress}%` }}
-            ></div>
           </div>
         </div>
       )}

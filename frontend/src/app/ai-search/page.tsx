@@ -4,6 +4,37 @@ import { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Script from 'next/script';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+
+// Custom markdown component
+const MarkdownRenderer = ({ content }: { content: string }) => {
+  return (
+    <div className="prose prose-sm md:prose-base lg:prose-lg max-w-none markdown-body">
+      {/* @ts-ignore */}
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
+// Declare ECharts types
+declare global {
+  interface Window {
+    echarts: any;
+  }
+}
+
+interface AISearchResponse {
+  visualization: string | null;
+  textOutput: string | null;
+  steps: string[];
+  originalQuery?: string;
+  fixedQuery?: string;
+  error?: string;
+}
 
 export default function AISearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,49 +42,121 @@ export default function AISearchPage() {
   const [visualization, setVisualization] = useState<string | null>(null);
   const [textOutput, setTextOutput] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [chartJsLoaded, setChartJsLoaded] = useState(false);
+  const [echartsLoaded, setEchartsLoaded] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
+  const [response, setResponse] = useState<AISearchResponse | null>(null);
 
   // Effect to handle visualization updates
   useEffect(() => {
-    if (visualization && chartContainerRef.current && chartJsLoaded) {
+    const initChart = async () => {
+      if (!visualization || !chartContainerRef.current || !window.echarts) {
+        return;
+      }
+
       try {
-        // Clean up any existing chart instance
+        // Clean up existing instance
         if (chartInstanceRef.current) {
-          chartInstanceRef.current.destroy();
+          chartInstanceRef.current.dispose();
           chartInstanceRef.current = null;
         }
 
-        // Clear the container and add a new canvas
-        chartContainerRef.current.innerHTML = '';
-        const canvas = document.createElement('canvas');
-        chartContainerRef.current.appendChild(canvas);
+        // Initialize container
+        const chartContainer = chartContainerRef.current;
 
-        // Extract the chart configuration from the visualization HTML
-        const scriptContent = visualization.match(/<script>([\s\S]*?)<\/script>/)?.[1] || '';
-        
-        // Create a safe function to execute the chart configuration
-        const createChart = new Function('canvas', `
-          try {
-            const ctx = canvas.getContext('2d');
-            if (!ctx) throw new Error('Could not get canvas context');
-            ${scriptContent}
-          } catch (err) {
-            console.error('Error creating chart:', err);
-            throw err;
+        // Check if the visualization is a chart configuration
+        const optionsMatch = visualization.match(/const options = ({[\s\S]*?});/);
+        if (!optionsMatch) {
+          // If not a chart configuration, display as HTML
+          chartContainer.innerHTML = visualization;
+          return;
+        }
+
+        // Handle chart visualization
+        const optionsStr = optionsMatch[1];
+        const options = JSON.parse(JSON.stringify(eval(`(${optionsStr})`)));
+
+        // Initialize chart
+        chartInstanceRef.current = window.echarts.init(chartContainer);
+
+        // Update options with better defaults
+        const finalOptions = {
+          ...options,
+          animation: true,
+          grid: {
+            top: 50,
+            right: 30,
+            bottom: 50,
+            left: 60,
+            containLabel: true
+          },
+          tooltip: {
+            ...options.tooltip,
+            formatter: options.tooltip?.formatter || undefined
           }
-        `);
+        };
 
-        // Execute the chart creation
-        createChart(canvas);
+        // If it's a time-based chart with YYYYWW format, format the labels
+        if (options.xAxis?.data?.[0]?.toString().match(/^\d{6}$/)) {
+          finalOptions.xAxis = {
+            ...options.xAxis,
+            data: options.xAxis.data.map((item: string | number) => {
+              const str = item.toString();
+              const year = str.substring(0, 4);
+              const week = str.substring(4);
+              return `Week ${week}`;
+            }),
+            axisLabel: {
+              interval: 'auto',
+              rotate: 45,
+              margin: 8
+            }
+          };
+          
+          // Update tooltip for week format
+          finalOptions.tooltip.formatter = (params: any) => {
+            const value = typeof params[0].value === 'number' 
+              ? params[0].value.toFixed(2) 
+              : params[0].value;
+            const weekData = options.xAxis.data[params[0].dataIndex];
+            const year = weekData.toString().substring(0, 4);
+            const week = weekData.toString().substring(4);
+            return `Week ${week}, ${year}<br/>${params[0].seriesName || 'Value'}: ${typeof value === 'number' && options.yAxis?.axisLabel?.formatter?.includes('€') ? '€' : ''}${value}`;
+          };
+        }
+
+        chartInstanceRef.current.setOption(finalOptions);
+
+        // Handle resize
+        const handleResize = () => {
+          if (chartInstanceRef.current) {
+            chartInstanceRef.current.resize();
+          }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
 
       } catch (error) {
-        console.error('Error updating visualization:', error);
+        console.error('Error in visualization:', error);
         toast.error('Error rendering visualization');
       }
+    };
+
+    // Initialize with a small delay to ensure DOM is ready
+    if (visualization && echartsLoaded) {
+      const timer = setTimeout(() => {
+        initChart();
+      }, 250);
+
+      return () => {
+        clearTimeout(timer);
+        if (chartInstanceRef.current) {
+          chartInstanceRef.current.dispose();
+        }
+      };
     }
-  }, [visualization, chartJsLoaded]);
+  }, [visualization, echartsLoaded]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -62,6 +165,7 @@ export default function AISearchPage() {
     setError(null);
     setVisualization(null);
     setTextOutput(null);
+    setResponse(null);
     
     try {
       const response = await fetch('/api/v1/ai-search', {
@@ -72,7 +176,7 @@ export default function AISearchPage() {
         body: JSON.stringify({ query: searchQuery }),
       });
 
-      const data = await response.json();
+      const data: AISearchResponse = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch results');
@@ -80,6 +184,7 @@ export default function AISearchPage() {
 
       setVisualization(data.visualization);
       setTextOutput(data.textOutput);
+      setResponse(data);
     } catch (error: any) {
       console.error('Error:', error);
       setError(error.message || 'An error occurred while processing your request.');
@@ -92,11 +197,13 @@ export default function AISearchPage() {
   return (
     <>
       <Script
-        src="https://cdn.jsdelivr.net/npm/chart.js"
-        strategy="beforeInteractive"
-        onLoad={() => setChartJsLoaded(true)}
-        onError={() => {
-          console.error('Failed to load Chart.js');
+        src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"
+        strategy="afterInteractive"
+        onLoad={() => {
+          setEchartsLoaded(true);
+        }}
+        onError={(e) => {
+          console.error('Failed to load ECharts:', e);
           toast.error('Failed to load visualization library');
         }}
       />
@@ -138,13 +245,52 @@ export default function AISearchPage() {
           </div>
         )}
 
+        {/* Execution Steps and Queries */}
+        {response && (
+          <div className="bg-white rounded-lg shadow p-6 space-y-4">
+            <h2 className="text-xl font-semibold">Execution Details</h2>
+            
+            {/* Steps Timeline */}
+            <div className="space-y-2">
+              {response.steps.map((step, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <div className="mt-1.5">
+                    <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                  </div>
+                  <p className="text-gray-600">{step}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* SQL Queries */}
+            {response.originalQuery && (
+              <div className="mt-4 space-y-3">
+                <h3 className="font-semibold text-gray-700">Generated SQL Query:</h3>
+                <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">
+                  {response.originalQuery}
+                </pre>
+              </div>
+            )}
+            
+            {response.fixedQuery && (
+              <div className="mt-4 space-y-3">
+                <h3 className="font-semibold text-gray-700">Fixed SQL Query:</h3>
+                <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">
+                  {response.fixedQuery}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Visualization Section */}
         {visualization && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Visualization</h2>
             <div 
               ref={chartContainerRef}
-              className="min-h-[300px]"
+              style={{ width: '100%', height: '500px' }}
+              className="relative bg-gray-50"
             />
           </div>
         )}
@@ -153,9 +299,7 @@ export default function AISearchPage() {
         {textOutput && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Summary</h2>
-            <div className="min-h-[100px]">
-              <p className="whitespace-pre-wrap">{textOutput}</p>
-            </div>
+            <MarkdownRenderer content={textOutput} />
           </div>
         )}
       </div>

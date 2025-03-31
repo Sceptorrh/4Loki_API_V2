@@ -6,9 +6,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { downloadFromDrive } from '../services/google/drive';
 import { Writable } from 'stream';
 
-// Track SSE clients for progress updates
-const progressEmitters: Response[] = [];
-
 // Define multer file interface
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -343,165 +340,6 @@ const normalizedRow: RowData = {};
 
 // Ensure validationResults is initialized
 const validationResults: any[] = [];
-
-/**
- * Handle SSE connection for import progress
- */
-export const importProgress = (req: Request, res: Response) => {
-  console.log('New SSE connection established');
-  
-  // Set SSE headers with proper CORS headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, Connection');
-  res.flushHeaders();
-
-  // Add this client to emitters list
-  progressEmitters.push(res);
-  console.log(`Total connected clients: ${progressEmitters.length}`);
-
-  // Send initial progress
-  const initialUpdate = { progress: 0, message: 'Waiting for import to start...' };
-  console.log('Sending initial progress:', initialUpdate);
-  
-  try {
-    res.write(`data: ${JSON.stringify(initialUpdate)}\n\n`);
-    // Flush the data immediately
-    if (typeof res.flush === 'function') {
-      res.flush();
-    }
-  } catch (err) {
-    console.error('Error sending initial progress:', err);
-  }
-
-  // Handle client disconnect
-  req.on('close', () => {
-    console.log('Client disconnected');
-    const index = progressEmitters.indexOf(res);
-    if (index !== -1) {
-      progressEmitters.splice(index, 1);
-      console.log(`Remaining connected clients: ${progressEmitters.length}`);
-    }
-  });
-
-  // Set a timeout ping to keep the connection alive
-  const keepAlivePing = setInterval(() => {
-    try {
-      res.write(': ping\n\n');
-      if (typeof res.flush === 'function') {
-        res.flush();
-      }
-    } catch (err) {
-      console.error('Error sending keep-alive ping:', err);
-      clearInterval(keepAlivePing);
-    }
-  }, 25000); // Send a ping every 25 seconds
-
-  // Clean up the interval on client disconnect
-  req.on('close', () => {
-    clearInterval(keepAlivePing);
-  });
-};
-
-/**
- * Send progress update to all connected clients
- */
-const sendProgressUpdate = (progress: number, message: string) => {
-  if (progressEmitters.length === 0) {
-    console.log('No connected clients to send progress update to');
-    return;
-  }
-  
-  const update = JSON.stringify({ progress, message });
-  
-  // Use a copy of the array to avoid modification during iteration
-  const emitters = [...progressEmitters];
-  
-  emitters.forEach((emitter, index) => {
-    try {
-      emitter.write(`data: ${update}\n\n`);
-      // Flush the data immediately
-      if (typeof emitter.flush === 'function') {
-        emitter.flush();
-      }
-    } catch (err) {
-      console.error(`Error sending progress to client ${index}:`, err);
-      // Remove the failed emitter from the original array
-      const failedIndex = progressEmitters.indexOf(emitter);
-      if (failedIndex !== -1) {
-        progressEmitters.splice(failedIndex, 1);
-        console.log(`Removed disconnected client. Remaining clients: ${progressEmitters.length}`);
-      }
-    }
-  });
-};
-
-/**
- * Generate a data backup of all non-static tables
- */
-export const generateBackup = async (req: Request, res: Response | Writable) => {
-  try {
-    // Create a new Excel workbook
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = '4Loki Dog Grooming';
-    workbook.lastModifiedBy = '4Loki Dog Grooming';
-    workbook.created = new Date();
-    workbook.modified = new Date();
-    
-    // Get data from each table and add to workbook
-    for (const table of NON_STATIC_TABLES) {
-      const [rows] = await db.execute(`SELECT * FROM ${table} ORDER BY Id`);
-      
-      // Add a worksheet for each table
-      const worksheet = workbook.addWorksheet(table);
-      
-      if (Array.isArray(rows) && rows.length > 0) {
-        // Create column headers based on first row
-        const firstRow = rows[0];
-        worksheet.columns = Object.keys(firstRow).map(key => ({
-          header: key,
-          key,
-          width: 20
-        }));
-        
-        // Style the header row
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFE0E0E0' }
-        };
-        
-        // Add data rows
-        for (const row of (rows as any[])) {
-          worksheet.addRow(row);
-        }
-      }
-    }
-    
-    // Set response headers if this is a direct response
-    if ('setHeader' in res) {
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `4loki_backup_${date}.xlsx`;
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    }
-    
-    // Write to response using the provided write function
-    await workbook.xlsx.write(res);
-    
-    // End the response
-    res.end();
-  } catch (error) {
-    console.error('Error generating backup:', error);
-    throw new AppError('Failed to generate backup', 500);
-  }
-};
 
 /**
  * Convert "\N", specific dates, or any date before 1910 to null for any value
@@ -914,10 +752,10 @@ export const previewBackup = async (req: MulterRequest, res: Response) => {
  * Process a single row of data for a specific table
  * Returns a result object instead of throwing errors
  */
-async function processTableRow(tableName: string, row: any): Promise<{ success: boolean; error?: string }> {
+async function processTableRow(tableName: string, row: any, rowNumber: number): Promise<{ success: boolean; error?: string }> {
   try {
     // Validate the row first
-    const validationResult = validateRow(tableName, row, 0);
+    const validationResult = validateRow(tableName, row, rowNumber);
     if (!validationResult.valid) {
       return {
         success: false,
@@ -931,9 +769,26 @@ async function processTableRow(tableName: string, row: any): Promise<{ success: 
   } catch (error: any) {
     // Handle specific MySQL errors more gracefully
     if (error.code === 'ER_DUP_ENTRY') {
+      let errorMessage = `Duplicate entry for ${tableName}`;
+      
+      // Add more details for Customer table duplicates
+      if (tableName === 'Customer') {
+        const customerDetails = [];
+        // Check for name in both cases (naam and Naam)
+        const name = row.naam || row.Naam;
+        const email = row.emailadres || row.Emailadres || row.email || row.Email;
+        const phone = row.telefoonnummer || row.Telefoonnummer || row.phone || row.Phone;
+        
+        if (name) customerDetails.push(`Name: ${name}`);
+        if (email) customerDetails.push(`Email: ${email}`);
+        if (phone) customerDetails.push(`Phone: ${phone}`);
+        
+        errorMessage = `Duplicate customer entry at row ${rowNumber}${customerDetails.length > 0 ? ' - ' + customerDetails.join(', ') : ''}`;
+      }
+      
       return {
         success: false,
-        error: `Duplicate entry for ${tableName}`
+        error: errorMessage
       };
     }
     return {
@@ -976,22 +831,6 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
         missingSheets.push(tableName);
       }
     });
-
-    // Initialize progress tracking
-    let totalRecords = 0;
-    let processedRecords = 0;
-    
-    // Count total records for progress tracking
-    workbook.eachSheet((worksheet) => {
-      if (NON_STATIC_TABLES.includes(worksheet.name)) {
-        totalRecords += worksheet.rowCount - 1; // Subtract header row
-      }
-    });
-    
-    console.log(`Total records to import: ${totalRecords}`);
-    
-    // Send initial progress update
-    sendProgressUpdate(0, `Starting import process... (0/${totalRecords} records)`);
 
     // Process each worksheet
     for (const worksheet of workbook.worksheets) {
@@ -1038,7 +877,9 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
       }
 
       // Process each row in the table
-      for (const row of worksheet.getRows(2, worksheet.rowCount - 1) || []) {
+      const rows = worksheet.getRows(2, worksheet.rowCount - 1) || [];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
         const rowData: any = {};
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber - 1];
@@ -1049,7 +890,8 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
         });
 
         // Process the row and handle the result
-        const result = await processTableRow(tableName, rowData);
+        // Pass the actual Excel row number (add 2 because we start from row 2 and i is 0-based)
+        const result = await processTableRow(tableName, rowData, i + 2);
         if (result.success) {
           tableResults.success++;
         } else {
@@ -1060,14 +902,10 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
             errorType: 'ProcessingError'
           });
         }
-        
-        processedRecords++;
-        const progress = Math.round((processedRecords / totalRecords) * 100);
-        sendProgressUpdate(progress, `Processing ${tableName}... (${processedRecords}/${totalRecords} records)`);
       }
     }
 
-    // Prepare the response
+    // Prepare response
     const response = {
       message: 'Import completed successfully',
       report: {
@@ -1087,8 +925,8 @@ export const importBackup = async (req: MulterRequest, res: Response) => {
         },
         errorsByTable: Object.entries(results)
           .filter(([_, value]) => value.failed > 0)
-          .map(([tableName, value]) => ({
-            tableName: tableName.charAt(0).toUpperCase() + tableName.slice(1),
+          .map(([key, value]) => ({
+            tableName: key.charAt(0).toUpperCase() + key.slice(1),
             count: value.failed,
             items: value.errors
           }))
@@ -1181,22 +1019,6 @@ export const importDriveBackup = async (req: Request, res: Response) => {
       }
     });
 
-    // Initialize progress tracking
-    let totalRecords = 0;
-    let processedRecords = 0;
-    
-    // Count total records for progress tracking
-    workbook.eachSheet((worksheet) => {
-      if (NON_STATIC_TABLES.includes(worksheet.name)) {
-        totalRecords += worksheet.rowCount - 1; // Subtract header row
-      }
-    });
-    
-    console.log(`Total records to import: ${totalRecords}`);
-    
-    // Send initial progress update
-    sendProgressUpdate(0, `Starting import process... (0/${totalRecords} records)`);
-
     // Process each worksheet
     for (const worksheet of workbook.worksheets) {
       const tableName = worksheet.name;
@@ -1253,7 +1075,7 @@ export const importDriveBackup = async (req: Request, res: Response) => {
         });
 
         // Process the row and handle the result
-        const result = await processTableRow(tableName, rowData);
+        const result = await processTableRow(tableName, rowData, row.number);
         if (result.success) {
           tableResults.success++;
         } else {
@@ -1264,10 +1086,6 @@ export const importDriveBackup = async (req: Request, res: Response) => {
             errorType: 'ProcessingError'
           });
         }
-        
-        processedRecords++;
-        const progress = Math.round((processedRecords / totalRecords) * 100);
-        sendProgressUpdate(progress, `Processing ${tableName}... (${processedRecords}/${totalRecords} records)`);
       }
     }
 
@@ -1291,8 +1109,8 @@ export const importDriveBackup = async (req: Request, res: Response) => {
         },
         errorsByTable: Object.entries(results)
           .filter(([_, value]) => value.failed > 0)
-          .map(([tableName, value]) => ({
-            tableName: tableName.charAt(0).toUpperCase() + tableName.slice(1),
+          .map(([key, value]) => ({
+            tableName: key.charAt(0).toUpperCase() + key.slice(1),
             count: value.failed,
             items: value.errors
           }))
@@ -1498,5 +1316,67 @@ export const previewDriveBackup = async (req: Request, res: Response) => {
       error: 'Failed to preview backup',
       details: error.message 
     });
+  }
+};
+
+/**
+ * Generate a data backup of all non-static tables
+ */
+export const generateBackup = async (req: Request, res: Response | Writable) => {
+  try {
+    // Create a new Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = '4Loki Dog Grooming';
+    workbook.lastModifiedBy = '4Loki Dog Grooming';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+    
+    // Get data from each table and add to workbook
+    for (const table of NON_STATIC_TABLES) {
+      const [rows] = await db.execute(`SELECT * FROM ${table} ORDER BY Id`);
+      
+      // Add a worksheet for each table
+      const worksheet = workbook.addWorksheet(table);
+      
+      if (Array.isArray(rows) && rows.length > 0) {
+        // Create column headers based on first row
+        const firstRow = rows[0];
+        worksheet.columns = Object.keys(firstRow).map(key => ({
+          header: key,
+          key,
+          width: 20
+        }));
+        
+        // Style the header row
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' }
+        };
+        
+        // Add data rows
+        for (const row of (rows as any[])) {
+          worksheet.addRow(row);
+        }
+      }
+    }
+    
+    // Set response headers if this is a direct response
+    if ('setHeader' in res) {
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `4loki_backup_${date}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    }
+    
+    // Write to response using the provided write function
+    await workbook.xlsx.write(res);
+    
+    // End the response
+    res.end();
+  } catch (error) {
+    console.error('Error generating backup:', error);
+    throw new AppError('Failed to generate backup', 500);
   }
 }; 
