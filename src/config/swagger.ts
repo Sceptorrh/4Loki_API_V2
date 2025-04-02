@@ -47,6 +47,10 @@ const swaggerOptions = {
       {
         name: 'Google',
         description: 'Google API integration endpoints'
+      },
+      {
+        name: 'AI',
+        description: 'AI-powered search and settings endpoints'
       }
     ],
     components: {
@@ -693,9 +697,138 @@ const swaggerOptions = {
             Duration: { type: 'integer', description: 'Duration in minutes', example: 30 }
           },
           required: ['IsHomeToWork', 'Duration']
+        },
+        AISearchRequest: {
+          type: 'object',
+          properties: {
+            query: { 
+              type: 'string', 
+              description: 'The search query to process', 
+              example: 'Find all appointments for next week' 
+            }
+          },
+          required: ['query']
+        },
+        AISearchResponse: {
+          type: 'object',
+          properties: {
+            results: { 
+              type: 'array', 
+              description: 'Search results based on the query',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', description: 'Type of result', example: 'appointment' },
+                  data: { type: 'object', description: 'The actual data object' },
+                  relevance: { type: 'number', description: 'Relevance score', example: 0.95 }
+                }
+              }
+            }
+          }
+        },
+        AISettings: {
+          type: 'object',
+          properties: {
+            enabled: { type: 'boolean', description: 'Whether AI features are enabled', example: true },
+            model: { type: 'string', description: 'The AI model being used', example: 'gpt-4' },
+            maxTokens: { type: 'integer', description: 'Maximum tokens for AI responses', example: 1000 },
+            temperature: { type: 'number', description: 'AI response temperature', example: 0.7 }
+          },
+          required: ['enabled']
         }
       },
     },
+    paths: {
+      '/ai-search': {
+        post: {
+          tags: ['AI'],
+          summary: 'Perform AI-powered search across the system',
+          description: 'Search across all system data using natural language queries',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/AISearchRequest'
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Search results',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/AISearchResponse'
+                  }
+                }
+              }
+            },
+            '401': {
+              description: 'Unauthorized'
+            },
+            '500': {
+              description: 'Internal server error'
+            }
+          }
+        }
+      },
+      '/settings/ai': {
+        get: {
+          tags: ['AI'],
+          summary: 'Get AI settings',
+          description: 'Retrieve current AI system settings',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'AI settings',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/AISettings'
+                  }
+                }
+              }
+            },
+            '401': {
+              description: 'Unauthorized'
+            },
+            '500': {
+              description: 'Internal server error'
+            }
+          }
+        },
+        post: {
+          tags: ['AI'],
+          summary: 'Update AI settings',
+          description: 'Update AI system settings',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/AISettings'
+                }
+              }
+            }
+          },
+          responses: {
+            '200': {
+              description: 'Settings updated successfully'
+            },
+            '401': {
+              description: 'Unauthorized'
+            },
+            '500': {
+              description: 'Internal server error'
+            }
+          }
+        }
+      }
+    }
   },
   apis: [
     // Use absolute paths to ensure files are found correctly

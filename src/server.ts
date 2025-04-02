@@ -120,15 +120,6 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(convertDatesToUTC);
 app.use(convertDatesInResponse);
 
-// Apply global authentication middleware
-app.use(authenticateToken);
-
-// Add error logging middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err);
-  next(err);
-});
-
 // Add custom JavaScript file for download button
 app.get('/api-docs/custom-swagger.js', (req, res) => {
   res.set({
@@ -177,7 +168,7 @@ app.get('/debug-swagger', (req, res) => {
   res.send(debugInfo);
 });
 
-// Remove all the custom Swagger UI setup and use the standard approach
+// Swagger UI setup
 app.use('/api-docs', swaggerUi.serve);
 app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
   explorer: true,
@@ -198,6 +189,15 @@ app.get('/api-spec.json', (req, res) => {
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+// Apply global authentication middleware
+app.use(authenticateToken);
+
+// Add error logging middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Error:', err);
+  next(err);
 });
 
 // Routes

@@ -41,7 +41,6 @@
     "node-cron": "^3.0.3",
     "openai": "^4.28.0",
     "pg": "^8.14.1",
-    "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
