@@ -12,7 +12,6 @@ import { logger } from './utils/logger';
 import appointmentRoutes from './routes/appointmentRoutes';
 import customerRoutes from './routes/customerRoutes';
 import dogRoutes from './routes/dogRoutes';
-import additionalHourRoutes from './routes/additionalHourRoutes';
 import exportLogRoutes from './routes/exportLogRoutes';
 import travelTimeRoutes from './routes/travelTimeRoutes';
 import dropdownRoutes from './routes/dropdownRoutes';
@@ -205,19 +204,18 @@ const apiPrefix = process.env.API_PREFIX || '/api/v1';
 console.log('Registering routes with prefix:', apiPrefix);
 setupRoutes(app);
 
-// API routes
-app.use('/api/v1/appointments', appointmentRoutes);
-app.use('/api/v1/customers', customerRoutes);
-app.use('/api/v1/dogs', dogRoutes);
-app.use('/api/v1/additional-hours', additionalHourRoutes);
-app.use('/api/v1/export-logs', exportLogRoutes);
-app.use('/api/v1/travel-times', travelTimeRoutes);
-app.use('/api/v1/dropdowns', dropdownRoutes);
-app.use('/api/v1/static', staticRoutes);
-app.use('/api/v1/exports', exportRoutes);
-app.use('/api/v1/google', googleRoutes);
-app.use('/api/v1', aiSearchRoutes);
-app.use('/api/v1', aiSettingsRoutes);
+// Remove all direct route registrations
+// app.use('/api/v1/appointments', appointmentRoutes);
+// app.use('/api/v1/customers', customerRoutes);
+// app.use('/api/v1/dogs', dogRoutes);
+// app.use('/api/v1/export-logs', exportLogRoutes);
+// app.use('/api/v1/travel-times', travelTimeRoutes);
+// app.use('/api/v1/dropdowns', dropdownRoutes);
+// app.use('/api/v1/static', staticRoutes);
+// app.use('/api/v1/exports', exportRoutes);
+// app.use('/api/v1/google', googleRoutes);
+// app.use('/api/v1', aiSearchRoutes);
+// app.use('/api/v1', aiSettingsRoutes);
 
 // Also register Google routes without the v1 prefix for direct OAuth redirects
 app.use('/api/auth/google', googleRoutes);

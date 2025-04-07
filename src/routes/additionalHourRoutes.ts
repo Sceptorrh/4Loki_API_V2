@@ -29,109 +29,6 @@ router.get('/', handler.getAll.bind(handler));
 
 /**
  * @swagger
- * /additional-hours/{id}:
- *   get:
- *     summary: Get additional hour by ID
- *     tags: [Additional Hours]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Additional Hour ID
- *     responses:
- *       200:
- *         description: Additional hour details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AdditionalHour'
- *       404:
- *         description: Additional hour not found
- */
-router.get('/:id', handler.getById.bind(handler));
-
-/**
- * @swagger
- * /additional-hours:
- *   post:
- *     summary: Create a new additional hour
- *     tags: [Additional Hours]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/AdditionalHourInput'
- *     responses:
- *       201:
- *         description: Created additional hour
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AdditionalHour'
- *       400:
- *         description: Invalid input
- */
-router.post('/', validate(additionalHourSchema), handler.create.bind(handler));
-
-/**
- * @swagger
- * /additional-hours/{id}:
- *   put:
- *     summary: Update an additional hour
- *     tags: [Additional Hours]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Additional Hour ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/AdditionalHourInput'
- *     responses:
- *       200:
- *         description: Updated additional hour
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AdditionalHour'
- *       404:
- *         description: Additional hour not found
- *       400:
- *         description: Invalid input
- */
-router.put('/:id', validate(additionalHourSchema), handler.update.bind(handler));
-
-/**
- * @swagger
- * /additional-hours/{id}:
- *   delete:
- *     summary: Delete an additional hour
- *     tags: [Additional Hours]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Additional Hour ID
- *     responses:
- *       204:
- *         description: Additional hour deleted
- *       404:
- *         description: Additional hour not found
- */
-router.delete('/:id', handler.delete.bind(handler));
-
-/**
- * @swagger
  * /additional-hours/date-range:
  *   get:
  *     summary: Get additional hours by date range
@@ -253,5 +150,108 @@ router.get('/travel-cleaning', async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+/**
+ * @swagger
+ * /additional-hours/{id}:
+ *   get:
+ *     summary: Get additional hour by ID
+ *     tags: [Additional Hours]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Additional Hour ID
+ *     responses:
+ *       200:
+ *         description: Additional hour details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdditionalHour'
+ *       404:
+ *         description: Additional hour not found
+ */
+router.get('/:id', handler.getById.bind(handler));
+
+/**
+ * @swagger
+ * /additional-hours:
+ *   post:
+ *     summary: Create a new additional hour
+ *     tags: [Additional Hours]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdditionalHourInput'
+ *     responses:
+ *       201:
+ *         description: Created additional hour
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdditionalHour'
+ *       400:
+ *         description: Invalid input
+ */
+router.post('/', validate(additionalHourSchema), handler.create.bind(handler));
+
+/**
+ * @swagger
+ * /additional-hours/{id}:
+ *   put:
+ *     summary: Update an additional hour
+ *     tags: [Additional Hours]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Additional Hour ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AdditionalHourInput'
+ *     responses:
+ *       200:
+ *         description: Updated additional hour
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AdditionalHour'
+ *       404:
+ *         description: Additional hour not found
+ *       400:
+ *         description: Invalid input
+ */
+router.put('/:id', validate(additionalHourSchema), handler.update.bind(handler));
+
+/**
+ * @swagger
+ * /additional-hours/{id}:
+ *   delete:
+ *     summary: Delete an additional hour
+ *     tags: [Additional Hours]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Additional Hour ID
+ *     responses:
+ *       204:
+ *         description: Additional hour deleted
+ *       404:
+ *         description: Additional hour not found
+ */
+router.delete('/:id', handler.delete.bind(handler));
 
 export default router; 
