@@ -12,6 +12,7 @@ import exportRoutes from './exportRoutes';
 import backupRoutes from './backupRoutes';
 import navigationSettingsRoutes from './navigationSettingsRoutes';
 import googleSettingsRoutes from './googleSettingsRoutes';
+import googleRoutes from './googleRoutes';
 
 export const setupRoutes = (app: Express) => {
   const apiPrefix = process.env.API_PREFIX || '/api/v1';
@@ -30,4 +31,5 @@ export const setupRoutes = (app: Express) => {
   app.use(`${apiPrefix}/navigation-settings`, navigationSettingsRoutes);
   app.use(`${apiPrefix}/settings/google`, googleSettingsRoutes);
   app.use(`${apiPrefix}/settings/navigation`, navigationSettingsRoutes);
+  app.use(`${apiPrefix}/google`, googleRoutes);
 }; 

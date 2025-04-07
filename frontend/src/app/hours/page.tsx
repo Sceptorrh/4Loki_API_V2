@@ -18,7 +18,9 @@ import {
   FaChevronUp,
   FaExclamationTriangle,
   FaTrash,
+  FaSyncAlt,
 } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 interface Appointment {
   Id: number;
@@ -161,6 +163,9 @@ export default function HoursPage() {
     {},
   );
   const [deletingHourId, setDeletingHourId] = useState<number | null>(null);
+  const [syncingHours, setSyncingHours] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Toggle hours detail expansion
   const toggleHoursExpansion = (date: string, type: string) => {
@@ -171,124 +176,165 @@ export default function HoursPage() {
     }));
   };
 
-  // Load saved date from localStorage on hydration
+  // Improve the hydration useEffect to handle the date loading better
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
         const savedDate = window.localStorage.getItem("calendarMonth");
+        console.log("Checking for saved date in localStorage:", savedDate);
+        
         if (savedDate) {
           const parsedDate = parseISO(savedDate);
           if (!isNaN(parsedDate.getTime())) {
             console.log(
               "Using saved date from localStorage:",
-              format(parsedDate, "MMMM yyyy"),
+              format(parsedDate, "MMMM yyyy")
             );
             setCurrentDate(parsedDate);
           } else {
-            console.log("Using default date (February 2025) for testing");
+            console.log("Invalid saved date, using default date (February 2025) for testing");
             // Keep the default date (February 2025)
+            window.localStorage.setItem("calendarMonth", format(currentDate, "yyyy-MM-dd"));
           }
         } else {
           console.log(
-            "No saved date, using default date (February 2025) for testing",
+            "No saved date, using default date (February 2025) for testing"
           );
-          // Keep the default date (February 2025)
+          // Keep the default date (February 2025) but store it
+          window.localStorage.setItem("calendarMonth", format(currentDate, "yyyy-MM-dd"));
         }
       } catch (err) {
         console.error("Error reading from localStorage:", err);
+        // Save the current date to localStorage in case of error
+        window.localStorage.setItem("calendarMonth", format(currentDate, "yyyy-MM-dd"));
       }
       setIsHydrated(true);
     }
   }, []);
 
-  // Fetch additional hours
+  // Replace the useEffect that depends on currentDate with a more explicit one
   useEffect(() => {
-    const fetchAdditionalHours = async () => {
-      try {
-        const monthStart = startOfMonth(currentDate);
-        const monthEnd = endOfMonth(currentDate);
-        console.log(
-          "Fetching additional hours for:",
-          format(monthStart, "yyyy-MM-dd"),
-          "to",
-          format(monthEnd, "yyyy-MM-dd"),
-        );
-
-        const response = await endpoints.additionalHours.getByDateRange(
-          format(monthStart, "yyyy-MM-dd"),
-          format(monthEnd, "yyyy-MM-dd"),
-        );
-
-        console.log("Additional hours data received:", response.data);
-
-        // Always set additionalHours, even if empty (to trigger the next useEffect)
-        if (response.data && response.data.length > 0) {
-          // Group additional hours by date and type
-          const groupedHours = response.data.reduce(
-            (
-              acc: Record<
-                string,
-                {
-                  travelHours: number;
-                  cleaningHours: number;
-                  adminHours: number;
-                  otherHours: number;
-                  travelRecordsCount: number;
-                  hourDetails: AdditionalHour[];
-                }
-              >,
-              hour: AdditionalHour,
-            ) => {
-              const date = hour.Date;
-              if (!acc[date]) {
-                acc[date] = {
-                  travelHours: 0,
-                  cleaningHours: 0,
-                  adminHours: 0,
-                  otherHours: 0,
-                  travelRecordsCount: 0,
-                  hourDetails: [],
-                };
-              }
-
-              // Store the complete hour record
-              acc[date].hourDetails.push(hour);
-
-              const duration = hour.Duration / 60; // Convert minutes to hours
-              if (hour.HourTypeId === "Reis") {
-                acc[date].travelHours += duration;
-                acc[date].travelRecordsCount += 1; // Count travel records
-              } else if (hour.HourTypeId === "sch") {
-                acc[date].cleaningHours += duration;
-              } else if (hour.HourTypeId === "Adm") {
-                acc[date].adminHours += duration;
-              } else {
-                acc[date].otherHours += duration;
-              }
-
-              return acc;
-            },
-            {},
-          );
-
-          console.log("Grouped hours by date:", groupedHours);
-          setAdditionalHours(groupedHours);
-        } else {
-          // Reset additional hours state when no data is found
-          // This empty object will still trigger the dependent useEffect
-          setAdditionalHours({});
-        }
-      } catch (error) {
-        console.error("Error fetching additional hours:", error);
-        // Set empty object to trigger the dependent useEffect
-        setAdditionalHours({});
-      }
-    };
-
     if (isHydrated) {
+      console.log('Component hydrated, fetching initial data');
+      // Load data for the current month
       fetchAdditionalHours();
     }
-  }, [currentDate, isHydrated]);
+  }, [isHydrated]); // Only depend on isHydrated, not currentDate
+
+  // Fetch additional hours
+  const fetchAdditionalHours = async () => {
+    if (!currentDate) return;
+    
+    try {
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+      console.log(
+        "Fetching additional hours for:",
+        format(monthStart, "yyyy-MM-dd"),
+        "to",
+        format(monthEnd, "yyyy-MM-dd"),
+      );
+
+      const response = await endpoints.additionalHours.getByDateRange(
+        format(monthStart, "yyyy-MM-dd"),
+        format(monthEnd, "yyyy-MM-dd"),
+      );
+
+      console.log("Additional hours data received - raw:", response.data);
+      
+      // Always set additionalHours, even if empty (to trigger the next useEffect)
+      if (response.data && response.data.length > 0) {
+        // Group additional hours by date and type
+        const groupedHours = response.data.reduce(
+          (
+            acc: Record<
+              string,
+              {
+                travelHours: number;
+                cleaningHours: number;
+                adminHours: number;
+                otherHours: number;
+                travelRecordsCount: number;
+                hourDetails: AdditionalHour[];
+              }
+            >,
+            hour: AdditionalHour,
+          ) => {
+            // Ensure Date is in the correct format
+            const date = typeof hour.Date === 'string' ? hour.Date : format(new Date(hour.Date), 'yyyy-MM-dd');
+            
+            if (!acc[date]) {
+              acc[date] = {
+                travelHours: 0,
+                cleaningHours: 0,
+                adminHours: 0,
+                otherHours: 0,
+                travelRecordsCount: 0,
+                hourDetails: [],
+              };
+            }
+
+            // Store the complete hour record
+            acc[date].hourDetails.push(hour);
+
+            // Debug log for individual hour
+            console.log(`Processing hour: ${date} - Type: ${hour.HourTypeId}, Duration: ${hour.Duration} minutes`);
+
+            const duration = hour.Duration / 60; // Convert minutes to hours
+            
+            // Handle different hour types
+            // Make case-insensitive comparisons to be safer
+            const hourTypeIdLower = (hour.HourTypeId || '').toLowerCase();
+            
+            if (hourTypeIdLower === 'reis' || hourTypeIdLower.includes('travel') || hourTypeIdLower.includes('reis')) {
+              acc[date].travelHours += duration;
+              acc[date].travelRecordsCount += 1; // Count travel records
+              console.log(`Added travel hours: ${duration} to date ${date}, total now: ${acc[date].travelHours}`);
+            } else if (hourTypeIdLower === 'sch' || hourTypeIdLower.includes('clean') || hourTypeIdLower.includes('sch')) {
+              acc[date].cleaningHours += duration;
+              console.log(`Added cleaning hours: ${duration} to date ${date}, total now: ${acc[date].cleaningHours}`);
+            } else if (hourTypeIdLower === 'adm' || hourTypeIdLower.includes('admin') || hourTypeIdLower.includes('adm')) {
+              acc[date].adminHours += duration;
+              console.log(`Added admin hours: ${duration} to date ${date}, total now: ${acc[date].adminHours}`);
+            } else {
+              acc[date].otherHours += duration;
+              console.log(`Added other hours (${hour.HourTypeId}): ${duration} to date ${date}, total now: ${acc[date].otherHours}`);
+            }
+
+            return acc;
+          },
+          {},
+        );
+
+        console.log("Grouped hours by date - final:", groupedHours);
+        
+        // Check if we have any hours
+        const hasAnyHours = Object.keys(groupedHours).length > 0 && 
+          Object.values(groupedHours).some((dateHours: any) => {
+            return dateHours.travelHours > 0 || 
+              dateHours.cleaningHours > 0 || 
+              dateHours.adminHours > 0 || 
+              dateHours.otherHours > 0;
+          });
+        
+        if (hasAnyHours) {
+          console.log("Setting additional hours data");
+          setAdditionalHours(groupedHours);
+        } else {
+          console.log("No hours found in the data despite receiving records");
+          setAdditionalHours({});
+        }
+      } else {
+        // Reset additional hours state when no data is found
+        console.log("No additional hours found for this month");
+        setAdditionalHours({});
+      }
+    } catch (error) {
+      console.error("Error fetching additional hours:", error);
+      // Set empty object to trigger the dependent useEffect
+      setAdditionalHours({});
+    }
+  };
 
   // Restore the useEffect that depends on additionalHours
   // But modify it to always proceed, whether additionalHours has content or not
@@ -406,6 +452,20 @@ export default function HoursPage() {
       };
 
       console.log(`Additional hours for ${date}:`, dateAdditionalHours);
+      // Log each type of hour for debugging
+      console.log(`${date} - Appointment hours: ${appointmentHours.toFixed(2)}`);
+      console.log(`${date} - Travel hours: ${dateAdditionalHours.travelHours.toFixed(2)}`);
+      console.log(`${date} - Cleaning hours: ${dateAdditionalHours.cleaningHours.toFixed(2)}`);
+      console.log(`${date} - Admin hours: ${dateAdditionalHours.adminHours.toFixed(2)}`);
+      console.log(`${date} - Other hours: ${dateAdditionalHours.otherHours.toFixed(2)}`);
+      
+      if (dateAdditionalHours.otherHours > 0) {
+        console.log(`${date} - Other hours details:`, 
+          dateAdditionalHours.hourDetails.filter(h => 
+            h.HourTypeId !== 'Reis' && h.HourTypeId !== 'sch' && h.HourTypeId !== 'Adm'
+          )
+        );
+      }
 
       const totalHours =
         appointmentHours +
@@ -465,6 +525,7 @@ export default function HoursPage() {
 
       // Only add the day if there are hours to show
       if (totalHours > 0) {
+        console.log(`Adding summary for ${date} with total hours: ${totalHours.toFixed(2)}`);
         summaries.push({
           date,
           appointments: dayAppointments,
@@ -539,16 +600,51 @@ export default function HoursPage() {
     );
   };
 
+  // Add a new function to reload all data
+  const reloadAllData = async () => {
+    // Clear any existing data
+    setAppointments([]);
+    setDaySummaries([]);
+    setAdditionalHours({});
+    setSyncResult(null);
+    setExpandedHours({});
+    
+    // Reload data
+    await fetchAdditionalHours();
+  };
+
+  // Update month navigation functions to use reloadAllData
   const goToPreviousMonth = () => {
-    setCurrentDate((prevDate) => subMonths(prevDate, 1));
+    const newDate = subMonths(currentDate, 1);
+    setCurrentDate(newDate);
+    // Save to localStorage for persistence
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('calendarMonth', format(newDate, 'yyyy-MM-dd'));
+    }
+    // Force reload data for the new month
+    reloadAllData();
   };
 
   const goToNextMonth = () => {
-    setCurrentDate((prevDate) => addMonths(prevDate, 1));
+    const newDate = addMonths(currentDate, 1);
+    setCurrentDate(newDate);
+    // Save to localStorage for persistence
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('calendarMonth', format(newDate, 'yyyy-MM-dd'));
+    }
+    // Force reload data for the new month
+    reloadAllData();
   };
 
   const goToCurrentMonth = () => {
-    setCurrentDate(new Date());
+    const newDate = new Date();
+    setCurrentDate(newDate);
+    // Save to localStorage for persistence
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('calendarMonth', format(newDate, 'yyyy-MM-dd'));
+    }
+    // Force reload data for the new month
+    reloadAllData();
   };
 
   const deleteHourRecord = async (hourId: number) => {
@@ -615,6 +711,100 @@ export default function HoursPage() {
     }
   };
 
+  const handleSyncTravelAndCleaningTimes = async () => {
+    if (!currentDate) return;
+    
+    try {
+      setSyncingHours(true);
+      setSyncResult(null);
+      
+      // First day of the current month
+      const startDate = format(startOfMonth(currentDate), 'yyyy-MM-dd');
+      // Last day of the current month
+      const endDate = format(endOfMonth(currentDate), 'yyyy-MM-dd');
+      
+      // Call the API route instead of the action directly
+      const response = await fetch('/api/additional-hours/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ startDate, endDate }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        // Handle error from API
+        const errorMsg = result.message || result.error || 'Unknown error occurred';
+        console.error('Error syncing travel and cleaning times:', errorMsg);
+        
+        // Detailed error message with toast
+        toast.error(
+          <div>
+            <strong>Error syncing hours</strong>
+            <p>{errorMsg}</p>
+            {result.details && (
+              <details className="mt-1 text-xs">
+                <summary>Technical details</summary>
+                <p className="whitespace-pre-wrap">{result.details}</p>
+              </details>
+            )}
+          </div>,
+          { duration: 5000 }
+        );
+        
+        return;
+      }
+      
+      // Success case
+      setSyncResult(result);
+      
+      // Refresh the additional hours data
+      await fetchAdditionalHours();
+      
+      // Create a detailed success message
+      const successMsg = result.message || `Hours synchronized successfully.`;
+      const details = `${result.travelTimesAdded} travel times added, ${result.travelTimesUpdated} updated, ${result.cleaningTimesAdded} cleaning times added.`;
+      
+      toast.success(
+        <div>
+          <strong>Sync Completed</strong>
+          <p>{successMsg}</p>
+          <p className="text-xs mt-1">
+            {result.processedDates} days processed. {details}
+          </p>
+          {result.errors && result.errors.length > 0 && (
+            <details className="mt-1 text-xs">
+              <summary>Warnings ({result.errors.length})</summary>
+              <ul className="list-disc pl-4 mt-1">
+                {result.errors.map((err: string, i: number) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>,
+        { duration: 6000 }
+      );
+    } catch (error) {
+      console.error('Error syncing travel and cleaning times:', error);
+      toast.error(
+        <div>
+          <strong>Sync Failed</strong>
+          <p>An unexpected error occurred while trying to sync hours.</p>
+          <details className="mt-1 text-xs">
+            <summary>Technical details</summary>
+            <p>{error instanceof Error ? error.message : String(error)}</p>
+          </details>
+        </div>,
+        { duration: 5000 }
+      );
+    } finally {
+      setSyncingHours(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -640,6 +830,27 @@ export default function HoursPage() {
             className="p-2 hover:bg-gray-100 rounded-full"
           >
             <FaChevronRight className="w-5 h-5" />
+          </button>
+
+          <button
+            className="ml-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center"
+            onClick={handleSyncTravelAndCleaningTimes}
+            disabled={syncingHours}
+          >
+            {syncingHours ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Syncing...
+              </>
+            ) : (
+              <>
+                <FaSyncAlt className="mr-2" />
+                Sync Travel & Cleaning
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -691,6 +902,50 @@ export default function HoursPage() {
               </p>
             </div>
           </div>
+
+          {syncResult && (
+            <div className="mb-4 p-4 bg-blue-50 rounded">
+              <h3 className="text-lg font-semibold mb-2">Sync Results</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <p className="text-sm text-gray-600">Travel Times Added</p>
+                  <p className="text-xl font-bold">{syncResult.travelTimesAdded}</p>
+                </div>
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <p className="text-sm text-gray-600">Travel Times Updated</p>
+                  <p className="text-xl font-bold">{syncResult.travelTimesUpdated}</p>
+                </div>
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <p className="text-sm text-gray-600">Travel Times Removed</p>
+                  <p className="text-xl font-bold">{syncResult.travelTimesRemoved}</p>
+                </div>
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <p className="text-sm text-gray-600">Cleaning Times Added</p>
+                  <p className="text-xl font-bold">{syncResult.cleaningTimesAdded}</p>
+                </div>
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <p className="text-sm text-gray-600">Cleaning Times Removed</p>
+                  <p className="text-xl font-bold">{syncResult.cleaningTimesRemoved}</p>
+                </div>
+                <div className="bg-white p-3 rounded shadow-sm">
+                  <p className="text-sm text-gray-600">Days Processed</p>
+                  <p className="text-xl font-bold">{syncResult.processedDates}</p>
+                </div>
+              </div>
+              {syncResult.errors && syncResult.errors.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold mb-2">Errors</h4>
+                  <ul className="space-y-1">
+                    {syncResult.errors.map((error: string, index: number) => (
+                      <li key={index} className="text-red-500 text-sm">
+                        • {error}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {daySummaries.length > 0 ? (
             <div className="space-y-4">
