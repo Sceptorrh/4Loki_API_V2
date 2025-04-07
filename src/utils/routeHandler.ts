@@ -52,8 +52,16 @@ export class RouteHandler {
       
       res.json(rows[0]);
     } catch (error) {
+      console.error('Error in getById:', {
+        table: this.tableName,
+        id: req.params.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        sql: error instanceof Error && 'sql' in error ? (error as any).sql : undefined
+      });
+      
       if (error instanceof AppError) throw error;
-      throw new AppError('Error fetching record', 500);
+      throw new AppError(`Error fetching record: ${error instanceof Error ? error.message : 'Unknown error'}`, 500);
     }
   }
 

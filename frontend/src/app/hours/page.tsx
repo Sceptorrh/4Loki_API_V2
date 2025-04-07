@@ -72,7 +72,10 @@ export default function HoursPage() {
     totalHours: 0
   });
   const [loading, setLoading] = useState(false);
-  const [travelTimeStats, setTravelTimeStats] = useState({ min: 15, max: 45 }); // Default values
+  const [travelAndCleaningTimes, setTravelAndCleaningTimes] = useState<{
+    travelTimes: Record<string, number>;
+    cleaningTimes: Record<string, number>;
+  }>({ travelTimes: {}, cleaningTimes: {} });
 
   // Load saved date from localStorage on hydration
   useEffect(() => {
@@ -93,21 +96,28 @@ export default function HoursPage() {
     }
   }, []);
 
-  // Fetch all appointments to calculate travel time statistics
+  // Fetch travel and cleaning times
   useEffect(() => {
-    const fetchTravelTimeStats = async () => {
+    const fetchTravelAndCleaningTimes = async () => {
       try {
-        const response = await endpoints.travelTimes.getStats();
+        const monthStart = startOfMonth(currentDate);
+        const monthEnd = endOfMonth(currentDate);
+        const response = await endpoints.additionalHours.getTravelAndCleaningTimes(
+          format(monthStart, 'yyyy-MM-dd'),
+          format(monthEnd, 'yyyy-MM-dd')
+        );
         if (response.data) {
-          setTravelTimeStats(response.data);
+          setTravelAndCleaningTimes(response.data);
         }
       } catch (error) {
-        console.error('Error fetching travel time statistics:', error);
+        console.error('Error fetching travel and cleaning times:', error);
       }
     };
 
-    fetchTravelTimeStats();
-  }, []);
+    if (isHydrated) {
+      fetchTravelAndCleaningTimes();
+    }
+  }, [currentDate, isHydrated]);
 
   useEffect(() => {
     if (isHydrated) {
@@ -176,22 +186,11 @@ export default function HoursPage() {
         sum + (app.ActualDuration / 60), 0
       );
 
-      // Calculate travel hours
-      let travelHours = 0;
-      if (sortedAppointments.length > 0) {
-  
-        // Get last appointment time
-        const lastAppointment = sortedAppointments[sortedAppointments.length - 1];
+      // Get travel hours from database
+      const travelHours = (travelAndCleaningTimes.travelTimes[date] || 0) / 60;
 
-        // Add travel time for first appointment (home to work)
-        travelHours += getTravelTime(sortedAppointments[0], travelTimeStats.min, travelTimeStats.max) / 60;
-
-        // Add travel time for last appointment (work to home)
-        travelHours += getTravelTime(lastAppointment, travelTimeStats.min, travelTimeStats.max) / 60;
-      }
-
-      // Add 40 minutes cleaning time if there were appointments that day
-      const cleaningHours = dayAppointments.length > 0 ? 40 / 60 : 0;
+      // Get cleaning hours from database
+      const cleaningHours = (travelAndCleaningTimes.cleaningTimes[date] || 0) / 60;
 
       const totalHours = appointmentHours + travelHours + cleaningHours;
 

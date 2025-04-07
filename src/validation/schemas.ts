@@ -56,7 +56,11 @@ export const additionalHourSchema = z.object({
   Duration: z.number().int().min(1),
   Date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   Description: z.string().optional(),
-  IsExported: z.boolean().optional()
+  IsExported: z.union([
+    z.boolean(),
+    z.literal(0).transform(() => false),
+    z.literal(1).transform(() => true)
+  ]).optional()
 });
 
 export const exportLogSchema = z.object({

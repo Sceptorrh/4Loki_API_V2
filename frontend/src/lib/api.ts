@@ -145,6 +145,19 @@ export const endpoints = {
       get: () => api.get('/settings/google'),
     },
   },
+
+  // Additional Hours
+  additionalHours: {
+    getAll: () => api.get('/additional-hours'),
+    getById: (id: number) => api.get(`/additional-hours/${id}`),
+    create: (data: any) => api.post('/additional-hours', data),
+    update: (id: number, data: any) => api.put(`/additional-hours/${id}`, data),
+    delete: (id: number) => api.delete(`/additional-hours/${id}`),
+    getByDateRange: (startDate: string, endDate: string) => 
+      api.get(`/additional-hours/date-range?startDate=${startDate}&endDate=${endDate}`),
+    getTravelAndCleaningTimes: (startDate: string, endDate: string) =>
+      api.get(`/additional-hours/travel-cleaning?startDate=${startDate}&endDate=${endDate}`),
+  },
 };
 
 export default api; 

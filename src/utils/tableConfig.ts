@@ -8,7 +8,7 @@ export const tableDateFields: TableDateFields = {
   Appointment: ['Date', 'DateEnd', 'CreatedOn', 'UpdatedOn'],
   AppointmentDog: ['CreatedOn', 'UpdatedOn'],
   Invoice: ['Factuurdatum', 'Vervaldatum', 'CreatedOn', 'UpdatedOn'],
-  AdditionalHour: ['Date', 'DateEnd', 'CreatedOn', 'UpdatedOn'],
+  AdditionalHour: ['Date', 'CreatedOn', 'UpdatedOn'],
   DogDogbreed: ['CreatedOn', 'UpdatedOn'],
   ExportLog: ['IssuedOn', 'ForMonthDate', 'CreatedOn', 'UpdatedOn'],
   ServiceAppointmentDog: ['CreatedOn', 'UpdatedOn'],

@@ -142,7 +142,6 @@ CREATE TABLE IF NOT EXISTS `AdditionalHour` (
   `HourTypeId` varchar(20) DEFAULT NULL,
   `Duration` int(11) DEFAULT NULL,
   `Date` date DEFAULT NULL,
-  `Description` text DEFAULT NULL,
   `IsExported` tinyint(1) DEFAULT NULL,
   `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

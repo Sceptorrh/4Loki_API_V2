@@ -69,6 +69,6 @@ export const convertDateFieldsToUTC = (fields: string[]) => {
       return `DATE(${field}) as ${field}`;
     }
     // For other date fields, keep them in UTC
-    return `${field} as ${field}`;
+    return `CONVERT_TZ(${field}, @@session.time_zone, '+00:00') as ${field}`;
   }).join(', ');
 }; 

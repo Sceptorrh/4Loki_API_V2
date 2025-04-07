@@ -375,6 +375,22 @@ const convertNullValue = (value: any, fieldName?: string): any => {
     return false;
   }
 
+  // Special handling for IsExported field - convert to boolean
+  if (fieldName && fieldName.toLowerCase() === 'isexported') {
+    if (typeof value === 'string') {
+      // Convert string values to booleans
+      return value === '1' || value.toLowerCase() === 'true' || value.toLowerCase() === 'yes';
+    } else if (typeof value === 'number') {
+      // Convert numeric values to booleans
+      return value === 1;
+    } else if (typeof value === 'boolean') {
+      // Already a boolean, return as is
+      return value;
+    }
+    // Default to false for any other value
+    return false;
+  }
+
   // Special handling for customer_id values - don't convert valid numbers to null
   if (typeof value === 'string') {
     // Only convert '0' to null, not other numeric strings
