@@ -17,6 +17,7 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaExclamationTriangle,
+  FaTrash,
 } from "react-icons/fa";
 
 interface Appointment {
@@ -159,6 +160,7 @@ export default function HoursPage() {
   const [expandedHours, setExpandedHours] = useState<Record<string, boolean>>(
     {},
   );
+  const [deletingHourId, setDeletingHourId] = useState<number | null>(null);
 
   // Toggle hours detail expansion
   const toggleHoursExpansion = (date: string, type: string) => {
@@ -549,6 +551,70 @@ export default function HoursPage() {
     setCurrentDate(new Date());
   };
 
+  const deleteHourRecord = async (hourId: number) => {
+    if (!hourId) return;
+    
+    try {
+      setDeletingHourId(hourId);
+      
+      // Call the API to delete the record
+      await endpoints.additionalHours.delete(hourId);
+      
+      // Update the local state by filtering out the deleted record
+      setAdditionalHours(prevHours => {
+        const newHours = { ...prevHours };
+        
+        // Find which date contains this hour
+        Object.keys(newHours).forEach(date => {
+          const hourDetails = newHours[date].hourDetails;
+          const hourIndex = hourDetails.findIndex(h => h.Id === hourId);
+          
+          if (hourIndex >= 0) {
+            const deletedHour = hourDetails[hourIndex];
+            const duration = deletedHour.Duration / 60; // Convert minutes to hours
+            
+            // Remove the hours from the appropriate counter
+            if (deletedHour.HourTypeId === 'Reis') {
+              newHours[date].travelHours -= duration;
+              newHours[date].travelRecordsCount -= 1;
+            } else if (deletedHour.HourTypeId === 'sch') {
+              newHours[date].cleaningHours -= duration;
+            } else if (deletedHour.HourTypeId === 'Adm') {
+              newHours[date].adminHours -= duration;
+            } else {
+              newHours[date].otherHours -= duration;
+            }
+            
+            // Remove the hour from the details array
+            newHours[date].hourDetails = hourDetails.filter(h => h.Id !== hourId);
+            
+            // If no hours left for this date, remove the date from additional hours
+            if (
+              newHours[date].hourDetails.length === 0 || 
+              (newHours[date].travelHours <= 0 && 
+               newHours[date].cleaningHours <= 0 && 
+               newHours[date].adminHours <= 0 && 
+               newHours[date].otherHours <= 0)
+            ) {
+              delete newHours[date];
+            }
+          }
+        });
+        
+        return newHours;
+      });
+      
+      // Recalculate hours to update the UI
+      calculateHours(appointments);
+      
+    } catch (error) {
+      console.error('Error deleting hour record:', error);
+      alert('Failed to delete the hour record. Please try again.');
+    } finally {
+      setDeletingHourId(null);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -735,7 +801,25 @@ export default function HoursPage() {
                                     .map(hour => (
                                       <div key={hour.Id} className="flex justify-between items-center py-1 border-b last:border-0">
                                         <span>{hour.Description || 'Travel time'}</span>
-                                        <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (window.confirm('Are you sure you want to delete this travel time record?')) {
+                                                deleteHourRecord(hour.Id);
+                                              }
+                                            }}
+                                            className="p-1 text-red-500 hover:text-red-700 focus:outline-none"
+                                            disabled={deletingHourId === hour.Id}
+                                          >
+                                            {deletingHourId === hour.Id ? (
+                                              <span className="text-xs">Deleting...</span>
+                                            ) : (
+                                              <FaTrash size={12} />
+                                            )}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))
                                   }
@@ -766,7 +850,25 @@ export default function HoursPage() {
                                     .map(hour => (
                                       <div key={hour.Id} className="flex justify-between items-center py-1 border-b last:border-0">
                                         <span>{hour.Description || 'Cleaning time'}</span>
-                                        <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (window.confirm('Are you sure you want to delete this cleaning time record?')) {
+                                                deleteHourRecord(hour.Id);
+                                              }
+                                            }}
+                                            className="p-1 text-red-500 hover:text-red-700 focus:outline-none"
+                                            disabled={deletingHourId === hour.Id}
+                                          >
+                                            {deletingHourId === hour.Id ? (
+                                              <span className="text-xs">Deleting...</span>
+                                            ) : (
+                                              <FaTrash size={12} />
+                                            )}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))
                                   }
@@ -797,7 +899,25 @@ export default function HoursPage() {
                                     .map(hour => (
                                       <div key={hour.Id} className="flex justify-between items-center py-1 border-b last:border-0">
                                         <span>{hour.Description || 'Admin time'}</span>
-                                        <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (window.confirm('Are you sure you want to delete this admin time record?')) {
+                                                deleteHourRecord(hour.Id);
+                                              }
+                                            }}
+                                            className="p-1 text-red-500 hover:text-red-700 focus:outline-none"
+                                            disabled={deletingHourId === hour.Id}
+                                          >
+                                            {deletingHourId === hour.Id ? (
+                                              <span className="text-xs">Deleting...</span>
+                                            ) : (
+                                              <FaTrash size={12} />
+                                            )}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))
                                   }
@@ -828,7 +948,25 @@ export default function HoursPage() {
                                     .map(hour => (
                                       <div key={hour.Id} className="flex justify-between items-center py-1 border-b last:border-0">
                                         <span>{hour.Description || `${hour.HourTypeId} time`}</span>
-                                        <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                        <div className="flex items-center gap-2">
+                                          <span>{formatHoursAndMinutes(hour.Duration / 60)}</span>
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (window.confirm('Are you sure you want to delete this time record?')) {
+                                                deleteHourRecord(hour.Id);
+                                              }
+                                            }}
+                                            className="p-1 text-red-500 hover:text-red-700 focus:outline-none"
+                                            disabled={deletingHourId === hour.Id}
+                                          >
+                                            {deletingHourId === hour.Id ? (
+                                              <span className="text-xs">Deleting...</span>
+                                            ) : (
+                                              <FaTrash size={12} />
+                                            )}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))
                                   }
