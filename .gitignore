@@ -19,14 +19,14 @@ frontend/.next/
 secrets.json
 
 # Configuration
-/configuration/
-/configuration/*.json
+backend/configuration/
+backend/configuration/*.json
 
 # Logs
 logs/
 *.log
-combined.log
-error.log
+backend/combined.log
+backend/error.log
 access.log
 debug.log
 info.log
@@ -35,10 +35,10 @@ trace.log
 
 # Test coverage and results
 coverage/
-test-results/
+backend/test-results/
 junit.xml
 *.junit.xml
-test-results/*.xml
+backend/test-results/*.xml
 
 # IDE and editor files
 .idea/

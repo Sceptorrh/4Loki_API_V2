@@ -276,4 +276,86 @@ Refer to the setup guide for detailed troubleshooting steps.
 
 ### Note on API Migration
 
-As of March 1, 2025, the Distance Matrix API and Directions API will be deprecated in favor of the Routes API. This application uses the newer Routes API to ensure future compatibility. 
+As of March 1, 2025, the Distance Matrix API and Directions API will be deprecated in favor of the Routes API. This application uses the newer Routes API to ensure future compatibility.
+
+# 4Loki Monorepo
+
+This is a monorepo structure for the 4Loki dog grooming business application, containing both the backend API and frontend Next.js application.
+
+## Setup
+
+1. **Move backend files**: Move the following files and directories to the `backend/` folder:
+   - `src/`
+   - `configuration/`
+   - `scripts/`
+   - `tests/`
+   - `test-results/`
+   - `tsconfig.json`
+   - `tsconfig.test.json`
+   - `jest.config.js`
+   - `nodemon.json`
+   - `Dockerfile`
+   - `.env.example`
+   - `.env.test`
+   - `docker-compose.yml`
+   - `docker-compose.test.yml`
+   - `01-init.sql`
+
+2. **Install dependencies**:
+```bash
+# Install all dependencies for both frontend and backend
+npm install
+
+# Install concurrently if not already installed
+npm install concurrently --save-dev
+```
+
+## Development
+
+```bash
+# Run both frontend and backend in development mode
+npm run dev
+
+# Run only backend
+npm run dev:backend
+
+# Run only frontend
+npm run dev:frontend
+```
+
+## Building
+
+```bash
+# Build both frontend and backend
+npm run build
+
+# Build only backend
+npm run build:backend
+
+# Build only frontend
+npm run build:frontend
+```
+
+## File Structure
+
+```
+4Loki_API_V2/
+├── package.json        # Root package.json with workspace configuration
+├── backend/            # Backend API code
+│   ├── package.json    # Backend-specific dependencies
+│   ├── src/            # Source code
+│   ├── configuration/  # Configuration files
+│   ├── scripts/        # Scripts
+│   ├── tests/          # Tests
+│   └── ...             # Other backend files
+├── frontend/           # Frontend Next.js application
+│   ├── package.json    # Frontend-specific dependencies
+│   └── ...             # Frontend files
+```
+
+## Benefits of Monorepo
+
+- Shared node_modules to reduce duplicate dependencies
+- Simplified dependency management
+- Easier to manage cross-project dependencies
+- Unified development workflow 
