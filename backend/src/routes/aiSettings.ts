@@ -4,7 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
-router.get('/settings/ai', authenticateToken, getAISettings);
-router.post('/settings/ai', authenticateToken, updateAISettings);
+router.get('/', authenticateToken, getAISettings);
+router.post('/', authenticateToken, updateAISettings);
 
 export default router; 

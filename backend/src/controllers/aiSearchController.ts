@@ -8,7 +8,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { completeTableInfo } from '../utils/tableInfo';
 import { calculateCost, formatCost } from '../utils/openaiCosts';
 
-const AI_SETTINGS_PATH = path.join(process.cwd(), 'configuration', 'aiSettings.json');
+const AI_SETTINGS_PATH = path.join(process.cwd(), '..', 'configuration', 'aiSettings.json');
 
 const getAISettings = async () => {
   try {

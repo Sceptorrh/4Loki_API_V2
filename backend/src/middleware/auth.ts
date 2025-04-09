@@ -13,12 +13,17 @@ const publicPaths = [
   '/api/v1/health',
   '/api/v1/google/auth/login-url',
   '/api/v1/google/auth/callback',
+  '/api/v1/google/auth/user',
   '/api/auth/google/callback',
   '/api/auth/google/login-url',
   '/api/v1/google/auth/store-state',
   '/api/v1/google/maps/forward-geocode',
   '/api/v1/google/maps/places/autocomplete',
-  '/api/v1/google/maps/places/details'
+  '/api/v1/google/maps/places/details',
+  '/api/v1/settings/google',
+  '/api/v1/settings/navigation',
+  '/api/v1/settings/ai',
+  '/api/v1/backup/config'
 ];
 
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {

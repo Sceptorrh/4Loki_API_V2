@@ -8,7 +8,7 @@ const router = Router();
 
 // Helper function to get the Google configuration file path
 const getGoogleConfigPath = () => {
-  return path.join(process.cwd(), 'configuration', 'google.json');
+  return path.join(process.cwd(), '..', 'configuration', 'google.json');
 };
 
 // Helper function to read settings

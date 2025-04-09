@@ -103,7 +103,7 @@ router.get('/config', async (req: Request, res: Response) => {
     logger.info('Cookies:', req.headers.cookie);
     
     const configDir = path.join(process.cwd(), 'configuration');
-    const configPath = path.join(configDir, 'backup.json');
+    const configPath = path.join(configDir, '..', 'configuration', 'backup.json');
     logger.info('Reading config from:', configPath);
     
     // Create configuration directory if it doesn't exist
@@ -185,7 +185,7 @@ router.post('/config', async (req: Request, res: Response) => {
       req.body.googleDrive.autoBackup.userId = session.userId;
     }
     
-    const configPath = path.join(process.cwd(), 'configuration', 'backup.json');
+    const configPath = path.join(process.cwd(), '..', 'configuration', 'backup.json');
     logger.info('Writing config to:', configPath);
     
     fs.writeFileSync(configPath, JSON.stringify(req.body, null, 2));

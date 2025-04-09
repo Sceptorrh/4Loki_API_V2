@@ -26,29 +26,32 @@ export default function LoginPage() {
           .find(row => row.startsWith('session_id='))
           ?.split('=')[1];
 
-        if (sessionId) {
-          try {
-            // Fetch user data directly from the database using the session ID
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/google/auth/user`, {
-              headers: {
-                'x-session-id': sessionId
-              }
-            });
+        // Only proceed if we have a session ID
+        if (!sessionId) {
+          return;
+        }
 
-            if (response.ok) {
-              const userData = await response.json();
-              setUserInfo(userData);
-              router.push('/');
-            } else {
-              // Session is invalid, clear cookies
-              document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-              document.cookie = 'user_info=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-              setUserInfo(null);
+        try {
+          // Fetch user data directly from the database using the session ID
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/google/auth/user`, {
+            headers: {
+              'x-session-id': sessionId
             }
-          } catch (error) {
-            console.error('Error fetching user data:', error);
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            setUserInfo(userData);
+            router.push('/');
+          } else {
+            // Session is invalid, clear cookies
+            document.cookie = 'session_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+            document.cookie = 'user_info=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             setUserInfo(null);
           }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setUserInfo(null);
         }
       } catch (error) {
         console.error('Error checking auth status:', error);

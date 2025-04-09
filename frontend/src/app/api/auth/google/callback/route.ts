@@ -54,7 +54,7 @@ export async function GET(request: Request) {
 
     // Set the session ID in a cookie
     nextResponse.cookies.set('session_id', tokenResponse.data.sessionId, {
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

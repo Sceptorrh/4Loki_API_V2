@@ -7,12 +7,12 @@ const router = Router();
 
 // Helper function to get the navigation settings file path
 const getNavigationSettingsPath = () => {
-  return path.join(process.cwd(), 'configuration', 'navigation.json');
+  return path.join(process.cwd(), '..', 'configuration', 'navigation.json');
 };
 
 // Helper function to get the Google configuration file path
 const getGoogleConfigPath = () => {
-  return path.join(process.cwd(), 'configuration', 'google.json');
+  return path.join(process.cwd(), '..', 'configuration', 'google.json');
 };
 
 // Helper function to ensure configuration directory exists

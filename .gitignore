@@ -19,11 +19,11 @@ frontend/.next/
 secrets.json
 
 # Configuration - sensitive files with API keys and secrets
-backend/configuration/
-backend/configuration/**
-backend/configuration/*.json
-backend/configuration/aiSettings.json
-backend/configuration/google.json
+configuration/
+configuration/**
+configuration/*.json
+configuration/aiSettings.json
+configuration/google.json
 frontend/secrets.json
 
 # Logs

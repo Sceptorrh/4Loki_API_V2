@@ -43,7 +43,7 @@ interface BackupRow extends RowDataPacket {
  */
 export function loadBackupConfig(): BackupConfig {
   try {
-    const configPath = path.join(process.cwd(), 'configuration', 'backup.json');
+    const configPath = path.join(process.cwd(), '..', 'configuration', 'backup.json');
     const configContent = fs.readFileSync(configPath, 'utf8');
     return JSON.parse(configContent) as BackupConfig;
   } catch (error) {
@@ -77,7 +77,7 @@ async function getDriveClient(sessionId: string) {
 export async function uploadToDrive(fileBuffer: Buffer, fileName: string, accessToken: string): Promise<string> {
   try {
     // Check if Google Drive is configured
-    const configPath = path.join(process.cwd(), 'configuration', 'backup.json');
+    const configPath = path.join(process.cwd(), '..', 'configuration', 'backup.json');
     if (!fs.existsSync(configPath)) {
       throw new Error('Backup configuration not found');
     }

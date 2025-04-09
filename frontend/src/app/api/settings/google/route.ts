@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-// Get the path to the configuration directory (one level up from frontend)
+// Get the path to the configuration directory in the root
 const CONFIG_DIR = path.join(process.cwd(), '..', 'configuration');
 const GOOGLE_CONFIG_FILE = path.join(CONFIG_DIR, 'google.json');
 

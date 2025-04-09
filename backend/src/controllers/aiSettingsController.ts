@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
-const AI_SETTINGS_PATH = path.join(process.cwd(), 'configuration', 'aiSettings.json');
+const AI_SETTINGS_PATH = path.join(process.cwd(), '..', 'configuration', 'aiSettings.json');
 
 const readAISettings = async () => {
   try {

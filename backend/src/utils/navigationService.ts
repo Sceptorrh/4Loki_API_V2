@@ -10,7 +10,7 @@ import * as path from 'path';
 export const fetchAndSaveTravelTimes = async (): Promise<void> => {
   try {
     // Read navigation settings from configuration file
-    const navigationConfigPath = path.join(process.cwd(), 'configuration', 'navigation.json');
+    const navigationConfigPath = path.join(process.cwd(), '..', 'configuration', 'navigation.json');
     const navigationConfig = JSON.parse(fs.readFileSync(navigationConfigPath, 'utf8'));
     
     // Check if coordinates are set

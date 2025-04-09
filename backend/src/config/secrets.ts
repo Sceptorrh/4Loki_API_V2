@@ -14,7 +14,7 @@ const secrets: Secrets = {};
 
 // Try to load secrets from configuration file
 const configDir = path.join(process.cwd(), 'configuration');
-const googleConfigPath = path.join(configDir, 'google.json');
+const googleConfigPath = path.join(configDir, '..', 'configuration', 'google.json');
 
 try {
   if (fs.existsSync(googleConfigPath)) {
