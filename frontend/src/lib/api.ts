@@ -15,6 +15,7 @@ api.interceptors.request.use((config) => {
   const sessionId = Cookies.get('session_id');
   if (sessionId) {
     config.headers['x-session-id'] = sessionId;
+    config.withCredentials = true;
   }
   return config;
 });

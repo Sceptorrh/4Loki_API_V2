@@ -9,67 +9,106 @@ import { SessionService } from '../services/session/sessionService';
 import { logger } from '../utils/logger';
 import pool from '../config/database';
 import { UserService } from '../services/user/userService';
+import express from 'express';
 
-const router = Router();
+const router: Router = express.Router();
 const googleAuth = GoogleAuthService.getInstance();
 
 // Auth callback route - no authentication required
 router.post('/auth/callback', async (req: Request, res: Response) => {
   try {
+    logger.info('=== Backend Callback Start ===');
     const { code, redirectUri, state } = req.body;
+    const config = loadSecrets();
+    logger.info('Received callback request:', {
+      hasCode: !!code,
+      hasRedirectUri: !!redirectUri,
+      hasState: !!state,
+      redirectUri,
+      state: state ? state.substring(0, 10) + '...' : null
+    });
+
     if (!code || !redirectUri || !state) {
+      logger.error('Missing required parameters:', { code: !!code, redirectUri: !!redirectUri, state: !!state });
       return res.status(400).json({ message: 'Missing required parameters' });
     }
 
     // Verify state parameter
+    logger.info('Verifying state parameter...', { state });
     const isValidState = await googleAuth.verifyOAuthState(state);
     if (!isValidState) {
+      logger.error('Invalid state parameter', { state });
       return res.status(400).json({ message: 'Invalid state parameter' });
     }
+    logger.info('State parameter verified successfully');
 
     // Exchange code for tokens
+    logger.info('Exchanging code for tokens...', {
+      code: code.substring(0, 10) + '...',
+      redirectUri,
+      clientId: config.OAUTH_CLIENT_ID ? 'present' : 'missing',
+      clientSecret: config.OAUTH_CLIENT_SECRET ? 'present' : 'missing'
+    });
     const accessToken = await googleAuth.getAccessToken(code, redirectUri);
     if (!accessToken) {
+      logger.error('Failed to get access token');
       return res.status(400).json({ message: 'Failed to get access token' });
     }
+    logger.info('Successfully obtained access token');
 
     // Get user info
+    logger.info('Getting user info...');
     const userInfo = await googleAuth.getUserInfo(accessToken);
     if (!userInfo) {
+      logger.error('Failed to get user info');
       return res.status(400).json({ message: 'Failed to get user info' });
     }
+    logger.info('Successfully obtained user info:', { email: userInfo.email });
 
     // Verify user is authorized
-    const googleConfig = loadSecrets();
-    if (userInfo.email !== googleConfig.AUTHORIZED_USER_EMAIL) {
+    logger.info('Verifying user authorization...');
+    if (userInfo.email !== config.AUTHORIZED_USER_EMAIL) {
+      logger.error('Unauthorized user:', { 
+        userEmail: userInfo.email, 
+        authorizedEmail: config.AUTHORIZED_USER_EMAIL 
+      });
       return res.status(403).json({ message: 'Unauthorized user' });
     }
+    logger.info('User authorized successfully');
 
     // Create or update user
+    logger.info('Creating/updating user...');
     const user = await UserService.createOrUpdateUser({
       id: userInfo.id,
       email: userInfo.email,
       name: userInfo.name,
       picture: userInfo.picture
     });
+    logger.info('User created/updated successfully:', { userId: user.id });
 
     // Get the session service instance
     const sessionService = SessionService.getInstance();
 
     // Get token data
+    logger.info('Getting token data...');
     const tokenData = googleAuth.getTokenData();
     if (!tokenData) {
+      logger.error('Failed to get token data');
       return res.status(400).json({ error: 'Failed to get token data' });
     }
+    logger.info('Successfully obtained token data');
 
     // Create session with tokens
+    logger.info('Creating session...');
     const sessionId = await sessionService.createSession(
       userInfo.id,
       accessToken,
       tokenData.refreshToken
     );
+    logger.info('Session created successfully:', { sessionId: sessionId.substring(0, 10) + '...' });
 
-    // Redirect to frontend with session ID
+    // Send response
+    logger.info('Sending response...');
     res.json({
       sessionId,
       userInfo: {
@@ -79,9 +118,23 @@ router.post('/auth/callback', async (req: Request, res: Response) => {
         picture: user.picture
       }
     });
+    logger.info('=== Backend Callback End ===');
   } catch (error) {
+    logger.error('=== Backend Callback Error ===');
     logger.error('Error in Google OAuth callback:', error);
+    if (axios.isAxiosError(error)) {
+      logger.error('Axios error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        requestData: error.config?.data
+      });
+    }
     res.status(500).json({ message: 'Failed to complete authentication' });
+    logger.error('=== Backend Callback Error End ===');
   }
 });
 
@@ -719,25 +772,28 @@ router.get('/auth/login-url', async (req, res) => {
   }
 });
 
-// Store OAuth state endpoint
-router.post('/auth/store-state', async (req, res) => {
+// Store OAuth state route - no authentication required
+router.post('/auth/store-state', async (req: Request, res: Response) => {
   try {
     const { state, expires } = req.body;
+    logger.info('Storing OAuth state:', { state, expires });
 
     if (!state || !expires) {
-      return res.status(400).json({ message: 'State and expiration time are required' });
+      logger.error('Missing required parameters:', { state: !!state, expires: !!expires });
+      return res.status(400).json({ message: 'Missing required parameters' });
     }
 
-    // Store the state in the database
+    // Store state in database
     await pool.query(
       'INSERT INTO OAuthState (state, expires) VALUES (?, ?)',
       [state, new Date(expires)]
     );
 
-    res.json({ message: 'State stored successfully' });
+    logger.info('State stored successfully');
+    return res.status(200).json({ message: 'State stored successfully' });
   } catch (error) {
-    console.error('Error storing OAuth state:', error);
-    res.status(500).json({ message: 'Failed to store OAuth state' });
+    logger.error('Error storing state:', error);
+    return res.status(500).json({ message: 'Failed to store state' });
   }
 });
 
@@ -759,6 +815,129 @@ router.get('/drive/files', async (req: AuthRequest, res: Response) => {
   } catch (error) {
     logger.error('Error getting drive files:', error);
     res.status(500).json({ message: 'Failed to get drive files' });
+  }
+});
+
+// Auth callback route for POST requests (from frontend)
+router.post('/auth/callback', async (req: Request, res: Response) => {
+  try {
+    logger.info('=== Backend Callback Start ===');
+    const { code, state, redirectUri } = req.body;
+    const config = loadSecrets();
+    
+    logger.info('Received backend callback with:', {
+      code: code ? `${code.substring(0, 10)}...` : null,
+      state: state ? `${state.substring(0, 10)}...` : null,
+      redirectUri: redirectUri || null
+    });
+
+    if (!code || !state || !redirectUri) {
+      logger.error('Missing required parameters:', { code: !!code, state: !!state, redirectUri: !!redirectUri });
+      return res.status(400).json({ message: 'Missing required parameters' });
+    }
+
+    // Verify state parameter
+    logger.info('Verifying state parameter...', { state });
+    const isValidState = await googleAuth.verifyOAuthState(state);
+    if (!isValidState) {
+      logger.error('Invalid state parameter', { state });
+      return res.status(400).json({ message: 'Invalid state parameter' });
+    }
+    logger.info('State parameter verified successfully');
+
+    // Exchange code for tokens
+    logger.info('Exchanging code for tokens...', {
+      code: code.substring(0, 10) + '...',
+      redirectUri,
+      clientId: config.OAUTH_CLIENT_ID ? 'present' : 'missing',
+      clientSecret: config.OAUTH_CLIENT_SECRET ? 'present' : 'missing'
+    });
+    const accessToken = await googleAuth.getAccessToken(code, redirectUri);
+    if (!accessToken) {
+      logger.error('Failed to get access token');
+      return res.status(400).json({ message: 'Failed to get access token' });
+    }
+    logger.info('Successfully obtained access token');
+
+    // Get user info
+    logger.info('Getting user info...');
+    const userInfo = await googleAuth.getUserInfo(accessToken);
+    if (!userInfo) {
+      logger.error('Failed to get user info');
+      return res.status(400).json({ message: 'Failed to get user info' });
+    }
+    logger.info('Successfully obtained user info:', { email: userInfo.email });
+
+    // Verify user is authorized
+    logger.info('Verifying user authorization...');
+    if (userInfo.email !== config.AUTHORIZED_USER_EMAIL) {
+      logger.error('Unauthorized user:', { 
+        userEmail: userInfo.email, 
+        authorizedEmail: config.AUTHORIZED_USER_EMAIL 
+      });
+      return res.status(403).json({ message: 'Unauthorized user' });
+    }
+    logger.info('User authorized successfully');
+
+    // Create or update user
+    logger.info('Creating/updating user...');
+    const user = await UserService.createOrUpdateUser({
+      id: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name,
+      picture: userInfo.picture
+    });
+    logger.info('User created/updated successfully:', { userId: user.id });
+
+    // Get the session service instance
+    const sessionService = SessionService.getInstance();
+
+    // Get token data
+    logger.info('Getting token data...');
+    const tokenData = googleAuth.getTokenData();
+    if (!tokenData) {
+      logger.error('Failed to get token data');
+      return res.status(400).json({ error: 'Failed to get token data' });
+    }
+    logger.info('Successfully obtained token data');
+
+    // Create session with tokens
+    logger.info('Creating session...');
+    const sessionId = await sessionService.createSession(
+      userInfo.id,
+      accessToken,
+      tokenData.refreshToken
+    );
+    logger.info('Session created successfully:', { sessionId: sessionId.substring(0, 10) + '...' });
+
+    // Send response
+    logger.info('Sending response...');
+    res.json({
+      sessionId,
+      userInfo: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture
+      }
+    });
+    logger.info('=== Backend Callback End ===');
+  } catch (error) {
+    logger.error('=== Backend Callback Error ===');
+    logger.error('Error in Google OAuth callback:', error);
+    if (axios.isAxiosError(error)) {
+      logger.error('Axios error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+        requestData: error.config?.data
+      });
+    }
+    res.status(500).json({ message: 'Failed to complete authentication' });
+    logger.error('=== Backend Callback Error End ===');
   }
 });
 

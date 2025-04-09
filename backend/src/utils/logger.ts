@@ -6,8 +6,12 @@ const customFormat = winston.format.combine(
     format: 'YYYY-MM-DD HH:mm:ss'
   }),
   winston.format.colorize(),
-  winston.format.printf(({ timestamp, level, message }) => {
-    return `${timestamp} ${level}: ${message}`;
+  winston.format.printf(({ timestamp, level, message, ...metadata }) => {
+    let metaStr = '';
+    if (Object.keys(metadata).length > 0) {
+      metaStr = JSON.stringify(metadata);
+    }
+    return `${timestamp} ${level}: ${message} ${metaStr}`;
   })
 );
 

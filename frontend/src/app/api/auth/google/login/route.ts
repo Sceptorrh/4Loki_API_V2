@@ -21,7 +21,7 @@ export async function GET() {
     
     // Add required parameters
     authUrl.searchParams.append('client_id', config.OAUTH_CLIENT_ID);
-    authUrl.searchParams.append('redirect_uri', 'http://localhost:3001/api/auth/google/callback');
+    authUrl.searchParams.append('redirect_uri', googleConfig.auth.redirectUri);
     authUrl.searchParams.append('response_type', 'code');
     authUrl.searchParams.append('scope', googleConfig.auth.scopes.join(' '));
     
@@ -35,13 +35,13 @@ export async function GET() {
     
     // Store state in the database through our backend
     try {
-      await axios.post('http://localhost:3000/api/v1/google/auth/store-state', {
+      await axios.post(`${googleConfig.api.baseUrl}/google/auth/store-state`, {
         state,
         expires: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
       });
     } catch (error) {
       console.error('Failed to store state:', error);
-      return NextResponse.redirect('http://localhost:3001/login?error=state_storage_failed');
+      return NextResponse.redirect('/login?error=state_storage_failed');
     }
     
     console.log('Generated OAuth URL with state:', state);
@@ -58,6 +58,6 @@ export async function GET() {
         }
       });
     }
-    return NextResponse.redirect('http://localhost:3001/login?error=init_failed');
+    return NextResponse.redirect('/login?error=init_failed');
   }
 } 

@@ -24,41 +24,73 @@ const defaultConfig: GoogleConfig = {
  */
 export function loadSecrets(): GoogleConfig {
   try {
-    // Path is relative to the project root
-    const configDir = path.join(process.cwd(), 'configuration');
-    const configPath = path.join(configDir, 'google.json');
-
-    // Create configuration directory if it doesn't exist
-    if (!fs.existsSync(configDir)) {
-      fs.mkdirSync(configDir, { recursive: true });
-    }
-
-    // Create configuration file with default values if it doesn't exist
-    if (!fs.existsSync(configPath)) {
-      fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
-      console.warn('Created new Google configuration file at:', configPath);
+    // Log the current working directory to help with debugging
+    console.log('Current working directory:', process.cwd());
+    
+    // Try multiple potential locations for the config file
+    const potentialPaths = [
+      // Option 1: Relative to current working directory
+      path.join(process.cwd(), 'configuration', 'google.json'),
+      // Option 2: Up one level from current directory
+      path.join(process.cwd(), '..', 'configuration', 'google.json'),
+      // Option 3: Absolute path (if you know the exact location)
+      '/c:/Users/Bradl/Documents/Projecten/CursorProjects/4Loki_API_V2/configuration/google.json'
+    ];
+    
+    console.log('Searching for configuration in:');
+    potentialPaths.forEach(p => console.log(`- ${p} (exists: ${fs.existsSync(p)})`));
+    
+    // Find the first path that exists
+    let configPath = potentialPaths.find(p => fs.existsSync(p));
+    
+    if (!configPath) {
+      console.error('Could not find configuration file in any of the expected locations');
+      console.error('Creating default configuration in:', potentialPaths[0]);
+      
+      // Create default config in the first path
+      const configDir = path.dirname(potentialPaths[0]);
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      
+      fs.writeFileSync(potentialPaths[0], JSON.stringify(defaultConfig, null, 2));
+      console.warn('Created new Google configuration file at:', potentialPaths[0]);
       console.warn('Please update the configuration with your Google API credentials.');
       return defaultConfig;
     }
-
+    
+    console.log('Found configuration file at:', configPath);
     const configContent = fs.readFileSync(configPath, 'utf8');
-    return JSON.parse(configContent) as GoogleConfig;
+    const parsedConfig = JSON.parse(configContent) as GoogleConfig;
+    
+    // Log config values (with secrets partially hidden)
+    console.log('Loaded configuration:', {
+      ROUTES_API_KEY: parsedConfig.ROUTES_API_KEY ? `${parsedConfig.ROUTES_API_KEY.substring(0, 8)}...` : 'missing',
+      OAUTH_CLIENT_ID: parsedConfig.OAUTH_CLIENT_ID ? `${parsedConfig.OAUTH_CLIENT_ID.substring(0, 8)}...` : 'missing',
+      OAUTH_CLIENT_SECRET: parsedConfig.OAUTH_CLIENT_SECRET ? `${parsedConfig.OAUTH_CLIENT_SECRET.substring(0, 8)}...` : 'missing',
+      AUTHORIZED_USER_EMAIL: parsedConfig.AUTHORIZED_USER_EMAIL || 'missing'
+    });
+    
+    return parsedConfig;
   } catch (error) {
     console.error('Failed to load Google configuration:', error);
     throw new Error('Failed to load Google API configuration. Please ensure configuration/google.json exists and is valid.');
   }
 }
 
+// Load secrets once
+const secrets = loadSecrets();
+
 // Configuration for Google services
 export const googleConfig = {
   // Get the API key from configuration
-  apiKey: loadSecrets().ROUTES_API_KEY,
+  apiKey: secrets.ROUTES_API_KEY,
   
   // OAuth configuration
   auth: {
-    clientId: loadSecrets().OAUTH_CLIENT_ID,
-    clientSecret: loadSecrets().OAUTH_CLIENT_SECRET,
-    redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/auth/google/callback',
+    clientId: secrets.OAUTH_CLIENT_ID,
+    clientSecret: secrets.OAUTH_CLIENT_SECRET,
+    redirectUri: 'http://localhost:3001/api/auth/google/callback',
     scopes: [
       'https://www.googleapis.com/auth/userinfo.profile',
       'https://www.googleapis.com/auth/userinfo.email',

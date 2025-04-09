@@ -39,7 +39,7 @@ let server: Server;
 const corsOptions = {
   origin: ['http://localhost:3001', 'http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With', 'Cookie'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With', 'Cookie', 'x-session-id'],
   exposedHeaders: ['Content-Range', 'X-Content-Range', 'Set-Cookie'],
   credentials: true,
   optionsSuccessStatus: 200,

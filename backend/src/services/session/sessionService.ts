@@ -31,27 +31,39 @@ export class SessionService {
    */
   public async createSession(userId: string, accessToken: string, refreshToken: string): Promise<string> {
     try {
+      logger.info('=== Session Creation Start ===');
+      logger.info('Creating session for user:', { userId });
+
       // Delete any existing sessions for this user
+      logger.info('Deleting existing sessions...');
       await pool.query('DELETE FROM Sessions WHERE user_id = ?', [userId]);
-      logger.info(`Deleted existing sessions for user ${userId}`);
+      logger.info('Existing sessions deleted');
 
       // Generate session ID
       const sessionId = crypto.randomBytes(32).toString('hex');
+      logger.info('Generated session ID:', { sessionId: sessionId.substring(0, 10) + '...' });
       
       // Set expiration times
       const now = new Date();
       const tokenExpires = new Date(now.getTime() + 1 * 60 * 60 * 1000); // 1 hour
       const sessionExpires = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+      logger.info('Set expiration times:', { 
+        tokenExpires: tokenExpires.toISOString(),
+        sessionExpires: sessionExpires.toISOString()
+      });
 
       // Insert new session
+      logger.info('Inserting new session into database...');
       await pool.query(
         'INSERT INTO Sessions (id, user_id, access_token, refresh_token, token_expires, session_expires) VALUES (?, ?, ?, ?, ?, ?)',
         [sessionId, userId, accessToken, refreshToken, tokenExpires, sessionExpires]
       );
+      logger.info('Session inserted successfully');
 
-      logger.info(`Created new session ${sessionId} for user ${userId}`);
+      logger.info('=== Session Creation End ===');
       return sessionId;
     } catch (error) {
+      logger.error('=== Session Creation Error ===');
       logger.error('Error creating session:', error);
       throw new Error('Failed to create session');
     }
@@ -62,17 +74,22 @@ export class SessionService {
    */
   public async getSession(sessionId: string): Promise<Session | null> {
     try {
+      logger.info('=== Get Session Start ===');
+      logger.info('Getting session:', { sessionId: sessionId.substring(0, 10) + '...' });
+
       const [rows] = await pool.query(
         'SELECT * FROM Sessions WHERE id = ? AND session_expires > NOW()',
         [sessionId]
       );
       
       if (!Array.isArray(rows) || rows.length === 0) {
+        logger.info('No active session found');
+        logger.info('=== Get Session End ===');
         return null;
       }
       
       const row = rows[0] as any;
-      return {
+      const session = {
         id: row.id,
         userId: row.user_id,
         accessToken: row.access_token,
@@ -80,7 +97,16 @@ export class SessionService {
         tokenExpires: new Date(row.token_expires),
         sessionExpires: new Date(row.session_expires)
       };
+
+      logger.info('Session found:', { 
+        userId: session.userId,
+        tokenExpires: session.tokenExpires.toISOString(),
+        sessionExpires: session.sessionExpires.toISOString()
+      });
+      logger.info('=== Get Session End ===');
+      return session;
     } catch (error) {
+      logger.error('=== Get Session Error ===');
       logger.error('Error getting session:', error);
       return null;
     }

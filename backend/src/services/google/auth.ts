@@ -65,7 +65,21 @@ export class GoogleAuthService {
    */
   public async getAccessToken(code: string, redirectUri: string): Promise<string | null> {
     try {
-      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+      logger.info('=== Get Access Token Start ===');
+      logger.info('Exchanging code for token:', {
+        code: code.substring(0, 10) + '...',
+        redirectUri,
+        clientId: googleConfig.auth.clientId ? 'present' : 'missing',
+        clientSecret: googleConfig.auth.clientSecret ? 'present' : 'missing'
+      });
+
+      // Verify we have the required credentials
+      if (!googleConfig.auth.clientId || !googleConfig.auth.clientSecret) {
+        logger.error('Missing OAuth credentials');
+        return null;
+      }
+
+      const params = new URLSearchParams({
         code,
         client_id: googleConfig.auth.clientId,
         client_secret: googleConfig.auth.clientSecret,
@@ -73,19 +87,50 @@ export class GoogleAuthService {
         grant_type: 'authorization_code'
       });
 
-      const { access_token, refresh_token, expires_in } = tokenResponse.data;
-      
-      // Store tokens in memory
-      this.tokenData = {
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        expiresAt: new Date(Date.now() + expires_in * 1000),
-        expiresIn: expires_in
-      };
+      // Log the exact parameters being sent
+      logger.info('Token exchange parameters:', {
+        code: code.substring(0, 10) + '...',
+        client_id: googleConfig.auth.clientId,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      });
 
-      return access_token;
+      logger.info('Making token exchange request to Google');
+      const response = await axios.post('https://oauth2.googleapis.com/token', params, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+
+      logger.info('Token exchange successful');
+      this.tokenData = {
+        accessToken: response.data.access_token,
+        refreshToken: response.data.refresh_token,
+        expiresIn: response.data.expires_in,
+        expiresAt: new Date(Date.now() + response.data.expires_in * 1000)
+      };
+      logger.info('=== Get Access Token End ===');
+      return response.data.access_token;
     } catch (error) {
+      logger.error('=== Get Access Token Error ===');
       logger.error('Error getting access token:', error);
+      if (axios.isAxiosError(error)) {
+        logger.error('Axios error details:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          requestData: {
+            code: code.substring(0, 10) + '...',
+            redirectUri,
+            clientId: googleConfig.auth.clientId ? 'present' : 'missing',
+            clientSecret: googleConfig.auth.clientSecret ? 'present' : 'missing'
+          }
+        });
+      }
+      logger.error('=== Get Access Token Error End ===');
       return null;
     }
   }
@@ -113,17 +158,24 @@ export class GoogleAuthService {
    */
   public async verifyOAuthState(state: string): Promise<boolean> {
     try {
+      logger.info('Verifying OAuth state:', { state });
+      
       const [rows] = await pool.query(
         'SELECT * FROM OAuthState WHERE state = ? AND expires > NOW()',
         [state]
       );
 
       if (!Array.isArray(rows) || rows.length === 0) {
+        logger.error('State verification failed:', { 
+          state,
+          reason: !Array.isArray(rows) ? 'Invalid query result' : 'No matching state found or expired'
+        });
         return false;
       }
 
       // Delete used state
       await pool.query('DELETE FROM OAuthState WHERE state = ?', [state]);
+      logger.info('State verified and deleted successfully');
       return true;
     } catch (error) {
       logger.error('Error verifying OAuth state:', error);
@@ -161,16 +213,20 @@ export class GoogleAuthService {
       // Store state in database
       await this.storeOAuthState(state);
 
+      // Log the redirectUri that will be used
+      logger.info('Generating login URL with redirect URI:', googleConfig.auth.redirectUri);
+
       // Generate login URL
       const loginUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       loginUrl.searchParams.append('client_id', googleConfig.auth.clientId);
       loginUrl.searchParams.append('redirect_uri', googleConfig.auth.redirectUri);
       loginUrl.searchParams.append('response_type', 'code');
-      loginUrl.searchParams.append('scope', 'https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email');
+      loginUrl.searchParams.append('scope', googleConfig.auth.scopes.join(' '));
       loginUrl.searchParams.append('access_type', 'offline');
       loginUrl.searchParams.append('prompt', 'consent');
       loginUrl.searchParams.append('state', state);
 
+      logger.info('Generated login URL with state:', state);
       return loginUrl.toString();
     } catch (error) {
       logger.error('Error generating login URL:', error);
@@ -211,11 +267,17 @@ export class GoogleAuthService {
             if (timeUntilExpiry < 15 * 60 * 1000) {
               logger.info(`Token for session ${session.id} needs refresh (expires in ${minutesUntilExpiry} minutes)`);
               
-              const response = await axios.post('https://oauth2.googleapis.com/token', {
+              const params = new URLSearchParams({
                 client_id: googleConfig.auth.clientId,
                 client_secret: googleConfig.auth.clientSecret,
                 refresh_token: session.refresh_token,
                 grant_type: 'refresh_token'
+              });
+
+              const response = await axios.post('https://oauth2.googleapis.com/token', params, {
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                }
               });
 
               await this.sessionService.updateSessionTokens(
@@ -230,6 +292,16 @@ export class GoogleAuthService {
             }
           } catch (error) {
             logger.error(`Error refreshing token for session ${session.id}:`, error);
+            if (axios.isAxiosError(error)) {
+              logger.error('Axios error details:', {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message,
+                url: error.config?.url,
+                method: error.config?.method,
+                headers: error.config?.headers
+              });
+            }
           }
         }
       } catch (error) {
@@ -255,11 +327,17 @@ export class GoogleAuthService {
           logger.info('Token expired - current token expires at:', session.tokenExpires);
           logger.info('Refreshing token for session:', sessionId);
           
-          const response = await axios.post('https://oauth2.googleapis.com/token', {
+          const params = new URLSearchParams({
             client_id: googleConfig.auth.clientId,
             client_secret: googleConfig.auth.clientSecret,
             refresh_token: session.refreshToken,
             grant_type: 'refresh_token'
+          });
+
+          const response = await axios.post('https://oauth2.googleapis.com/token', params, {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            }
           });
 
           // Update session with new tokens
