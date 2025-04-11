@@ -69,7 +69,7 @@ export default function LoginPage() {
   const getErrorMessage = () => {
     switch (error) {
       case 'not_authenticated':
-        return 'Please sign in to continue';
+        return null; // Don't show error for not authenticated state
       case 'session_expired':
         return 'Your session has expired. Please sign in again';
       case 'fetch_failed':
@@ -81,8 +81,29 @@ export default function LoginPage() {
       case 'init_failed':
         return 'Failed to start login process. Please try again';
       default:
-        return 'An error occurred during sign in. Please try again';
+        return error ? 'An error occurred during sign in. Please try again' : null;
     }
+  };
+
+  const getWelcomeMessage = () => {
+    // Show welcome message if not authenticated or if explicitly redirected from middleware
+    if (!userInfo || error === 'not_authenticated') {
+      return (
+        <div className="rounded-md bg-blue-50 p-4">
+          <div className="flex">
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                Welcome to Loki
+              </h3>
+              <div className="mt-2 text-sm text-blue-700">
+                Please sign in to access your account
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -94,7 +115,9 @@ export default function LoginPage() {
           </h2>
         </div>
         
-        {error && (
+        {getWelcomeMessage()}
+        
+        {error && error !== 'not_authenticated' && getErrorMessage() && (
           <div className="rounded-md bg-red-50 p-4">
             <div className="flex">
               <div className="ml-3">

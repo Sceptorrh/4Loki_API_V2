@@ -66,10 +66,10 @@ const Navigation: React.FC = () => {
           md:hover:w-64 group`}
       >
         {/* Logo */}
-        <div className="p-4">
-          <Link href="/" className="relative">
+        <div className="p-2 relative z-20 mb-8">
+          <Link href="/" className="relative block">
             {/* Small logo for collapsed sidebar */}
-            <div className="hidden md:block group-hover:hidden w-16 h-16 relative">
+            <div className={`${isMobileMenuOpen ? 'hidden' : ''} md:block md:group-hover:hidden w-16 h-16 flex items-center justify-center`}>
               <Image
                 src="/images/Logo-small.png"
                 alt="4Loki Logo"
@@ -81,22 +81,8 @@ const Navigation: React.FC = () => {
             </div>
             
             {/* Full logo for expanded sidebar */}
-            <div className="hidden md:group-hover:block w-56 h-16 relative">
-              <div className="absolute inset-0 bg-primary-100 rounded-lg flex items-center p-2">
-                <Image
-                  src="/images/Logo-wide.png"
-                  alt="4Loki Logo"
-                  width={200}
-                  height={48}
-                  className="object-contain"
-                  priority
-                />
-              </div>
-            </div>
-            
-            {/* Mobile logo */}
-            <div className="md:hidden w-56 h-16 relative">
-              <div className="absolute inset-0 bg-primary-100 rounded-lg flex items-center p-2">
+            <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden md:group-hover:block w-56 h-16`}>
+              <div className="bg-primary-100 rounded-lg flex items-center p-2">
                 <Image
                   src="/images/Logo-wide.png"
                   alt="4Loki Logo"
@@ -111,7 +97,7 @@ const Navigation: React.FC = () => {
         </div>
         
         {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto relative z-10">
           <ul className="space-y-2 px-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -164,10 +150,10 @@ const Navigation: React.FC = () => {
         <div className="mt-auto border-t border-secondary-100">
           {/* User Profile */}
           <div className="p-4">
-            <div className="hidden md:block group-hover:hidden">
+            <div className={`${isMobileMenuOpen ? 'hidden' : ''} md:block md:group-hover:hidden`}>
               <UserProfile isCollapsed={true} />
             </div>
-            <div className="md:hidden md:group-hover:block">
+            <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden md:group-hover:block`}>
               <UserProfile isCollapsed={false} />
             </div>
           </div>

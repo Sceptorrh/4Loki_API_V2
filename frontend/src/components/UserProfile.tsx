@@ -96,26 +96,35 @@ export default function UserProfile({ isCollapsed }: UserProfileProps) {
   }
 
   return (
-    <div className="flex items-center space-x-3 p-4">
-      <img
-        src={userInfo.picture}
-        alt={userInfo.name}
-        className="h-8 w-8 rounded-full"
-      />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">
-          {userInfo.name}
-        </p>
-        <p className="text-sm text-gray-500 truncate">
-          {userInfo.email}
-        </p>
+    <div className={`flex items-center ${isCollapsed ? 'justify-center p-2' : 'space-x-3 p-4'}`}>
+      <div className={`${isCollapsed ? 'w-12 h-12' : 'w-8 h-8'}`}>
+        <Image
+          src={userInfo.picture}
+          alt={userInfo.name}
+          width={isCollapsed ? 48 : 32}
+          height={isCollapsed ? 48 : 32}
+          className="rounded-full"
+          priority
+        />
       </div>
-      <button
-        onClick={handleLogout}
-        className="text-gray-400 hover:text-gray-500"
-      >
-        <FiLogOut className="h-5 w-5" />
-      </button>
+      {!isCollapsed && (
+        <>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {userInfo.name}
+            </p>
+            <p className="text-sm text-gray-500 truncate">
+              {userInfo.email}
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <FiLogOut className="h-5 w-5" />
+          </button>
+        </>
+      )}
     </div>
   );
 } 

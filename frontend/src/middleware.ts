@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// List of paths that don't require backend check
+// List of paths that don't require authentication
 const PUBLIC_PATHS = ['/login', '/backend-status', '/settings'];
 
 // This middleware runs on every request
@@ -11,6 +11,16 @@ export async function middleware(request: NextRequest) {
   // Allow access to public paths
   if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/settings/')) {
     return NextResponse.next();
+  }
+
+  // Check for session ID in cookies
+  const sessionId = request.cookies.get('session_id')?.value;
+
+  // If no session ID and not on a public path, redirect to login
+  if (!sessionId) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('error', 'not_authenticated');
+    return NextResponse.redirect(loginUrl);
   }
 
   try {
