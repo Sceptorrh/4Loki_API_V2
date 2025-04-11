@@ -343,7 +343,7 @@ export default function InvoiceReadyPage() {
         Date: appointmentToUpdate.Date,
         TimeStart: timeStart,
         TimeEnd: timeEnd,
-        DateEnd: appointmentToUpdate.DateEnd,
+        DateEnd: appointmentToUpdate.Date, // Use Date value for DateEnd
         CustomerId: appointmentToUpdate.CustomerId,
         AppointmentStatusId: appointmentToUpdate.AppointmentStatusId,
         ActualDuration: appointmentToUpdate.ActualDuration || 0,
@@ -380,7 +380,7 @@ export default function InvoiceReadyPage() {
         Date: appointmentToUpdate.Date,
         TimeStart: timeStart,
         TimeEnd: timeEnd,
-        DateEnd: appointmentToUpdate.DateEnd,
+        DateEnd: appointmentToUpdate.Date, // Use Date value for DateEnd
         CustomerId: appointmentToUpdate.CustomerId,
         AppointmentStatusId: appointmentToUpdate.AppointmentStatusId,
         ActualDuration: totalMinutes 

@@ -11,7 +11,6 @@ import {
   FiTarget, 
   FiFileText, 
   FiBarChart2, 
-  FiBell,
   FiMenu,
   FiX,
   FiDownload,
@@ -23,14 +22,8 @@ import UserProfile from './UserProfile';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: FiHome },
-  { 
-    name: 'Appointments', 
-    href: '/appointments', 
-    icon: FiCalendar,
-    subItems: [
-      { name: 'Invoice Ready', href: '/appointments/invoice-ready' }
-    ]
-  },
+  { name: 'Appointments', href: '/appointments', icon: FiCalendar },
+  { name: 'Invoice Ready', href: '/appointments/invoice-ready', icon: FiFileText },
   { name: 'Hours', href: '/hours', icon: FiClock },
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
@@ -101,7 +94,6 @@ const Navigation: React.FC = () => {
           <ul className="space-y-2 px-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const hasSubItems = item.subItems && item.subItems.length > 0;
               
               return (
                 <li key={item.name}>
@@ -117,29 +109,6 @@ const Navigation: React.FC = () => {
                     <item.icon className="h-5 w-5 flex-shrink-0" />
                     <span className="ml-3 whitespace-nowrap md:hidden md:group-hover:block font-medium">{item.name}</span>
                   </Link>
-                  
-                  {hasSubItems && (
-                    <ul className="mt-1 ml-6 space-y-1">
-                      {item.subItems.map((subItem) => {
-                        const isSubActive = pathname === subItem.href;
-                        return (
-                          <li key={subItem.name}>
-                            <Link
-                              href={subItem.href}
-                              className={`flex items-center px-2 py-1.5 text-sm rounded-md ${
-                                isSubActive
-                                  ? 'bg-primary-50 text-dog-lightgray'
-                                  : 'text-dog-gray hover:bg-secondary-100 hover:text-dog-lightgray'
-                              }`}
-                              onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                              <span className="ml-1 whitespace-nowrap md:hidden md:group-hover:block">{subItem.name}</span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
                 </li>
               );
             })}
@@ -156,17 +125,6 @@ const Navigation: React.FC = () => {
             <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} md:hidden md:group-hover:block`}>
               <UserProfile isCollapsed={false} />
             </div>
-          </div>
-
-          {/* Notification Icon */}
-          <div className="p-4">
-            <button
-              type="button"
-              className="w-full flex items-center justify-center md:group-hover:justify-start text-dog-gray hover:text-dog-lightgray focus:outline-none rounded-lg p-2 hover:bg-secondary-100"
-            >
-              <FiBell className="h-5 w-5" />
-              <span className="ml-3 md:hidden md:group-hover:block font-medium">Notifications</span>
-            </button>
           </div>
         </div>
       </aside>
