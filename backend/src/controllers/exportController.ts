@@ -133,4 +133,82 @@ export const generateExcelExport = async (req: Request, res: Response) => {
     console.error('Error generating Excel export:', error);
     throw new AppError('Failed to generate Excel export', 500);
   }
+};
+
+/**
+ * Get invoices that can be exported
+ */
+export const getExportableInvoices = async (req: Request, res: Response) => {
+  try {
+    const [invoices] = await db.execute(`
+      SELECT 
+        a.Id as id,
+        CONCAT(YEAR(a.Date), '-', LPAD(a.SerialNumber, 4, '0')) as invoiceNumber,
+        DATE_FORMAT(a.Date, '%Y-%m-%d') as date,
+        c.Name as customer,
+        GROUP_CONCAT(d.Name SEPARATOR ', ') as description,
+        COALESCE(SUM(sad.Price), 0) as amount,
+        a.ActualDuration as hours
+      FROM Appointment a
+      JOIN Customer c ON a.CustomerId = c.Id
+      LEFT JOIN AppointmentDog ad ON a.Id = ad.AppointmentId
+      LEFT JOIN Dog d ON ad.DogId = d.Id
+      LEFT JOIN ServiceAppointmentDog sad ON ad.Id = sad.AppointmentDogId
+      WHERE a.AppointmentStatusId = 'Inv' AND a.AppointmentStatusId != 'Exp'
+      GROUP BY a.Id, a.Date, a.SerialNumber, c.Name, a.ActualDuration
+      ORDER BY a.Date DESC
+    `);
+
+    res.json(invoices);
+  } catch (error) {
+    console.error('Error fetching exportable invoices:', error);
+    throw new AppError('Failed to fetch exportable invoices', 500);
+  }
+};
+
+/**
+ * Get additional hours that can be exported
+ */
+export const getExportableHours = async (req: Request, res: Response) => {
+  try {
+    const [hours] = await db.execute(`
+      SELECT 
+        ah.Id as id,
+        DATE_FORMAT(ah.Date, '%Y-%m-%d') as date,
+        sht.DefaultText as description,
+        ah.Duration as hours
+      FROM AdditionalHour ah
+      JOIN Statics_HourType sht ON ah.HourTypeId = sht.Id
+      WHERE ah.IsExported = 0 OR ah.IsExported IS NULL
+      ORDER BY ah.Date DESC
+    `);
+
+    res.json(hours);
+  } catch (error) {
+    console.error('Error fetching exportable hours:', error);
+    throw new AppError('Failed to fetch exportable hours', 500);
+  }
+};
+
+/**
+ * Get customers that can be exported
+ */
+export const getExportableCustomers = async (req: Request, res: Response) => {
+  try {
+    const [customers] = await db.execute(`
+      SELECT 
+        c.Id as id,
+        c.Name as name,
+        c.Email as email,
+        c.Phone as phone
+      FROM Customer c
+      WHERE c.IsExported = 0
+      ORDER BY c.Name ASC
+    `);
+
+    res.json(customers);
+  } catch (error) {
+    console.error('Error fetching exportable customers:', error);
+    throw new AppError('Failed to fetch exportable customers', 500);
+  }
 }; 

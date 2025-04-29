@@ -172,6 +172,11 @@ const validateRow = (tableName: string, rowData: any, rowNumber: number): TableV
         value: null
       });
     }
+
+    // If DateEnd is missing, set it to Date
+    if (!rowData.DateEnd && !rowData.dateend) {
+      rowData.DateEnd = rowData.Date;
+    }
   }
 
   // Special handling for AppointmentDog table

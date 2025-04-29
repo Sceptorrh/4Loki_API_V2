@@ -18,6 +18,7 @@ import {
   FiClock,
   FiSearch
 } from 'react-icons/fi';
+import { FaPaw } from 'react-icons/fa';
 import UserProfile from './UserProfile';
 
 const navItems = [
@@ -25,8 +26,8 @@ const navItems = [
   { name: 'Appointments', href: '/appointments', icon: FiCalendar },
   { name: 'Invoice Ready', href: '/appointments/invoice-ready', icon: FiFileText },
   { name: 'Customers', href: '/customers', icon: FiUsers },
-  { name: 'Dogs', href: '/dogs', icon: FiTarget },
-  { name: 'AI Search', href: '/ai-search', icon: FiSearch },
+  { name: 'Dogs', href: '/dogs', icon: FaPaw },
+  { name: 'Exports', href: '/exports', icon: FiDownload },
   { name: 'Settings', href: '/settings', icon: FiSettings }
 ];
 
