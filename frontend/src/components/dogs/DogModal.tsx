@@ -11,6 +11,7 @@ interface DogModalProps {
   customerId?: number;
   dogId?: number;
   mode: 'create' | 'edit';
+  isCustomerEditable?: boolean;
 }
 
 export default function DogModal({ 
@@ -19,7 +20,8 @@ export default function DogModal({
   onDogUpdated,
   customerId,
   dogId,
-  mode 
+  mode = 'create',
+  isCustomerEditable = true
 }: DogModalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,7 +52,7 @@ export default function DogModal({
         const [breedsResponse, sizesResponse, customersResponse] = await Promise.all([
           endpoints.dogBreeds.getAll(),
           endpoints.dogSizes.getAll(),
-          endpoints.customers.getAll()
+          endpoints.customers.getDropdown()
         ]);
         
         setDogBreeds(breedsResponse.data || []);
@@ -198,11 +200,22 @@ export default function DogModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {mode === 'create' && (
               <div className="md:col-span-2">
-                <CustomerSelection
-                  selectedCustomerId={selectedCustomerId}
-                  customers={customers}
-                  onCustomerChange={handleCustomerChange}
-                />
+                {isCustomerEditable ? (
+                  <CustomerSelection
+                    selectedCustomerId={selectedCustomerId}
+                    customers={customers}
+                    onCustomerChange={handleCustomerChange}
+                  />
+                ) : customerId ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Customer *
+                    </label>
+                    <div className="input bg-gray-50 text-gray-700">
+                      {customers.find(c => c.id === customerId)?.contactperson || 'Loading...'}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
 

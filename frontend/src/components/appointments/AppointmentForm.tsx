@@ -235,7 +235,6 @@ export default function AppointmentForm({
               id: dog.id,
               Name: dog.name,
               name: dog.name,
-              DogName: dog.DogName,
               CustomerId: selectedCustomerId,
               customerId: selectedCustomerId,
               services: [],
@@ -872,9 +871,11 @@ export default function AppointmentForm({
       
       {showDogModal && selectedCustomerId && (
         <DogModal
+          mode="create"
           customerId={selectedCustomerId}
           onClose={() => setShowDogModal(false)}
           onDogCreated={handleDogCreated}
+          isCustomerEditable={false}
         />
       )}
     </div>
