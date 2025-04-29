@@ -24,11 +24,9 @@ const navItems = [
   { name: 'Dashboard', href: '/', icon: FiHome },
   { name: 'Appointments', href: '/appointments', icon: FiCalendar },
   { name: 'Invoice Ready', href: '/appointments/invoice-ready', icon: FiFileText },
-  { name: 'Hours', href: '/hours', icon: FiClock },
   { name: 'Customers', href: '/customers', icon: FiUsers },
   { name: 'Dogs', href: '/dogs', icon: FiTarget },
   { name: 'AI Search', href: '/ai-search', icon: FiSearch },
-  { name: 'Exports', href: '/exports', icon: FiDownload },
   { name: 'Settings', href: '/settings', icon: FiSettings }
 ];
 
