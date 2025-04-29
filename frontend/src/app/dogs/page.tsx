@@ -3,14 +3,18 @@
 import { useState, useEffect } from 'react';
 import { endpoints } from '@/lib/api';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Dog } from '@/types';
+import DogModal from '@/components/dogs/DogModal';
 
 type SortField = 'name' | 'size' | 'birthday' | 'owner' | 'age' | null;
 type SortDirection = 'asc' | 'desc';
 
 export default function DogsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const customerId = searchParams.get('customer_id');
+  
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +22,8 @@ export default function DogsPage() {
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [clickTimer, setClickTimer] = useState<NodeJS.Timeout | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editingDogId, setEditingDogId] = useState<number | undefined>();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -175,7 +181,21 @@ export default function DogsPage() {
     return `${ageYears} years`;
   };
 
-  // Handle row navigation with click delay to detect double clicks
+  const handleDogCreated = (dogId: number, dogName: string) => {
+    setShowModal(false);
+    if (customerId) {
+      router.push(`/customers/${customerId}`);
+    } else {
+      router.push(`/dogs/${dogId}`);
+    }
+  };
+
+  const handleDogUpdated = (dogId: number, dogName: string) => {
+    setShowModal(false);
+    setEditingDogId(undefined);
+    router.push(`/dogs/${dogId}`);
+  };
+
   const handleRowClick = (dogId: string | number | undefined) => {
     if (!dogId) return;
     
@@ -183,7 +203,8 @@ export default function DogsPage() {
     if (clickTimer) {
       clearTimeout(clickTimer);
       setClickTimer(null);
-      router.push(`/dogs/${dogId}/edit`);
+      setEditingDogId(Number(dogId));
+      setShowModal(true);
     } else {
       // Set a timeout to detect if this is a single click
       const timer = setTimeout(() => {
@@ -199,9 +220,15 @@ export default function DogsPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dogs</h1>
-        <Link href="/dogs/new" className="btn btn-primary">
+        <button 
+          onClick={() => {
+            setEditingDogId(undefined);
+            setShowModal(true);
+          }}
+          className="btn btn-primary"
+        >
           New Dog
-        </Link>
+        </button>
       </div>
 
       <div className="mb-6">
@@ -347,13 +374,16 @@ export default function DogsPage() {
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link
-                        href={editUrl}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent row click
+                          setEditingDogId(Number(dogId));
+                          setShowModal(true);
+                        }}
                         className="text-primary-600 hover:text-primary-900"
-                        onClick={(e) => e.stopPropagation()} // Prevent row click
                       >
                         Edit
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 );
@@ -361,6 +391,20 @@ export default function DogsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showModal && (
+        <DogModal
+          mode={editingDogId ? "edit" : "create"}
+          dogId={editingDogId}
+          customerId={customerId ? parseInt(customerId) : undefined}
+          onClose={() => {
+            setShowModal(false);
+            setEditingDogId(undefined);
+          }}
+          onDogCreated={handleDogCreated}
+          onDogUpdated={handleDogUpdated}
+        />
       )}
     </div>
   );
