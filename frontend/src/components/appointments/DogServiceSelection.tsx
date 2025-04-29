@@ -246,20 +246,20 @@ export default function DogServiceSelection({
         </label>
       </div>
       {customerDogs.length === 0 ? (
-        <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-center">
-          <p className="text-gray-500 text-sm mb-2">
+        <div className="bg-gray-50 p-6 rounded-md border border-gray-200 text-center">
+          <p className="text-gray-500 mb-4">
             {selectedCustomerId 
-              ? "No dogs found for this customer." 
+              ? "This customer doesn't have any dogs yet." 
               : "Please select a customer to see their dogs."}
           </p>
           {selectedCustomerId && (
             <button
               type="button"
-              className="text-gray-400 hover:text-gray-600"
               onClick={() => setShowDogModal(true)}
-              title="Add First Dog"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
-              <FaPlus size={14} />
+              <FaPlus className="mr-2" size={14} />
+              Add First Dog
             </button>
           )}
         </div>
@@ -291,7 +291,7 @@ export default function DogServiceSelection({
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">
-                          {dog.Name || dog.name || dog.DogName || 'Unnamed Dog'}
+                          {dog.Name || dog.name || dog.DogName || ''}
                         </h3>
                       </div>
                     </div>

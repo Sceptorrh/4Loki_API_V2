@@ -51,10 +51,10 @@ interface FieldValidation {
 
 const TABLE_SCHEMA: Record<string, FieldValidation[]> = {
   Customer: [
-    { name: 'naam', type: 'string', required: true, maxLength: 255 },
-    { name: 'contactpersoon', type: 'string', required: false, maxLength: 255 },
-    { name: 'emailadres', type: 'string', required: false, maxLength: 255 },
-    { name: 'telefoonnummer', type: 'string', required: false, maxLength: 50 },
+    { name: 'name', type: 'string', required: true, maxLength: 255 },
+    { name: 'contactperson', type: 'string', required: false, maxLength: 255 },
+    { name: 'email', type: 'string', required: false, maxLength: 255 },
+    { name: 'phone', type: 'string', required: false, maxLength: 50 },
     { name: 'notities', type: 'string', required: false, maxLength: 500 },
     { name: 'isallowcontactshare', type: 'string', required: false, maxLength: 10 },
     { name: 'createdon', type: 'date', required: false },
@@ -790,10 +790,10 @@ async function processTableRow(tableName: string, row: any, rowNumber: number): 
       // Add more details for Customer table duplicates
       if (tableName === 'Customer') {
         const customerDetails = [];
-        // Check for name in both cases (naam and Naam)
-        const name = row.naam || row.Naam;
-        const email = row.emailadres || row.Emailadres || row.email || row.Email;
-        const phone = row.telefoonnummer || row.Telefoonnummer || row.phone || row.Phone;
+        // Check for name in both cases (name and Name)
+        const name = row.name || row.Name;
+        const email = row.email || row.Email;
+        const phone = row.phone || row.Phone;
         
         if (name) customerDetails.push(`Name: ${name}`);
         if (email) customerDetails.push(`Email: ${email}`);

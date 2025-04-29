@@ -18,6 +18,7 @@ interface Dog {
   id: number;
   Name: string;
   name: string;
+  DogName?: string;
   CustomerId: number;
   customerId: number;
   services: DogService[];
@@ -144,6 +145,7 @@ export default function AppointmentForm({
           id: dog.Id || dog.id,
           Name: dog.Name || dog.name,
           name: dog.Name || dog.name,
+          DogName: dog.DogName,
           CustomerId: dog.CustomerId || dog.customerId,
           customerId: dog.CustomerId || dog.customerId,
           services: dog.services || [],
@@ -216,7 +218,8 @@ export default function AppointmentForm({
       const customerDogs = dogs.filter(dog => {
         const dogId = dog.Id !== undefined ? dog.Id : dog.id;
         const customerId = dog.CustomerId !== undefined ? dog.CustomerId : dog.customerId;
-        return customerId === selectedCustomerId;
+        const hasValidName = dog.Name || dog.name || dog.DogName;
+        return customerId === selectedCustomerId && dogId && hasValidName;
       });
       
       if (customerDogs.length === 0 && customers.length > 0) {
@@ -225,24 +228,42 @@ export default function AppointmentForm({
         );
         
         if (selectedCustomer && selectedCustomer.dogs && selectedCustomer.dogs.length > 0) {
-          const dogsFromDropdown = selectedCustomer.dogs.map((dog: {id: number, name: string}) => ({
-            Id: dog.id,
-            id: dog.id,
-            Name: dog.name,
-            name: dog.name,
-            CustomerId: selectedCustomerId,
-            customerId: selectedCustomerId,
-            services: []
-          }));
+          const mappedDogs = selectedCustomer.dogs
+            .filter(dog => dog && dog.id && dog.name)
+            .map(dog => ({
+              Id: dog.id,
+              id: dog.id,
+              Name: dog.name,
+              name: dog.name,
+              DogName: dog.DogName,
+              CustomerId: selectedCustomerId,
+              customerId: selectedCustomerId,
+              services: [],
+              ServiceNote: ''
+            }));
           
-          setAvailableDogs(dogsFromDropdown);
-          setCustomerDogs(dogsFromDropdown);
-          
-          if (dogsFromDropdown.length === 1) {
-            setSelectedDogIds([dogsFromDropdown[0].Id]);
+          if (mappedDogs.length > 0) {
+            console.log('AppointmentForm - Using dogs from dropdown:', mappedDogs);
+            setAvailableDogs(mappedDogs);
+            setCustomerDogs(mappedDogs);
+            
+            if (mappedDogs.length === 1) {
+              setSelectedDogIds([mappedDogs[0].Id]);
+            }
+          } else {
+            // No valid dogs found, set empty arrays
+            console.log('AppointmentForm - No valid dogs found, setting empty lists');
+            setAvailableDogs([]);
+            setCustomerDogs([]);
+            setSelectedDogIds([]);
           }
-          return;
+        } else {
+          // Customer has no dogs, set empty arrays
+          setAvailableDogs([]);
+          setCustomerDogs([]);
+          setSelectedDogIds([]);
         }
+        return;
       }
       
       setAvailableDogs(customerDogs);
@@ -532,20 +553,92 @@ export default function AppointmentForm({
     }
   };
 
-  const handleCustomerSelection = (customer: null | { id: number; dogs: Dog[] }) => {
-    setSelectedCustomerId(customer?.id || null);
-    setSelectedDogIds([]);
-    setDogServices({});
-    setDogNotes({});
+  const handleCustomerSelection = (customer: null | { id: number; dogs: any[] }) => {
+    console.log('AppointmentForm - handleCustomerSelection called with:', customer);
     
-    if (customer) {
-      setAvailableDogs(customer.dogs);
-      setCustomerDogs(customer.dogs);
+    if (customer && customer.id) {
+      console.log('AppointmentForm - Setting customer ID:', customer.id);
+      setSelectedCustomerId(customer.id);
+      
+      // Find the customer's dogs from the main dogs list
+      const customerDogs = dogs.filter(dog => {
+        const dogId = dog.Id !== undefined ? dog.Id : dog.id;
+        const customerId = dog.CustomerId !== undefined ? dog.CustomerId : dog.customerId;
+        const hasValidName = dog.Name || dog.name || dog.DogName;
+        return customerId === customer.id && dogId && hasValidName;
+      });
+      
+      console.log('AppointmentForm - Found dogs from main list:', customerDogs);
+      
+      // If no dogs found in the main list and customer has dogs in dropdown, use those
+      if (customerDogs.length === 0 && customer.dogs && customer.dogs.length > 0) {
+        const mappedDogs = customer.dogs
+          .filter(dog => dog && dog.id && dog.name)
+          .map(dog => ({
+            Id: dog.id,
+            id: dog.id,
+            Name: dog.name,
+            name: dog.name,
+            CustomerId: customer.id,
+            customerId: customer.id,
+            services: [],
+            ServiceNote: ''
+          }));
+        
+        if (mappedDogs.length > 0) {
+          console.log('AppointmentForm - Using dogs from dropdown:', mappedDogs);
+          setAvailableDogs(mappedDogs);
+          setCustomerDogs(mappedDogs);
+          
+          if (mappedDogs.length === 1) {
+            setSelectedDogIds([mappedDogs[0].Id]);
+          }
+        } else {
+          // No valid dogs found, set empty arrays
+          console.log('AppointmentForm - No valid dogs found, setting empty lists');
+          setAvailableDogs([]);
+          setCustomerDogs([]);
+          setSelectedDogIds([]);
+        }
+      } else if (customerDogs.length > 0) {
+        // Only set dogs if we actually found some valid ones
+        console.log('AppointmentForm - Using dogs from main list');
+        setAvailableDogs(customerDogs);
+        setCustomerDogs(customerDogs);
+      } else {
+        // No dogs found in either list, set empty arrays
+        console.log('AppointmentForm - No dogs found, setting empty lists');
+        setAvailableDogs([]);
+        setCustomerDogs([]);
+        setSelectedDogIds([]);
+      }
+      
+      // Clear previous selections
+      setSelectedDogIds([]);
+      setDogServices({});
+      setDogNotes({});
     } else {
+      console.log('AppointmentForm - Clearing customer selection');
+      // Clear everything if no customer selected
+      setSelectedCustomerId(null);
       setAvailableDogs([]);
       setCustomerDogs([]);
+      setSelectedDogIds([]);
+      setDogServices({});
+      setDogNotes({});
     }
   };
+
+  // Add a useEffect to log state changes
+  useEffect(() => {
+    console.log('AppointmentForm - State updated:', {
+      selectedCustomerId,
+      customerDogsCount: customerDogs.length,
+      availableDogsCount: availableDogs.length,
+      selectedDogIds,
+      customersCount: customers.length
+    });
+  }, [selectedCustomerId, customerDogs, availableDogs, selectedDogIds, customers]);
 
   const handleDogCreated = async (dogId: number, dogName: string) => {
     setShowDogModal(false);
@@ -557,6 +650,7 @@ export default function AppointmentForm({
       id: dog.Id,
       Name: dog.Name,
       name: dog.Name,
+      DogName: dog.DogName,
       CustomerId: dog.CustomerId,
       customerId: dog.CustomerId,
       services: dog.services,
@@ -619,6 +713,7 @@ export default function AppointmentForm({
         id: dog.Id || dog.id,
         Name: dog.Name || dog.name,
         name: dog.Name || dog.name,
+        DogName: dog.DogName,
         CustomerId: dog.CustomerId || dog.customerId,
         customerId: dog.CustomerId || dog.customerId,
         services: dog.services || [],

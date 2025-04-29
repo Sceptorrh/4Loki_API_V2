@@ -3,7 +3,7 @@ import { RouteHandler } from '../utils/routeHandler';
 import { customerSchema } from '../validation/schemas';
 import { validate } from '../middleware/validate';
 import { AppError } from '../middleware/errorHandler';
-import { getActiveCustomers, getActiveCustomersHistory } from '../controllers/customerController';
+import { getActiveCustomers, getActiveCustomersHistory, getCustomerTable } from '../controllers/customerController';
 
 const router = Router();
 const handler = new RouteHandler('Customer', customerSchema);
@@ -121,7 +121,7 @@ router.get('/active/history', getActiveCustomersHistory);
  *                     nullable: true
  *                     description: Days since last appointment
  */
-router.get('/table', handler.getCustomerTable.bind(handler));
+router.get('/table', getCustomerTable);
 
 /**
  * @swagger
@@ -244,10 +244,6 @@ router.put('/:id', validate(customerSchema), handler.update.bind(handler));
  * /customers:
  *   delete:
  *     summary: Delete all customers
- *     tags: [Customers]
- *     responses:
- *       200:
- *         description: All customers deleted successfully
  */
 router.delete('/', handler.deleteAll.bind(handler));
 

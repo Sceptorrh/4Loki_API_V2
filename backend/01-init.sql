@@ -74,19 +74,19 @@ CREATE TABLE IF NOT EXISTS `Statics_Dogbreed` (
 
 CREATE TABLE IF NOT EXISTS `Customer` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `Naam` varchar(255) DEFAULT NULL,
-  `Contactpersoon` varchar(255) DEFAULT NULL,
-  `Emailadres` varchar(255) DEFAULT NULL,
-  `Telefoonnummer` varchar(50) DEFAULT NULL,
-  `Notities` text DEFAULT NULL,
+  `Name` varchar(255) DEFAULT NULL,
+  `Contactperson` varchar(255) DEFAULT NULL,
+  `Email` varchar(255) DEFAULT NULL,
+  `Phone` varchar(50) DEFAULT NULL,
+  `Notes` text DEFAULT NULL,
   `IsExported` tinyint(1) DEFAULT NULL,
   `IsAllowContactShare` varchar(10) DEFAULT NULL,
   `CreatedOn` datetime DEFAULT CURRENT_TIMESTAMP,
   `UpdatedOn` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`Id`),
-  UNIQUE KEY `customer_naam_unique` (`Naam`),
-  UNIQUE KEY `customer_telefoonnummer_unique` (`Telefoonnummer`),
-  UNIQUE KEY `customer_contactpersoon_unique` (`Contactpersoon`)
+  UNIQUE KEY `customer_name_unique` (`Name`),
+  UNIQUE KEY `customer_phone_unique` (`Phone`),
+  UNIQUE KEY `customer_contactperson_unique` (`Contactperson`)
 ) ENGINE=InnoDB AUTO_INCREMENT=256 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `Dog` (

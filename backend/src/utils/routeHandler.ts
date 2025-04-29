@@ -303,20 +303,20 @@ export class RouteHandler {
       const searchTerm = req.query.search as string || '';
 
       const searchCondition = searchTerm 
-        ? `WHERE LOWER(c.Contactpersoon) LIKE LOWER(?) 
-           OR LOWER(c.Naam) LIKE LOWER(?) 
-           OR LOWER(c.Emailadres) LIKE LOWER(?) 
-           OR c.Telefoonnummer LIKE ? 
+        ? `WHERE LOWER(c.Contactperson) LIKE LOWER(?)
+           OR LOWER(c.Name) LIKE LOWER(?)
+           OR LOWER(c.Email) LIKE LOWER(?)
+           OR c.Phone LIKE ?
            OR LOWER(d.Name) LIKE LOWER(?)`
         : '';
 
       const query = `
         SELECT 
           c.Id,
-          c.Contactpersoon,
-          c.Naam,
-          c.Emailadres,
-          c.Telefoonnummer,
+          c.Contactperson,
+          c.Name,
+          c.Email,
+          c.Phone,
           c.IsAllowContactShare,
           COUNT(DISTINCT d.Id) as DogCount,
           GROUP_CONCAT(DISTINCT d.Name) as Dogs,
@@ -340,8 +340,8 @@ export class RouteHandler {
             )
         ) interval_data ON c.Id = interval_data.CustomerId
         ${searchCondition}
-        GROUP BY c.Id, c.Contactpersoon, c.Naam, c.Emailadres, c.Telefoonnummer, c.IsAllowContactShare
-        ORDER BY c.Naam
+        GROUP BY c.Id, c.Contactperson, c.Name, c.Email, c.Phone, c.IsAllowContactShare
+        ORDER BY c.Name
       `;
 
       const searchParams = searchTerm 
@@ -389,7 +389,7 @@ export class RouteHandler {
           d.Id,
           d.Name,
           d.Birthday,
-          c.Contactpersoon as CustomerName,
+          c.Contactperson as CustomerName,
           ds.Label as Size,
           GROUP_CONCAT(DISTINCT db.Name) as BreedNames,
           GROUP_CONCAT(DISTINCT db.Id) as BreedIds
@@ -405,7 +405,7 @@ export class RouteHandler {
       if (searchTerm) {
         query += `
           WHERE d.Name LIKE ? 
-          OR c.Contactpersoon LIKE ? 
+          OR c.Contactperson LIKE ? 
           OR db.Name LIKE ?
         `;
         params.push(

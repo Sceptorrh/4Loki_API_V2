@@ -73,11 +73,12 @@ router.get('/dogbreeds', async (req, res, next) => {
  */
 router.get('/customers', async (req, res) => {
   try {
+    const searchTerm = req.query.search as string || '';
     const query = `
       SELECT 
         c.Id as id,
-        c.Contactpersoon as contactperson,
-        JSON_ARRAYAGG(
+        c.Contactperson as contactperson,
+        GROUP_CONCAT(
           JSON_OBJECT(
             'id', d.Id,
             'name', d.Name
@@ -85,16 +86,19 @@ router.get('/customers', async (req, res) => {
         ) as dogs
       FROM Customer c
       LEFT JOIN Dog d ON c.Id = d.CustomerId
-      GROUP BY c.Id, c.Contactpersoon
-      ORDER BY c.Contactpersoon
+      WHERE c.Contactperson LIKE ?
+      GROUP BY c.Id, c.Contactperson
+      ORDER BY c.Contactperson
     `;
-    const [rows] = await pool.query<CustomerWithDogs[]>(query);
+    const [rows] = await pool.query<CustomerWithDogs[]>(query, [`%${searchTerm}%`]);
     const processedRows = (rows as CustomerWithDogs[]).map(row => ({
-      ...row,
-      dogs: JSON.parse(row.dogs)[0].id === null ? [] : JSON.parse(row.dogs)
+      id: row.id,
+      contactperson: row.contactperson,
+      dogs: row.dogs ? JSON.parse(`[${row.dogs}]`) : []
     }));
     res.json(processedRows);
   } catch (error) {
+    console.error('Error in customers dropdown:', error);
     throw new AppError('Error fetching customers', 500);
   }
 });

@@ -18,11 +18,11 @@ interface GoogleContact {
 }
 
 interface Customer {
-  Id: number;
-  Contactpersoon: string;
-  Naam: string;
-  Emailadres: string;
-  Telefoonnummer: string;
+  id: number;
+  contactperson: string;
+  name: string;
+  email: string;
+  phone: string;
 }
 
 interface GoogleContactsSelectorProps {
@@ -158,16 +158,16 @@ export default function GoogleContactsSelector({
     });
 
     return existingCustomers.some(customer => {
-      const customerName = customer.Naam.toLowerCase();
-      const customerContact = customer.Contactpersoon.toLowerCase();
-      const customerEmail = customer.Emailadres?.toLowerCase() || '';
-      const customerPhone = customer.Telefoonnummer ? normalizePhoneNumber(customer.Telefoonnummer) : '';
+      const customerName = customer.name?.toLowerCase() || '';
+      const customerContact = customer.contactperson?.toLowerCase() || '';
+      const customerEmail = customer.email?.toLowerCase() || '';
+      const customerPhone = customer.phone ? normalizePhoneNumber(customer.phone) : '';
 
       console.log('Comparing with customer:', {
         name: customerName,
         contact: customerContact,
         email: customerEmail,
-        phone: customer.Telefoonnummer,
+        phone: customer.phone,
         normalizedPhone: customerPhone
       });
 
@@ -235,7 +235,7 @@ export default function GoogleContactsSelector({
           ) : (
             filteredContacts.map((contact) => {
               const name = contact.person?.names?.[0]?.displayName || 'No name';
-              const email = contact.person?.emailAddresses?.[0]?.value || 'No email';
+              const email = contact.person?.emailAddresses?.[0]?.value || '';
               const phone = contact.person?.phoneNumbers?.[0]?.value || 'No phone';
               const exists = isExistingCustomer(contact);
 
@@ -260,7 +260,7 @@ export default function GoogleContactsSelector({
                   }`}
                 >
                   <div className="font-medium">{name}</div>
-                  <div className="text-sm text-gray-600">{email}</div>
+                  {email && <div className="text-sm text-gray-600">{email}</div>}
                   <div className="text-sm text-gray-600">{phone}</div>
                   {exists && (
                     <div className="text-xs text-gray-500 mt-1">Already added as a customer</div>

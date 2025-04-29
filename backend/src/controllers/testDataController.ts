@@ -1137,7 +1137,7 @@ export const generateTestData = async (req: Request, res: Response) => {
       const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`;
       
       const [result] = await connection.query<ResultSetHeader>(
-        'INSERT INTO Customer (Naam, Contactpersoon, Emailadres, Telefoonnummer, Notities, IsExported, IsAllowContactShare) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO Customer (Name, Contactperson, Email, Phone, Notes, IsExported, IsAllowContactShare) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [
           fullName,
           fullName, // Contact person is the same as name

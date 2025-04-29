@@ -1,11 +1,16 @@
 import { z } from 'zod';
 
 export const customerSchema = z.object({
-  Naam: z.string().min(1, 'Name is required'),
-  Contactpersoon: z.string().min(1, 'Contact person is required'),
-  Emailadres: z.string().email('Invalid email address').optional(),
-  Telefoonnummer: z.string().min(1, 'Phone number is required'),
-  Notities: z.string().optional(),
+  Name: z.string().min(1, 'Name is required'),
+  Contactperson: z.string().min(1, 'Contact person is required'),
+  Email: z.union([
+    z.string().email('Invalid email address'),
+    z.string().length(0).transform(() => null),
+    z.null(),
+    z.undefined().transform(() => null)
+  ]).optional(),
+  Phone: z.string().min(1, 'Phone number is required'),
+  Notes: z.string().optional(),
   IsAllowContactShare: z.union([
     z.enum(['yes', 'no', 'unknown']),
     z.literal(null),

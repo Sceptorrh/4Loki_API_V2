@@ -51,19 +51,20 @@ export default function CustomerSelection({
     };
   }, []);
 
-  const handleCustomerChange = (customerId: number) => {
-    setSelectedCustomerId(customerId);
-    setDropdownOpen(false);
-    setSearchTerm('');
-    
-    // Call onCustomerSelected callback if provided
+  const handleCustomerClick = (customer: CustomerDropdownItem) => {
+    console.log('Customer clicked:', customer);
+    setSelectedCustomerId(customer.id);
     if (onCustomerSelected) {
-      const selectedCustomer = customers.find(c => c.id === customerId) || null;
-      onCustomerSelected(selectedCustomer);
+      onCustomerSelected({
+          id: customer.id,
+          dogs: customer.dogs
+      });
     }
+    setDropdownOpen(false);
   };
 
   const clearCustomer = () => {
+    console.log('CustomerSelection - clearCustomer called');
     setSelectedCustomerId(null);
     setSearchTerm('');
     
@@ -86,6 +87,14 @@ export default function CustomerSelection({
     return customer.dogs.some(dog => 
       dog.name.toLowerCase().includes(search)
     );
+  });
+
+  console.log('CustomerSelection - Current state:', {
+    selectedCustomerId,
+    searchTerm,
+    dropdownOpen,
+    customersCount: customers.length,
+    filteredCustomersCount: filteredCustomers.length
   });
 
   return (
@@ -116,14 +125,18 @@ export default function CustomerSelection({
                 : searchTerm
               }
               onChange={(e) => {
-                if (selectedCustomerId) return; // Don't allow changes when customer is selected
-                setSearchTerm(e.target.value);
+                if (!selectedCustomerId) {
+                  setSearchTerm(e.target.value);
+                }
                 setDropdownOpen(true);
               }}
               onFocus={() => {
-                if (!selectedCustomerId) setDropdownOpen(true);
+                setDropdownOpen(true);
               }}
-              readOnly={selectedCustomerId !== null}
+              onClick={() => {
+                setDropdownOpen(true);
+              }}
+              readOnly
             />
             {selectedCustomerId && (
               <button 
@@ -137,7 +150,7 @@ export default function CustomerSelection({
           </div>
         </div>
         
-        {dropdownOpen && !selectedCustomerId && (
+        {dropdownOpen && (
           <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-300 max-h-60 overflow-auto">
             {filteredCustomers.length === 0 ? (
               <div className="p-2 text-gray-500">No customers found</div>
@@ -146,12 +159,17 @@ export default function CustomerSelection({
                 <div 
                   key={customer.id}
                   className={`p-2 cursor-pointer hover:bg-gray-100 ${selectedCustomerId === customer.id ? 'bg-primary-50' : ''}`}
-                  onClick={() => handleCustomerChange(customer.id)}
+                  onClick={() => {
+                    console.log('CustomerSelection - Customer clicked:', customer);
+                    handleCustomerClick(customer);
+                  }}
                 >
                   <div className="font-medium">{customer.contactperson}</div>
-                  {customer.dogs.length > 0 && (
+                  {customer.dogs && customer.dogs.length > 0 && (
                     <div className="text-sm text-gray-600">
-                      Dogs: {customer.dogs.map(d => d.name).join(', ')}
+                      Dogs: {customer.dogs.map((d, index) => (
+                        <span key={d.id}>{d.name}{index < customer.dogs.length - 1 ? ', ' : ''}</span>
+                      ))}
                     </div>
                   )}
                 </div>

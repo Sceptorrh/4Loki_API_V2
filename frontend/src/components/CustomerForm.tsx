@@ -5,6 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import WarningModal from './WarningModal';
 
+interface CustomerFormData {
+  Name: string;
+  Contactperson: string;
+  Email: string;
+  Phone: string;
+  Notes: string;
+  IsAllowContactShare: boolean;
+}
+
 interface CustomerFormProps {
   onSubmit: (customerId: number, customerName: string) => void;
   onCancel?: () => void;
@@ -18,16 +27,13 @@ export default function CustomerForm({ onSubmit, onCancel, preFilledName, isModa
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   
-  const [formData, setFormData] = useState({
-    name: preFilledName || '',
-    contact: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    postal_code: '',
-    notes: '',
-    is_allow_contact_share: ''
+  const [formData, setFormData] = useState<CustomerFormData>({
+    Name: preFilledName || '',
+    Contactperson: '',
+    Email: '',
+    Phone: '',
+    Notes: '',
+    IsAllowContactShare: false
   });
 
   const [showWarning, setShowWarning] = useState(false);
@@ -42,18 +48,29 @@ export default function CustomerForm({ onSubmit, onCancel, preFilledName, isModa
     return phoneRegex.test(cleanPhone);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleContactSelect = (contact: { name: string; email: string; phone: string }) => {
     setFormData(prev => ({
       ...prev,
-      name: contact.name,
-      contact: contact.name,
-      ...(contact.email !== 'No email' && { email: contact.email }),
-      ...(contact.phone !== 'No phone' && { phone: contact.phone })
+      Name: contact.name,
+      Contactperson: contact.name,
+      Email: contact.email,
+      Phone: contact.phone
+    }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked
     }));
   };
 
@@ -62,13 +79,13 @@ export default function CustomerForm({ onSubmit, onCancel, preFilledName, isModa
     setError(null);
 
     // Check for required fields
-    if (!formData.name || !formData.contact || !formData.phone) {
+    if (!formData.Name || !formData.Contactperson || !formData.Phone) {
       setError('Please fill in all required fields');
       return;
     }
 
     // Validate phone number
-    if (!validatePhoneNumber(formData.phone)) {
+    if (!validatePhoneNumber(formData.Phone)) {
       setShowWarning(true);
       setPendingSubmit(() => async () => {
         await submitForm();
@@ -82,17 +99,14 @@ export default function CustomerForm({ onSubmit, onCancel, preFilledName, isModa
   const submitForm = async () => {
     setIsSubmitting(true);
     try {
-      // Map form data to API format with Dutch field names
+      // Map form data to API format matching database schema
       const apiData = {
-        Naam: formData.name,
-        Contactpersoon: formData.contact,
-        Emailadres: formData.email,
-        Telefoonnummer: formData.phone,
-        Adres: formData.address,
-        Plaats: formData.city,
-        Postcode: formData.postal_code,
-        Notities: formData.notes,
-        IsAllowContactShare: formData.is_allow_contact_share ? 'yes' : null
+        Name: formData.Name,
+        Contactperson: formData.Contactperson,
+        Email: formData.Email,
+        Phone: formData.Phone,
+        Notes: formData.Notes,
+        IsAllowContactShare: formData.IsAllowContactShare ? 'yes' : null
       };
 
       const response = await fetch('/api/v1/customers', {
@@ -110,7 +124,7 @@ export default function CustomerForm({ onSubmit, onCancel, preFilledName, isModa
 
       const data = await response.json();
       if (onSubmit) {
-        onSubmit(data.id, data.name);
+        onSubmit(data.id, data.Name);
       } else {
         router.push(`/customers/${data.id}`);
       }
@@ -150,205 +164,141 @@ export default function CustomerForm({ onSubmit, onCancel, preFilledName, isModa
   };
 
   return (
-    <div className="bg-white shadow-md rounded-lg overflow-hidden">
+    <div className="max-w-2xl mx-auto">
       {showHeader && (
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h1 className="text-2xl font-bold text-gray-900">Add New Customer</h1>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">New Customer</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Create a new customer profile
+          </p>
         </div>
       )}
 
-      <div className="p-6">
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md whitespace-pre-line">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className={isModal ? 'space-y-6' : 'card'}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Name *
-              </label>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
+          <div>
+            <label htmlFor="Name" className="block text-sm font-medium text-gray-700">
+              Name <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-1">
               <GoogleContactsSelector
-                value={formData.name}
-                onChange={(value) => handleChange({ target: { name: 'name', value } } as React.ChangeEvent<HTMLInputElement>)}
+                value={formData.Name}
+                onChange={(value) => setFormData(prev => ({ ...prev, Name: value }))}
                 onSelect={handleContactSelect}
-                placeholder="Customer name or business name"
+                placeholder="Search contacts..."
               />
             </div>
-            
-            <div className="md:col-span-2">
-              <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-1">
-                Contact Person *
-              </label>
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  id="contact"
-                  name="contact"
-                  value={formData.contact}
-                  onChange={handleChange}
-                  className="input flex-grow"
-                  required
-                  placeholder="Person to make appointments with"
-                />
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, contact: prev.name }))}
-                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
-                >
-                  Copy from Name
-                </button>
-              </div>
-              {!isModal && (
-                <p className="text-xs text-gray-500 mt-1">
-                  This is the person you'll make appointments with. Often the same as the Name.
-                </p>
-              )}
+          </div>
+
+          <div>
+            <label htmlFor="Contactperson" className="block text-sm font-medium text-gray-700">
+              Contact Person <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-1">
+              <input
+                type="text"
+                name="Contactperson"
+                id="Contactperson"
+                required
+                value={formData.Contactperson}
+                onChange={handleInputChange}
+                className="input w-full"
+                placeholder="Person to make appointments with"
+              />
             </div>
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
+          </div>
+
+          <div>
+            <label htmlFor="Email" className="block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <div className="mt-1">
               <input
                 type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="input"
+                name="Email"
+                id="Email"
+                value={formData.Email}
+                onChange={handleInputChange}
+                className="input w-full"
+                placeholder="customer@example.com"
               />
             </div>
-            
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone *
-              </label>
+          </div>
+
+          <div>
+            <label htmlFor="Phone" className="block text-sm font-medium text-gray-700">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-1">
               <input
                 type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="input"
+                name="Phone"
+                id="Phone"
                 required
+                value={formData.Phone}
+                onChange={handleInputChange}
+                className="input w-full"
+                placeholder="+31 6 12345678 or 06 12345678"
               />
             </div>
-            
-            <div className="md:col-span-2">
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                Address
-              </label>
-              <input
-                type="text"
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                className="input"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                City
-              </label>
-              <input
-                type="text"
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className="input"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="postal_code" className="block text-sm font-medium text-gray-700 mb-1">
-                Postal Code
-              </label>
-              <input
-                type="text"
-                id="postal_code"
-                name="postal_code"
-                value={formData.postal_code}
-                onChange={handleChange}
-                className="input"
-              />
-            </div>
-            
-            <div className="md:col-span-2">
-              <label htmlFor="is_allow_contact_share" className="block text-sm font-medium text-gray-700 mb-1">
-                Allow Contact Sharing
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: 'yes', label: 'Yes' },
-                  { value: 'no', label: 'No' },
-                  { value: 'unknown', label: 'Unknown' }
-                ].map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, is_allow_contact_share: option.value }))}
-                    className={`px-4 py-2 rounded-md border ${
-                      formData.is_allow_contact_share === option.value
-                        ? 'bg-primary-500 text-white border-primary-500'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-                {formData.is_allow_contact_share && (
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, is_allow_contact_share: '' }))}
-                    className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-            
-            <div className="md:col-span-2">
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-                Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={4}
-                className="input"
-              />
-            </div>
-          </div>
-          
-          <div className={`flex justify-end space-x-3 ${isModal ? 'pt-4' : 'mt-8'}`}>
-            {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="btn btn-outline"
-              >
-                Cancel
-              </button>
+            {!validatePhoneNumber(formData.Phone) && formData.Phone && (
+              <p className="mt-1 text-sm text-yellow-600">
+                Please enter a valid Dutch phone number (e.g., +31 6 12345678 or 06 12345678)
+              </p>
             )}
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Creating...' : 'Create Customer'}
-            </button>
           </div>
-        </form>
-      </div>
+
+          <div>
+            <label htmlFor="Notes" className="block text-sm font-medium text-gray-700">
+              Notes
+            </label>
+            <div className="mt-1">
+              <textarea
+                name="Notes"
+                id="Notes"
+                rows={3}
+                value={formData.Notes}
+                onChange={handleInputChange}
+                className="input w-full"
+                placeholder="Additional information about the customer"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              name="IsAllowContactShare"
+              id="IsAllowContactShare"
+              checked={formData.IsAllowContactShare}
+              onChange={handleCheckboxChange}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <label htmlFor="IsAllowContactShare" className="ml-2 block text-sm text-gray-700">
+              Allow contact sharing
+            </label>
+          </div>
+        </div>
+
+        <div className="flex justify-end space-x-3">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="btn btn-outline"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Creating...' : 'Create Customer'}
+          </button>
+        </div>
+      </form>
 
       <WarningModal
         isOpen={showWarning}

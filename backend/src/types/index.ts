@@ -1,10 +1,10 @@
 export interface Customer {
   Id: number;
-  Naam: string;
-  Contactpersoon: string;
-  Emailadres: string;
-  Telefoonnummer: string;
-  Notities: string;
+  Name: string;
+  Contactperson: string;
+  Email: string;
+  Phone: string;
+  Notes: string;
   CreatedOn: Date;
   UpdatedOn: Date;
   IsExported: boolean;

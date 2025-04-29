@@ -16,10 +16,10 @@ export const getActiveCustomers = async (req: Request, res: Response) => {
     const query = `
       SELECT 
         c.Id,
-        c.Contactpersoon,
-        c.Naam,
-        c.Emailadres,
-        c.Telefoonnummer,
+        c.Contactperson,
+        c.Name,
+        c.Email,
+        c.Phone,
         c.IsAllowContactShare,
         COUNT(DISTINCT a.Id) as AppointmentCount,
         MAX(a.Date) as LastAppointmentDate,
@@ -29,10 +29,10 @@ export const getActiveCustomers = async (req: Request, res: Response) => {
       FROM Customer c
       JOIN Appointment a ON c.Id = a.CustomerId
       LEFT JOIN Dog d ON c.Id = d.CustomerId
-      GROUP BY c.Id, c.Contactpersoon, c.Naam, c.Emailadres, c.Telefoonnummer, c.IsAllowContactShare
+      GROUP BY c.Id, c.Contactperson, c.Name, c.Email, c.Phone, c.IsAllowContactShare
       HAVING COUNT(DISTINCT a.Id) >= 2
       AND MAX(a.Date) >= ?
-      ORDER BY c.Naam
+      ORDER BY c.Name
     `;
     
     const [activeCustomers] = await pool.query(query, [formattedDate]);
@@ -141,5 +141,66 @@ export const getActiveCustomersHistory = async (req: Request, res: Response) => 
   } catch (error) {
     console.error('Error getting active customers history:', error);
     throw new AppError('Failed to retrieve active customers history', 500);
+  }
+};
+
+export const getCustomerTable = async (req: Request, res: Response) => {
+  try {
+    const search = req.query.search as string;
+    let query = `
+      SELECT 
+        c.Id,
+        c.Contactperson,
+        c.Name,
+        c.Email,
+        c.Phone,
+        c.IsAllowContactShare,
+        COUNT(DISTINCT d.Id) as DogCount,
+        GROUP_CONCAT(DISTINCT d.Name) as Dogs,
+        DATEDIFF(CURDATE(), MAX(a.Date)) as DaysSinceLastAppointment,
+        AVG(interval_data.DaysBetween) as AverageInterval
+      FROM Customer c
+      LEFT JOIN Dog d ON c.Id = d.CustomerId
+      LEFT JOIN Appointment a ON c.Id = a.CustomerId
+      LEFT JOIN (
+        SELECT 
+          a1.CustomerId,
+          DATEDIFF(a1.Date, a2.Date) as DaysBetween
+        FROM 
+          Appointment a1
+        JOIN 
+          Appointment a2 ON a1.CustomerId = a2.CustomerId AND a1.Date > a2.Date
+        WHERE 
+          NOT EXISTS (
+            SELECT 1 FROM Appointment a3
+            WHERE a3.CustomerId = a1.CustomerId AND a3.Date > a2.Date AND a3.Date < a1.Date
+          )
+      ) interval_data ON c.Id = interval_data.CustomerId
+    `;
+
+    if (search) {
+      query += `
+        WHERE c.Contactperson LIKE ? 
+        OR c.Name LIKE ? 
+        OR c.Email LIKE ? 
+        OR c.Phone LIKE ?
+        OR d.Name LIKE ?
+      `;
+    }
+
+    query += `
+      GROUP BY c.Id, c.Contactperson, c.Name, c.Email, c.Phone, c.IsAllowContactShare
+      ORDER BY c.Name
+    `;
+
+    const [rows] = await pool.query(
+      query,
+      search ? [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`] : []
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching customer table:', error);
+    res.status(500).json({ error: 'Failed to fetch customer table' });
   }
 }; 

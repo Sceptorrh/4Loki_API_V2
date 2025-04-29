@@ -68,15 +68,19 @@ export default function CustomersPage() {
     const search = searchTerm.toLowerCase();
     
     // Search by customer name
-    const customerName = (customer.Contactpersoon || '').toLowerCase();
+    const customerName = (customer.Name || '').toLowerCase();
     if (customerName.includes(search)) return true;
     
+    // Search by contact person
+    const contactPerson = (customer.Contactperson || '').toLowerCase();
+    if (contactPerson.includes(search)) return true;
+    
     // Search by email
-    const email = (customer.Emailadres || '').toLowerCase();
+    const email = (customer.Email || '').toLowerCase();
     if (email.includes(search)) return true;
     
     // Search by phone number
-    const phone = (customer.Telefoonnummer || '').toLowerCase();
+    const phone = (customer.Phone || '').toLowerCase();
     if (phone.includes(search)) return true;
     
     // Search by dog names
@@ -102,8 +106,8 @@ export default function CustomersPage() {
 
     switch (sortField) {
       case 'customer':
-        aValue = (a.Contactpersoon || '').toLowerCase();
-        bValue = (b.Contactpersoon || '').toLowerCase();
+        aValue = (a.Contactperson || '').toLowerCase();
+        bValue = (b.Contactperson || '').toLowerCase();
         break;
       case 'lastAppointment':
         // Use DaysSinceLastAppointment to sort
@@ -286,16 +290,16 @@ export default function CustomersPage() {
                         </span>
                       )}
                       <div className="text-sm font-medium text-gray-900">
-                        {customer.Contactpersoon || ''}
+                        {customer.Contactperson || ''}
                       </div>
                     </div>
                     <div className="text-sm text-gray-500 ml-0">
-                      {/* City and postal code not available in this API response */}
+                      {customer.Name || ''}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{customer.Emailadres || 'No email'}</div>
-                    <div className="text-sm text-gray-500">{customer.Telefoonnummer || 'No phone'}</div>
+                    <div className="text-sm text-gray-900">{customer.Email || 'No email'}</div>
+                    <div className="text-sm text-gray-500">{customer.Phone || 'No phone'}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">

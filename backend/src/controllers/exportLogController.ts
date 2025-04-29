@@ -155,14 +155,16 @@ export const getExportLogById = async (req: Request, res: Response) => {
     const [appointments] = await db.execute(`
       SELECT 
         a.*,
-        c.Naam as CustomerName,
-        c.Contactpersoon as CustomerContactperson,
+        c.Name as CustomerName,
+        c.Contactperson as CustomerContactperson,
+        s.Label as StatusLabel,
         ela.PreviousStatusId,
         ela.IsReverted,
         ela.RevertedOn
       FROM Appointment a
       JOIN ExportLogAppointment ela ON a.Id = ela.AppointmentId
       JOIN Customer c ON a.CustomerId = c.Id
+      JOIN AppointmentStatus s ON a.AppointmentStatusId = s.Id
       WHERE ela.ExportLogId = ?
     `, [id]);
     

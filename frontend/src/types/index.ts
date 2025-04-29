@@ -66,11 +66,11 @@ export interface Dog {
 export interface Customer {
   // API response properties from /api/v1/customers/table
   Id?: number;
-  Contactpersoon?: string;
-  Naam?: string;
-  Emailadres?: string;
-  Telefoonnummer?: string;
-  Notities?: string;
+  Name?: string;
+  Contactperson?: string;
+  Email?: string;
+  Phone?: string;
+  Notes?: string;
   IsAllowContactShare?: string;
   IsExported?: boolean;
   DogCount?: number;

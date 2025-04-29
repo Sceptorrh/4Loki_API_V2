@@ -37,9 +37,9 @@ export const getDetailedAppointment = async (req: Request, res: Response) => {
     const [customers] = await db.execute(`
       SELECT 
         Id, 
-        Naam, 
-        Emailadres, 
-        Telefoonnummer
+        Name, 
+        Email, 
+        Phone
       FROM Customer 
       WHERE Id = ?
     `, [appointment.CustomerId]);
@@ -456,7 +456,7 @@ export const getAppointmentsByYearMonth = async (req: Request, res: Response) =>
         a.Date,
         a.TimeStart,
         a.TimeEnd,
-        c.Contactpersoon as ContactPerson,
+        c.Contactperson as ContactPerson,
         s.Label as StatusLabel,
         s.Color as StatusColor,
         s.Id as StatusId,
@@ -547,7 +547,7 @@ export const getInvoiceReadyAppointments = async (req: Request, res: Response) =
     const [appointments] = await db.execute(`
       SELECT 
         a.*,
-        c.Naam as CustomerName,
+        c.Name as CustomerName,
         s.Label as StatusLabel,
         COALESCE(SUM(sad.Price), 0) as TotalPrice
       FROM Appointment a
@@ -599,8 +599,8 @@ export const getExportReadyAppointments = async (req: Request, res: Response) =>
     const [appointments] = await db.execute(`
       SELECT 
         a.*,
-        c.Naam as CustomerName,
-        c.Contactpersoon as CustomerContactperson,
+        c.Name as CustomerName,
+        c.Contactperson as CustomerContactperson,
         s.Label as StatusLabel,
         COALESCE(SUM(sad.Price), 0) as TotalPrice
       FROM Appointment a
@@ -976,7 +976,7 @@ export const getAppointmentsByDate = async (req: Request, res: Response) => {
   const connection = await db.getConnection();
   
   try {
-    const date = req.params.date;
+    const { date } = req.params;
     
     // Validate date format (YYYY-MM-DD)
     if (!date.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -994,9 +994,9 @@ export const getAppointmentsByDate = async (req: Request, res: Response) => {
         a.CustomerId,
         a.AppointmentStatusId as StatusId,
         s.Label as StatusLabel,
-        c.Contactpersoon as CustomerName,
-        c.Emailadres as CustomerEmail,
-        c.Telefoonnummer as CustomerPhone
+        c.Contactperson as CustomerName,
+        c.Email as CustomerEmail,
+        c.Phone as CustomerPhone
       FROM Appointment a
       JOIN Customer c ON a.CustomerId = c.Id
       JOIN Statics_AppointmentStatus s ON a.AppointmentStatusId = s.Id
